@@ -1,0 +1,1174 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Manual de Usuario — Sistema CREA / IYEM</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', Arial, sans-serif; font-size: 11pt; color: #1e293b; line-height: 1.6; background: #fff; }
+
+  /* PORTADA */
+  .portada { page-break-after: always; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; background: linear-gradient(135deg, #b91c1c 0%, #7f1d1d 100%); color: white; text-align: center; padding: 60px; }
+  .portada .logo { width: 120px; height: 120px; background: rgba(255,255,255,0.15); border-radius: 24px; display: flex; align-items: center; justify-content: center; margin: 0 auto 32px; font-size: 48px; }
+  .portada h1 { font-size: 36pt; font-weight: 900; letter-spacing: -1px; margin-bottom: 12px; }
+  .portada h2 { font-size: 18pt; font-weight: 400; opacity: 0.85; margin-bottom: 8px; }
+  .portada .subtitle { font-size: 13pt; opacity: 0.7; margin-bottom: 48px; }
+  .portada .meta { background: rgba(255,255,255,0.12); border-radius: 12px; padding: 20px 32px; font-size: 11pt; line-height: 2; }
+  .portada .meta strong { display: inline-block; min-width: 100px; }
+
+  /* ÍNDICE */
+  .toc { page-break-after: always; padding: 60px; }
+  .toc h2 { font-size: 22pt; font-weight: 800; color: #b91c1c; border-bottom: 3px solid #b91c1c; padding-bottom: 12px; margin-bottom: 32px; }
+  .toc-section { margin-bottom: 8px; }
+  .toc-section a { text-decoration: none; color: #1e293b; display: flex; align-items: center; justify-content: space-between; padding: 8px 16px; border-radius: 8px; transition: background 0.2s; }
+  .toc-section a:hover { background: #f1f5f9; }
+  .toc-section .num { font-weight: 700; color: #b91c1c; min-width: 40px; }
+  .toc-section .dots { flex: 1; border-bottom: 1px dotted #cbd5e1; margin: 0 12px; }
+  .toc-section .page { color: #64748b; font-size: 10pt; }
+  .toc-part { font-size: 14pt; font-weight: 800; color: #b91c1c; margin: 24px 0 8px; padding: 8px 16px; background: #fef2f2; border-radius: 8px; border-left: 4px solid #b91c1c; }
+
+  /* SECCIONES */
+  .section { padding: 60px; page-break-before: always; }
+  .section:first-of-type { page-break-before: avoid; }
+
+  .part-header { background: linear-gradient(135deg, #b91c1c, #7f1d1d); color: white; padding: 48px 60px; margin: -60px -60px 40px; }
+  .part-header .part-num { font-size: 11pt; text-transform: uppercase; letter-spacing: 3px; opacity: 0.7; margin-bottom: 8px; }
+  .part-header h2 { font-size: 28pt; font-weight: 900; margin-bottom: 8px; }
+  .part-header p { opacity: 0.8; font-size: 12pt; }
+
+  h3 { font-size: 16pt; font-weight: 800; color: #b91c1c; margin: 32px 0 16px; padding-bottom: 8px; border-bottom: 2px solid #fecaca; }
+  h4 { font-size: 13pt; font-weight: 700; color: #1e293b; margin: 20px 0 10px; }
+  p { margin-bottom: 12px; }
+
+  /* PASOS */
+  .steps { counter-reset: step; margin: 16px 0; }
+  .step { display: flex; gap: 16px; margin-bottom: 20px; align-items: flex-start; }
+  .step-num { counter-increment: step; min-width: 36px; height: 36px; background: #b91c1c; color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 14pt; flex-shrink: 0; }
+  .step-content { flex: 1; padding-top: 4px; }
+  .step-content strong { display: block; font-size: 12pt; margin-bottom: 4px; color: #1e293b; }
+
+  /* CAJAS */
+  .box { border-radius: 12px; padding: 20px 24px; margin: 20px 0; }
+  .box-info { background: #eff6ff; border-left: 4px solid #3b82f6; }
+  .box-warn { background: #fffbeb; border-left: 4px solid #f59e0b; }
+  .box-success { background: #f0fdf4; border-left: 4px solid #22c55e; }
+  .box-danger { background: #fef2f2; border-left: 4px solid #ef4444; }
+  .box-title { font-weight: 700; font-size: 11pt; margin-bottom: 6px; }
+  .box-info .box-title { color: #1d4ed8; }
+  .box-warn .box-title { color: #b45309; }
+  .box-success .box-title { color: #15803d; }
+  .box-danger .box-title { color: #b91c1c; }
+
+  /* TABLA */
+  table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 10.5pt; }
+  th { background: #b91c1c; color: white; padding: 10px 14px; text-align: left; font-weight: 700; }
+  td { padding: 9px 14px; border-bottom: 1px solid #e2e8f0; }
+  tr:nth-child(even) td { background: #f8fafc; }
+  tr:last-child td { border-bottom: none; }
+
+  /* ESTADO BADGES */
+  .badge { display: inline-block; padding: 3px 10px; border-radius: 20px; font-size: 9.5pt; font-weight: 700; white-space: nowrap; }
+  .badge-blue { background: #dbeafe; color: #1d4ed8; }
+  .badge-yellow { background: #fef9c3; color: #b45309; }
+  .badge-orange { background: #ffedd5; color: #c2410c; }
+  .badge-green { background: #dcfce7; color: #15803d; }
+  .badge-red { background: #fee2e2; color: #b91c1c; }
+  .badge-purple { background: #ede9fe; color: #6d28d9; }
+  .badge-gray { background: #f1f5f9; color: #475569; }
+
+  /* FLUJO DIAGRAMA */
+  .flow { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin: 20px 0; }
+  .flow-item { background: #f1f5f9; border: 2px solid #e2e8f0; border-radius: 10px; padding: 10px 16px; font-size: 10pt; font-weight: 600; text-align: center; min-width: 100px; }
+  .flow-item.active { background: #fef2f2; border-color: #fca5a5; color: #b91c1c; }
+  .flow-arrow { color: #94a3b8; font-size: 18pt; font-weight: 300; }
+
+  /* SCREENSHOT PLACEHOLDER */
+  .screen { background: #f8fafc; border: 2px dashed #cbd5e1; border-radius: 12px; padding: 32px; text-align: center; color: #94a3b8; font-style: italic; margin: 20px 0; font-size: 10pt; }
+
+  ul, ol { padding-left: 24px; margin: 10px 0 16px; }
+  li { margin-bottom: 6px; }
+  code { background: #f1f5f9; padding: 2px 6px; border-radius: 4px; font-family: 'Courier New', monospace; font-size: 9.5pt; color: #b91c1c; }
+
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin: 16px 0; }
+  .highlight { background: #fffbeb; border: 1px solid #fde68a; border-radius: 8px; padding: 16px 20px; margin: 16px 0; }
+
+  @media print {
+    body { font-size: 10pt; }
+    .portada { min-height: 297mm; }
+    .section { page-break-before: always; padding: 40px; }
+    .part-header { margin: -40px -40px 32px; padding: 40px; }
+    h3 { page-break-after: avoid; }
+    .step { page-break-inside: avoid; }
+    table { page-break-inside: avoid; }
+  }
+
+  hr { border: none; border-top: 2px solid #f1f5f9; margin: 32px 0; }
+  .footnote { font-size: 9pt; color: #94a3b8; margin-top: 32px; padding-top: 16px; border-top: 1px solid #e2e8f0; }
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════════ PORTADA ═══════════════════════ -->
+<div class="portada">
+  <div class="logo">🏛️</div>
+  <h1>CREA / IYEM</h1>
+  <h2>Sistema de Gestión de Créditos</h2>
+  <p class="subtitle">Manual de Usuario — Versión 1.0</p>
+  <div class="meta">
+    <div><strong>Versión:</strong> 1.0 — Abril 2026</div>
+    <div><strong>Organismo:</strong> Instituto Yucateco del Emprendedor y la Mujer (IYEM)</div>
+    <div><strong>Programa:</strong> Créditos para el Emprendimiento y el Autoempleo (CREA)</div>
+    <div><strong>URL del sistema:</strong> https://darkorange-oryx-401326.hostingersite.com</div>
+    <div><strong>Audiencia:</strong> Operadores administrativos y ciudadanos beneficiarios</div>
+  </div>
+</div>
+
+<!-- ═══════════════════════ ÍNDICE ═══════════════════════ -->
+<div class="toc">
+  <h2>Contenido</h2>
+
+  <div class="toc-part">Parte I — Introducción y Acceso al Sistema</div>
+  <div class="toc-section"><a href="#intro"><span class="num">1.</span> ¿Qué es el Sistema CREA?<span class="dots"></span><span class="page">4</span></a></div>
+  <div class="toc-section"><a href="#roles"><span class="num">2.</span> Roles y Perfiles de Usuario<span class="dots"></span><span class="page">4</span></a></div>
+  <div class="toc-section"><a href="#acceso"><span class="num">3.</span> Acceso e Inicio de Sesión<span class="dots"></span><span class="page">5</span></a></div>
+
+  <div class="toc-part">Parte II — Portal del Ciudadano (Acreditado)</div>
+  <div class="toc-section"><a href="#portal-dashboard"><span class="num">4.</span> Panel de Inicio del Ciudadano<span class="dots"></span><span class="page">6</span></a></div>
+  <div class="toc-section"><a href="#solicitud"><span class="num">5.</span> Solicitar un Crédito<span class="dots"></span><span class="page">7</span></a></div>
+  <div class="toc-section"><a href="#documentos"><span class="num">6.</span> Cargar Documentos<span class="dots"></span><span class="page">9</span></a></div>
+  <div class="toc-section"><a href="#mi-credito"><span class="num">7.</span> Consultar Mi Crédito<span class="dots"></span><span class="page">10</span></a></div>
+  <div class="toc-section"><a href="#expediente-ciudadano"><span class="num">8.</span> Mi Expediente Digital<span class="dots"></span><span class="page">11</span></a></div>
+
+  <div class="toc-part">Parte III — Módulo Operativo (Administración)</div>
+  <div class="toc-section"><a href="#dashboard-op"><span class="num">9.</span> Dashboard Operativo<span class="dots"></span><span class="page">12</span></a></div>
+  <div class="toc-section"><a href="#solicitudes-op"><span class="num">10.</span> Gestión de Solicitudes Ciudadanas<span class="dots"></span><span class="page">13</span></a></div>
+  <div class="toc-section"><a href="#acreditados"><span class="num">11.</span> Módulo de Acreditados<span class="dots"></span><span class="page">16</span></a></div>
+  <div class="toc-section"><a href="#pagos"><span class="num">12.</span> Registro de Pagos<span class="dots"></span><span class="page">18</span></a></div>
+  <div class="toc-section"><a href="#cobranza"><span class="num">13.</span> Módulo de Cobranza<span class="dots"></span><span class="page">20</span></a></div>
+  <div class="toc-section"><a href="#juridico"><span class="num">14.</span> Cobranza Jurídica<span class="dots"></span><span class="page">22</span></a></div>
+  <div class="toc-section"><a href="#reportes"><span class="num">15.</span> Reportes y Exportaciones<span class="dots"></span><span class="page">24</span></a></div>
+  <div class="toc-section"><a href="#admin"><span class="num">16.</span> Administración del Sistema<span class="dots"></span><span class="page">25</span></a></div>
+
+  <div class="toc-part">Parte IV — Referencia Rápida</div>
+  <div class="toc-section"><a href="#estados"><span class="num">17.</span> Catálogo de Estados y Significados<span class="dots"></span><span class="page">26</span></a></div>
+  <div class="toc-section"><a href="#flujo-completo"><span class="num">18.</span> Flujo Completo del Crédito<span class="dots"></span><span class="page">27</span></a></div>
+  <div class="toc-section"><a href="#faq"><span class="num">19.</span> Preguntas Frecuentes<span class="dots"></span><span class="page">28</span></a></div>
+</div>
+
+
+<!-- ═══════════════════════ PARTE I ═══════════════════════ -->
+<div class="section" id="intro">
+  <div class="part-header">
+    <div class="part-num">Parte I</div>
+    <h2>Introducción y Acceso al Sistema</h2>
+    <p>Conceptos generales, roles de usuario y cómo iniciar sesión.</p>
+  </div>
+
+  <h3 id="intro-title">1. ¿Qué es el Sistema CREA?</h3>
+  <p>El <strong>Sistema CREA</strong> es la plataforma digital del Instituto Yucateco del Emprendedor y la Mujer (IYEM) para administrar el programa <em>Créditos para el Emprendimiento y el Autoempleo</em>. Permite gestionar de manera integral todo el ciclo de vida de un crédito:</p>
+  <div class="flow">
+    <div class="flow-item active">Solicitud ciudadana</div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-item">Revisión operativa</div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-item">Otorgamiento</div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-item">Pagos mensuales</div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-item">Cobranza</div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-item">Liquidación</div>
+  </div>
+
+  <div class="two-col">
+    <div class="box box-info">
+      <div class="box-title">👤 Para ciudadanos</div>
+      Acceso al portal personal para solicitar crédito, subir documentos, consultar el estado de su crédito y ver sus pagos.
+    </div>
+    <div class="box box-success">
+      <div class="box-title">🏛️ Para operadores</div>
+      Acceso completo al sistema administrativo: revisión de solicitudes, registro de acreditados, pagos, cobranza y reportes.
+    </div>
+  </div>
+
+  <hr>
+
+  <h3 id="roles">2. Roles y Perfiles de Usuario</h3>
+  <table>
+    <tr><th>Tipo</th><th>¿Quién lo usa?</th><th>Acceso a</th></tr>
+    <tr>
+      <td><span class="badge badge-blue">Ciudadano</span></td>
+      <td>Personas que solicitan o tienen un crédito CREA</td>
+      <td>Portal ciudadano (<code>/mi-portal</code>): solicitud, documentos, mi crédito</td>
+    </tr>
+    <tr>
+      <td><span class="badge badge-red">Operativo</span></td>
+      <td>Personal administrativo del IYEM</td>
+      <td>Sistema completo: acreditados, pagos, cobranza, reportes</td>
+    </tr>
+    <tr>
+      <td><span class="badge badge-purple">Administrador</span></td>
+      <td>Coordinación / TI</td>
+      <td>Todo lo anterior + gestión de usuarios y roles</td>
+    </tr>
+  </table>
+
+  <div class="box box-warn">
+    <div class="box-title">⚠️ Importante</div>
+    Cada usuario solo puede acceder a las secciones correspondientes a su tipo. Un ciudadano que intente acceder al módulo operativo será redirigido automáticamente a su portal.
+  </div>
+
+  <hr>
+
+  <h3 id="acceso">3. Acceso e Inicio de Sesión</h3>
+
+  <h4>Para ciudadanos</h4>
+  <div class="steps">
+    <div class="step">
+      <div class="step-num"></div>
+      <div class="step-content">
+        <strong>Ingresa a la página de consulta pública</strong>
+        Navega a la URL del sistema. Verás la página de inicio informativa del programa CREA.
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num"></div>
+      <div class="step-content">
+        <strong>Haz clic en "Iniciar sesión" o "Mi Portal"</strong>
+        En la esquina superior derecha encontrarás el botón de acceso.
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num"></div>
+      <div class="step-content">
+        <strong>Ingresa tus credenciales</strong>
+        Usa el correo electrónico y contraseña que te proporcionó el IYEM al registrarte. Si olvidaste tu contraseña, usa "¿Olvidaste tu contraseña?" para recuperarla por correo.
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num"></div>
+      <div class="step-content">
+        <strong>Serás redirigido automáticamente a tu portal</strong>
+        El sistema detecta tu tipo de usuario y te lleva a <code>/mi-portal</code>.
+      </div>
+    </div>
+  </div>
+
+  <h4>Para operadores</h4>
+  <p>El proceso es idéntico. Al autenticarse, el sistema detecta el perfil operativo y redirige al <strong>Dashboard administrativo</strong>.</p>
+
+  <div class="box box-info">
+    <div class="box-title">💡 Sesión segura</div>
+    La sesión expira automáticamente después de cierto tiempo de inactividad. Siempre cierra sesión al terminar, especialmente en equipos compartidos. Usa el menú de usuario en la esquina superior derecha → "Cerrar sesión".
+  </div>
+</div>
+
+
+<!-- ═══════════════════════ PARTE II — CIUDADANO ═══════════════════════ -->
+<div class="section" id="portal-ciudadano">
+  <div class="part-header">
+    <div class="part-num">Parte II</div>
+    <h2>Portal del Ciudadano</h2>
+    <p>Guía completa para beneficiarios del programa CREA.</p>
+  </div>
+
+  <h3 id="portal-dashboard">4. Panel de Inicio del Ciudadano</h3>
+  <p>Al iniciar sesión, verás tu <strong>Panel personal</strong> con un resumen de tu situación en el programa:</p>
+  <table>
+    <tr><th>Elemento</th><th>Descripción</th></tr>
+    <tr><td>Estado de solicitud</td><td>Muestra en qué etapa está tu solicitud de crédito</td></tr>
+    <tr><td>Próximo pago</td><td>Fecha y monto de tu siguiente cuota (si tienes crédito activo)</td></tr>
+    <tr><td>Anuncios del IYEM</td><td>Notificaciones oficiales sobre tu expediente o crédito</td></tr>
+    <tr><td>Accesos directos</td><td>Botones para ir a Mi Solicitud, Mi Crédito, o Mi Expediente</td></tr>
+  </table>
+
+  <div class="box box-info">
+    <div class="box-title">🔔 Anuncios importantes</div>
+    Cuando el IYEM revise tu documentación y necesite información adicional, recibirás un anuncio aquí. Lee todos los anuncios nuevos (marcados con punto rojo) y toma las acciones requeridas.
+  </div>
+
+  <hr>
+
+  <h3 id="solicitud">5. Solicitar un Crédito</h3>
+  <p>Si aún no tienes un crédito activo, puedes iniciar tu solicitud desde el menú <strong>Mi Solicitud</strong>. El proceso se realiza en un asistente de varios pasos:</p>
+
+  <h4>Paso 1: Datos Personales</h4>
+  <div class="steps">
+    <div class="step">
+      <div class="step-num"></div>
+      <div class="step-content">
+        <strong>Nombre completo</strong>
+        Escribe tu nombre como aparece en tu identificación oficial (INE/pasaporte).
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num"></div>
+      <div class="step-content">
+        <strong>RFC y CURP</strong>
+        Ingresa tu RFC con homoclave (13 caracteres) y tu CURP (18 caracteres). Deben coincidir con tus documentos.
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num"></div>
+      <div class="step-content">
+        <strong>Sexo y municipio</strong>
+        Selecciona tu sexo del listado y el municipio donde vives dentro de Yucatán.
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num"></div>
+      <div class="step-content">
+        <strong>Teléfono y correo</strong>
+        Proporciona un número de teléfono de contacto y confirma tu correo electrónico.
+      </div>
+    </div>
+  </div>
+
+  <h4>Paso 2: Datos del Negocio</h4>
+  <div class="steps">
+    <div class="step">
+      <div class="step-num"></div>
+      <div class="step-content">
+        <strong>Nombre del negocio</strong>
+        Nombre con el que opera o piensas operar tu negocio.
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num"></div>
+      <div class="step-content">
+        <strong>Giro</strong>
+        Selecciona el giro o actividad principal: Artesanal, Comercio, Servicios, Producción, etc.
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num"></div>
+      <div class="step-content">
+        <strong>Antigüedad</strong>
+        Indica cuánto tiempo llevas operando el negocio. Si es nuevo, selecciona "Menos de 1 año".
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num"></div>
+      <div class="step-content">
+        <strong>Descripción</strong>
+        Describe brevemente a qué se dedica tu negocio y cómo usarás el crédito.
+      </div>
+    </div>
+  </div>
+
+  <h4>Paso 3: Solicitud del Crédito</h4>
+  <div class="steps">
+    <div class="step">
+      <div class="step-num"></div>
+      <div class="step-content">
+        <strong>Modalidad del crédito</strong>
+        Elige la línea de crédito que mejor se adapte a tu negocio:
+        <table style="margin-top:10px;">
+          <tr><th>Modalidad</th><th>Tasa de interés</th><th>Para quién es</th></tr>
+          <tr><td><strong>Artesanal</strong></td><td>0% (sin interés)</td><td>Artesanos y productores locales</td></tr>
+          <tr><td><strong>Sustentable</strong></td><td>5% anual</td><td>Negocios con enfoque ecológico o social</td></tr>
+          <tr><td><strong>Emprendedores</strong></td><td>7% anual</td><td>Emprendimientos en crecimiento</td></tr>
+        </table>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num"></div>
+      <div class="step-content">
+        <strong>Monto solicitado</strong>
+        Ingresa el monto que necesitas. El sistema mostrará los montos mínimo y máximo permitidos para la modalidad elegida.
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num"></div>
+      <div class="step-content">
+        <strong>Plazo</strong>
+        Selecciona el número de meses para pagar. A mayor plazo, menor cuota mensual pero más tiempo de compromiso.
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num"></div>
+      <div class="step-content">
+        <strong>Destino del crédito</strong>
+        Explica específicamente en qué usarás el dinero (compra de equipo, materia prima, capital de trabajo, etc.).
+      </div>
+    </div>
+  </div>
+
+  <div class="box box-warn">
+    <div class="box-title">💾 Guardar como borrador</div>
+    Puedes guardar tu solicitud en cualquier momento como <span class="badge badge-gray">Borrador</span> y completarla más tarde. No pierdas la información al salir; usa siempre el botón "Guardar".
+  </div>
+
+  <hr>
+
+  <h3 id="documentos">6. Cargar Documentos</h3>
+  <p>Una vez completados los datos, debes subir los documentos que acrediten tu identidad y la viabilidad de tu negocio. Los documentos requeridos dependen de la modalidad elegida.</p>
+
+  <h4>Documentos comunes requeridos</h4>
+  <ul>
+    <li><strong>Identificación oficial:</strong> INE vigente (ambos lados) o pasaporte</li>
+    <li><strong>CURP</strong> en documento oficial</li>
+    <li><strong>Comprobante de domicilio</strong> no mayor a 3 meses</li>
+    <li><strong>RFC</strong> con constancia del SAT</li>
+    <li><strong>Fotografía</strong> reciente tamaño infantil</li>
+    <li><strong>Proyecto de negocio</strong> o plan de uso del crédito (carta libre)</li>
+  </ul>
+
+  <h4>Cómo subir un documento</h4>
+  <div class="steps">
+    <div class="step">
+      <div class="step-num"></div>
+      <div class="step-content">
+        <strong>Identifica el documento a subir</strong>
+        En la sección de documentos verás cada tipo requerido con su estado actual.
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num"></div>
+      <div class="step-content">
+        <strong>Haz clic en "Subir archivo"</strong>
+        Selecciona el archivo desde tu dispositivo. Se aceptan formatos PDF, JPG y PNG con peso máximo de 10 MB por archivo.
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num"></div>
+      <div class="step-content">
+        <strong>Espera la confirmación de carga</strong>
+        El sistema mostrará el nombre del archivo y cambiará el estado a <span class="badge badge-yellow">Pendiente de revisión</span>.
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num"></div>
+      <div class="step-content">
+        <strong>Repite para cada documento</strong>
+        Sube todos los documentos solicitados antes de enviar tu solicitud.
+      </div>
+    </div>
+  </div>
+
+  <table>
+    <tr><th>Estado del documento</th><th>Significado</th><th>Acción</th></tr>
+    <tr><td><span class="badge badge-yellow">Pendiente</span></td><td>El operador aún no lo ha revisado</td><td>Esperar</td></tr>
+    <tr><td><span class="badge badge-green">Aprobado</span></td><td>El documento fue aceptado</td><td>Ninguna</td></tr>
+    <tr><td><span class="badge badge-red">Rechazado</span></td><td>Hay un problema con el documento</td><td>Subir uno nuevo (ver motivo)</td></tr>
+  </table>
+
+  <div class="box box-danger">
+    <div class="box-title">⚠️ Documentos rechazados</div>
+    Si un documento es rechazado, verás el motivo del rechazo en rojo. Lee cuidadosamente la razón, corrige el problema, y sube el documento nuevamente. Los documentos rechazados deben corregirse <strong>antes</strong> de poder enviar la solicitud.
+  </div>
+
+  <h4>Enviar la solicitud</h4>
+  <p>Cuando todos tus documentos estén en estado <span class="badge badge-green">Aprobado</span>, podrás hacer clic en <strong>"Enviar solicitud"</strong>. Una vez enviada, no podrás modificar los datos, solo el operador puede hacer cambios.</p>
+
+  <hr>
+
+  <h3 id="mi-credito">7. Consultar Mi Crédito</h3>
+  <p>Si tu solicitud fue aprobada y el crédito fue otorgado, en el menú <strong>Mi Crédito</strong> encontrarás toda la información de tu crédito activo:</p>
+
+  <h4>Información disponible</h4>
+  <table>
+    <tr><th>Sección</th><th>Qué muestra</th></tr>
+    <tr><td>Resumen del crédito</td><td>Monto otorgado, tasa de interés, plazo total, fecha de inicio</td></tr>
+    <tr><td>Progreso</td><td>Barra visual que muestra cuántas cuotas has pagado del total</td></tr>
+    <tr><td>Próxima cuota</td><td>Número de cuota, fecha de vencimiento y monto a pagar</td></tr>
+    <tr><td>Tabla de amortización</td><td>Todas tus cuotas: pagadas, pendientes y sus fechas</td></tr>
+  </table>
+
+  <h4>Estados de cuotas en la tabla</h4>
+  <table>
+    <tr><th>Estado</th><th>Significa</th></tr>
+    <tr><td><span class="badge badge-green">PAGADO</span></td><td>Esta cuota ya fue liquidada correctamente</td></tr>
+    <tr><td><span class="badge badge-yellow">PENDIENTE</span></td><td>Cuota próxima, aún no vence</td></tr>
+    <tr><td><span class="badge badge-red">EN MORA</span></td><td>Esta cuota venció y tiene intereses moratorios acumulados</td></tr>
+    <tr><td><span class="badge badge-purple">CONDONADO</span></td><td>Cuota cancelada por el IYEM (generalmente en reestructuración)</td></tr>
+  </table>
+
+  <div class="box box-warn">
+    <div class="box-title">⏰ Periodo de gracia</div>
+    Las cuotas tienen un periodo de gracia de 5 días después de su fecha de vencimiento sin generar mora. A partir del sexto día se aplican intereses moratorios diarios. Procura pagar antes de la fecha límite.
+  </div>
+
+  <div class="box box-info">
+    <div class="box-title">💬 ¿Cómo pago?</div>
+    Los pagos se registran en las oficinas del IYEM. El operador captura tu pago en el sistema y recibirás un anuncio de confirmación. Si tienes dudas sobre el proceso de pago, comunícate directamente con el IYEM.
+  </div>
+
+  <hr>
+
+  <h3 id="expediente-ciudadano">8. Mi Expediente Digital</h3>
+  <p>La sección <strong>Mi Expediente</strong> te permite consultar en cualquier momento todo tu expediente como beneficiario, incluyendo tus documentos entregados y el historial completo de tu crédito. Actualmente esta sección está disponible para los operadores del IYEM; para consultas personales, acude a las oficinas o comunícate por los canales oficiales.</p>
+</div>
+
+
+<!-- ═══════════════════════ PARTE III — OPERATIVO ═══════════════════════ -->
+<div class="section" id="modulo-operativo">
+  <div class="part-header">
+    <div class="part-num">Parte III</div>
+    <h2>Módulo Operativo</h2>
+    <p>Guía completa para personal administrativo del IYEM.</p>
+  </div>
+
+  <h3 id="dashboard-op">9. Dashboard Operativo</h3>
+  <p>Al iniciar sesión como operador, el <strong>Dashboard</strong> presenta un panorama general del programa en tiempo real:</p>
+
+  <div class="two-col">
+    <div>
+      <h4>KPIs principales</h4>
+      <ul>
+        <li><strong>Total acreditados:</strong> número de beneficiarios registrados</li>
+        <li><strong>Créditos activos:</strong> créditos vigentes en recuperación</li>
+        <li><strong>Cartera total:</strong> suma de todos los montos otorgados</li>
+        <li><strong>Cuotas vencidas hoy:</strong> alertas de pagos del día</li>
+      </ul>
+    </div>
+    <div>
+      <h4>Accesos rápidos</h4>
+      <ul>
+        <li>Nuevo acreditado</li>
+        <li>Registrar pago</li>
+        <li>Ver solicitudes pendientes</li>
+        <li>Cobranza activa</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="box box-info">
+    <div class="box-title">🔔 Cuotas que vencen mañana</div>
+    En el menú superior aparece un ícono de campana. Al hacer clic muestra las cuotas que vencen al día siguiente, permitiendo contactar preventivamente a los acreditados.
+  </div>
+
+  <hr>
+
+  <h3 id="solicitudes-op">10. Gestión de Solicitudes Ciudadanas</h3>
+  <p>El menú <strong>Solicitudes</strong> (<code>/solicitudes</code>) muestra todas las solicitudes enviadas por ciudadanos desde el portal. Aquí se gestiona el proceso de revisión, aprobación y conversión en crédito.</p>
+
+  <h4>Vista de listado</h4>
+  <p>La tabla muestra: nombre del solicitante, fecha, modalidad, monto solicitado, estado actual y acciones disponibles.</p>
+
+  <h4>Estados del proceso de solicitud</h4>
+  <table>
+    <tr><th>Estado</th><th>Descripción</th><th>¿Quién lo asigna?</th></tr>
+    <tr><td><span class="badge badge-gray">Borrador</span></td><td>El ciudadano aún no envía la solicitud</td><td>Sistema (automático)</td></tr>
+    <tr><td><span class="badge badge-blue">Enviada</span></td><td>Solicitud enviada, pendiente de asignación</td><td>Sistema (al enviar)</td></tr>
+    <tr><td><span class="badge badge-yellow">En Revisión</span></td><td>Operador revisando documentos</td><td>Operador</td></tr>
+    <tr><td><span class="badge badge-orange">Doc. Incompleta</span></td><td>Se solicitan correcciones al ciudadano</td><td>Operador</td></tr>
+    <tr><td><span class="badge badge-green">Aprobada</span></td><td>Solicitud aprobada, lista para registrar crédito</td><td>Operador</td></tr>
+    <tr><td><span class="badge badge-red">Rechazada</span></td><td>Solicitud no aprobada definitivamente</td><td>Operador</td></tr>
+  </table>
+
+  <h4>Proceso de revisión detallado</h4>
+  <div class="steps">
+    <div class="step">
+      <div class="step-num"></div>
+      <div class="step-content">
+        <strong>Abrir la solicitud</strong>
+        Haz clic en el nombre del solicitante o en el ícono de ojo para ver el detalle completo.
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num"></div>
+      <div class="step-content">
+        <strong>Revisar datos personales y de negocio</strong>
+        Verifica que los datos del solicitante sean correctos y completos. Puedes ver el RFC, CURP, municipio, datos del negocio y el monto solicitado.
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num"></div>
+      <div class="step-content">
+        <strong>Revisar documentos</strong>
+        En la sección de documentos, cada archivo tiene botones para:
+        <ul>
+          <li><strong>Ver</strong> — abre el documento en una nueva pestaña</li>
+          <li><strong>Aprobar</strong> — marca el documento como válido (botón verde)</li>
+          <li><strong>Rechazar</strong> — marca el documento como inválido (se pide motivo)</li>
+        </ul>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num"></div>
+      <div class="step-content">
+        <strong>Cambiar el estado de la solicitud</strong>
+        Usando el panel de acciones en la parte superior derecha, selecciona el nuevo estado. Si seleccionas "Documentación Incompleta", escribe un mensaje explicando qué hace falta. Si seleccionas "Rechazada", escribe el motivo. El ciudadano recibirá una notificación automáticamente.
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num"></div>
+      <div class="step-content">
+        <strong>Enviar anuncio al ciudadano (opcional)</strong>
+        Puedes enviar mensajes adicionales al ciudadano usando el formulario de anuncios en la parte inferior de la solicitud.
+      </div>
+    </div>
+  </div>
+
+  <h4>Registrar el crédito (solicitud aprobada)</h4>
+  <p>Cuando una solicitud está en estado <span class="badge badge-green">Aprobada</span> y aún no tiene un crédito registrado, aparecerá un banner verde con el botón <strong>"Registrar Crédito"</strong>.</p>
+  <div class="steps">
+    <div class="step">
+      <div class="step-num"></div>
+      <div class="step-content">
+        <strong>Haz clic en "Registrar Crédito"</strong>
+        El sistema te llevará a un formulario pre-llenado con los datos de la solicitud.
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num"></div>
+      <div class="step-content">
+        <strong>Verificar y completar datos</strong>
+        Revisa el monto, plazo y tasas. Confirma la fecha de inicio del crédito (primera cuota).
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num"></div>
+      <div class="step-content">
+        <strong>Guardar el crédito</strong>
+        Al confirmar, el sistema:
+        <ul>
+          <li>Crea el registro del crédito con estado <span class="badge badge-green">Activo</span></li>
+          <li>Genera automáticamente la tabla de amortización completa (todas las cuotas mensuales)</li>
+          <li>Vincula el crédito al acreditado y a la solicitud</li>
+          <li>El ciudadano puede ver su crédito inmediatamente en su portal</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <div class="box box-warn">
+    <div class="box-title">⚠️ Una vez registrado</div>
+    El crédito no puede eliminarse. Si hay un error, contacta al administrador del sistema. Verifica todos los datos antes de guardar.
+  </div>
+
+  <hr>
+
+  <h3 id="acreditados">11. Módulo de Acreditados</h3>
+  <p>El menú <strong>Acreditados</strong> (<code>/acreditados</code>) es el catálogo principal de todos los beneficiarios del programa, tanto los creados manualmente como los que ingresaron vía portal ciudadano.</p>
+
+  <h4>Crear un acreditado manualmente</h4>
+  <p>Para acreditados que no tienen acceso al portal o que ya existen físicamente:</p>
+  <div class="steps">
+    <div class="step">
+      <div class="step-num"></div>
+      <div class="step-content">
+        <strong>Haz clic en "Nuevo Acreditado"</strong>
+        Botón en la esquina superior derecha del listado.
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num"></div>
+      <div class="step-content">
+        <strong>Llena el formulario</strong>
+        Nombre completo, RFC, CURP, sexo, municipio, dirección fiscal, correo y régimen fiscal.
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num"></div>
+      <div class="step-content">
+        <strong>Agrega el crédito</strong>
+        Desde la ficha del acreditado, ve a <strong>"Nuevo Crédito"</strong> para registrar el crédito directamente.
+      </div>
+    </div>
+  </div>
+
+  <h4>Ficha del acreditado (Expediente de pagos)</h4>
+  <p>Al hacer clic en un acreditado, se abre su ficha de control de amortizaciones. Aquí puedes:</p>
+  <table>
+    <tr><th>Función</th><th>Descripción</th></tr>
+    <tr><td>Ver tabla de cuotas</td><td>Todas las cuotas con estado, fechas y montos de capital, interés y mora</td></tr>
+    <tr><td>Seleccionar cuota y pagar</td><td>Haz clic en una cuota pendiente para seleccionarla, luego "Registrar Pago"</td></tr>
+    <tr><td>Ver totales</td><td>Resumen al final: capital total, intereses, mora, pagado y saldo</td></tr>
+    <tr><td>Reporte de adeudo</td><td>Genera un documento imprimible con el estado de cuenta actualizado</td></tr>
+    <tr><td>Dictamen de liquidación</td><td>Disponible cuando el crédito está Liquidado; genera el documento oficial</td></tr>
+    <tr><td>Condonar crédito</td><td>Cancela el crédito completo por causa justificada (fallecimiento, invalidez, etc.)</td></tr>
+    <tr><td>Expediente Digital</td><td>Accede al módulo completo de documentación</td></tr>
+  </table>
+
+  <h4>Módulo de Expediente Digital</h4>
+  <p>El botón <strong>"Expediente Digital"</strong> (índigo) abre una vista integral del acreditado que incluye:</p>
+  <ul>
+    <li>Datos personales completos</li>
+    <li>Datos del negocio (si proviene de solicitud digital)</li>
+    <li>Documentos entregados con estado de revisión y opción de visualización</li>
+    <li>Resumen del crédito y KPIs financieros</li>
+    <li>Próxima cuota y acciones rápidas</li>
+    <li>Últimos 5 pagos registrados</li>
+  </ul>
+
+  <div class="box box-info">
+    <div class="box-title">📄 Documentos desde expediente digital</div>
+    Los documentos mostrados en el expediente digital son los que el ciudadano subió a través del portal. Los acreditados creados manualmente no tendrán documentos digitales, pero sí todos sus datos financieros.
+  </div>
+
+  <hr>
+
+  <h3 id="pagos">12. Registro de Pagos</h3>
+  <p>El registro de pagos se hace desde la ficha del acreditado. El sistema aplica el pago con la siguiente prioridad: <strong>Mora → Interés Ordinario → Capital</strong>.</p>
+
+  <h4>Proceso de registro de pago</h4>
+  <div class="steps">
+    <div class="step">
+      <div class="step-num"></div>
+      <div class="step-content">
+        <strong>Selecciona la cuota a pagar</strong>
+        En la tabla de amortización, haz clic en la cuota correspondiente. Aparece un resumen en la barra inferior con el monto sugerido (cuota + mora acumulada).
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num"></div>
+      <div class="step-content">
+        <strong>Haz clic en "Registrar Pago"</strong>
+        Aparece el formulario de pago con la cuota preseleccionada.
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num"></div>
+      <div class="step-content">
+        <strong>Captura el monto recibido</strong>
+        Ingresa el monto exacto que el acreditado entregó. Puede ser el monto completo o un pago parcial.
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num"></div>
+      <div class="step-content">
+        <strong>Selecciona la forma de pago</strong>
+        Efectivo, transferencia, cheque u otro método disponible.
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num"></div>
+      <div class="step-content">
+        <strong>Agrega notas (opcional)</strong>
+        Si hay alguna observación relevante, captúrala en el campo de notas.
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num"></div>
+      <div class="step-content">
+        <strong>Confirma el pago</strong>
+        El sistema actualiza automáticamente el estado de la cuota y genera el comprobante.
+      </div>
+    </div>
+  </div>
+
+  <h4>Pagos parciales</h4>
+  <p>Si el acreditado paga menos del monto total de la cuota, la cuota cambia a estado <span class="badge badge-yellow">Parcial</span>. El saldo restante se acumula y deberá cubrirse en el próximo pago.</p>
+
+  <h4>Comprobante de pago</h4>
+  <p>Después de registrar el pago, puedes generar e imprimir el <strong>Recibo de Pago</strong> desde el ícono de impresora. El recibo incluye folio, fecha, monto, desglose y datos del acreditado.</p>
+
+  <div class="box box-danger">
+    <div class="box-title">🚫 Cancelar un pago</div>
+    Si se registró un pago por error, puedes cancelarlo desde la sección de movimientos del acreditado. La cancelación revierte el estado de la cuota. Esta acción queda registrada con el usuario que la realizó. Solo cancela pagos del mismo día; para pagos anteriores consulta al administrador.
+  </div>
+
+  <hr>
+
+  <h3 id="cobranza">13. Módulo de Cobranza</h3>
+  <p>El módulo de <strong>Cobranza</strong> (<code>/cobranza</code>) centraliza todos los créditos con cuotas vencidas para su seguimiento y gestión de recuperación.</p>
+
+  <h4>Listado de cobranza</h4>
+  <p>Muestra todos los créditos con al menos una cuota vencida, ordenados por nivel de atraso. Para cada crédito verás:</p>
+  <table>
+    <tr><th>Dato</th><th>Descripción</th></tr>
+    <tr><td>Nombre del acreditado</td><td>Beneficiario con crédito en mora</td></tr>
+    <tr><td>Días de atraso</td><td>Días transcurridos desde la cuota más antigua vencida</td></tr>
+    <tr><td>Monto vencido</td><td>Suma de cuotas pendientes más intereses moratorios</td></tr>
+    <tr><td>Estado del crédito</td><td><span class="badge badge-red">Moroso</span> o <span class="badge badge-green">Activo</span></td></tr>
+    <tr><td>Última gestión</td><td>Fecha y tipo del último contacto registrado</td></tr>
+  </table>
+
+  <h4>Ficha de cobranza del acreditado</h4>
+  <p>Al abrir un crédito en cobranza, verás los KPIs de recuperación y el historial de gestiones:</p>
+  <ul>
+    <li><strong>Saldo vencido total</strong> — suma de todo lo adeudado</li>
+    <li><strong>Cuotas pendientes</strong> — número de cuotas sin pagar</li>
+    <li><strong>Días de atraso</strong> — desde la cuota vencida más antigua</li>
+    <li><strong>Historial de gestiones</strong> — todas las interacciones previas</li>
+  </ul>
+
+  <h4>Registrar una gestión de cobranza</h4>
+  <div class="steps">
+    <div class="step">
+      <div class="step-num"></div>
+      <div class="step-content">
+        <strong>Selecciona el tipo de gestión</strong>
+        Llamada telefónica, visita domiciliaria, correo electrónico, WhatsApp, u otro.
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num"></div>
+      <div class="step-content">
+        <strong>Escribe el resultado de la gestión</strong>
+        Describe brevemente el resultado: "Se contactó al acreditado, se compromete a pagar el viernes", "No contesta", "Promesa de pago para el 30 del mes", etc.
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num"></div>
+      <div class="step-content">
+        <strong>Indica si hubo promesa de pago</strong>
+        Si el acreditado se comprometió a pagar, activa la casilla y anota la fecha acordada.
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num"></div>
+      <div class="step-content">
+        <strong>Guarda la gestión</strong>
+        Queda registrada con fecha y hora en el historial del crédito.
+      </div>
+    </div>
+  </div>
+
+  <h4>Enviar a Cobranza Jurídica</h4>
+  <p>Cuando el acreditado no responde a las gestiones administrativas o el atraso es significativo, el crédito puede escalarse a la vía legal:</p>
+  <div class="steps">
+    <div class="step">
+      <div class="step-num"></div>
+      <div class="step-content">
+        <strong>En la ficha de cobranza, haz clic en "Enviar a Jurídico"</strong>
+        Aparece un formulario de confirmación.
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num"></div>
+      <div class="step-content">
+        <strong>Escribe el motivo del escalamiento</strong>
+        Documenta por qué se escala a jurídico (número de gestiones fallidas, monto, situación del acreditado).
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num"></div>
+      <div class="step-content">
+        <strong>Confirmar</strong>
+        El crédito aparecerá en el módulo de Cobranza Jurídica y el estado cambia a <span class="badge badge-red">Moroso</span> si no lo estaba ya.
+      </div>
+    </div>
+  </div>
+
+  <hr>
+
+  <h3 id="juridico">14. Cobranza Jurídica</h3>
+  <p>El módulo <strong>Jurídico</strong> (<code>/juridico</code>) gestiona los expedientes de créditos escalados a la vía legal. Cada expediente tiene su propio seguimiento de estado.</p>
+
+  <h4>Estados del expediente jurídico</h4>
+  <table>
+    <tr><th>Estado</th><th>Descripción</th></tr>
+    <tr><td><span class="badge badge-yellow">Pendiente</span></td><td>Expediente recibido, pendiente de iniciar proceso legal</td></tr>
+    <tr><td><span class="badge badge-orange">En Demanda</span></td><td>Se ha iniciado proceso judicial</td></tr>
+    <tr><td><span class="badge badge-blue">En Pláticas</span></td><td>El acreditado está negociando un arreglo</td></tr>
+    <tr><td><span class="badge badge-purple">Reestructurada</span></td><td>Se acordó un nuevo plan de pago</td></tr>
+    <tr><td><span class="badge badge-green">Recuperada</span></td><td>La deuda fue pagada/recuperada completamente</td></tr>
+  </table>
+
+  <h4>Actualizar estado del expediente jurídico</h4>
+  <div class="steps">
+    <div class="step">
+      <div class="step-num"></div>
+      <div class="step-content">
+        <strong>Abre el expediente jurídico</strong>
+        Desde el listado de Jurídico, haz clic en el nombre del acreditado.
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num"></div>
+      <div class="step-content">
+        <strong>Agrega notas de seguimiento</strong>
+        Documenta las acciones tomadas: notificaciones enviadas, respuestas del acreditado, audiencias, etc.
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num"></div>
+      <div class="step-content">
+        <strong>Selecciona el nuevo estado</strong>
+        Usa el selector de estado para reflejar la situación actual del expediente.
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num"></div>
+      <div class="step-content">
+        <strong>Guarda los cambios</strong>
+        El historial queda actualizado con fecha y usuario.
+      </div>
+    </div>
+  </div>
+
+  <h4>Proceso de Reestructuración</h4>
+  <p>Cuando el acreditado y el IYEM llegan a un acuerdo de pago diferente al plan original, se realiza una <strong>Reestructuración</strong>:</p>
+  <div class="steps">
+    <div class="step">
+      <div class="step-num"></div>
+      <div class="step-content">
+        <strong>Selecciona el estado "Reestructurada"</strong>
+        Aparecerá el formulario de nueva condiciones del crédito.
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num"></div>
+      <div class="step-content">
+        <strong>Ingresa el nuevo monto</strong>
+        El monto adeudado que se reestructura (puedes modificar el monto precargado).
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num"></div>
+      <div class="step-content">
+        <strong>Define el nuevo plazo</strong>
+        Selecciona el número de meses para el nuevo plan de pagos.
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num"></div>
+      <div class="step-content">
+        <strong>Establece la fecha de inicio</strong>
+        Primera fecha de vencimiento del nuevo plan.
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num"></div>
+      <div class="step-content">
+        <strong>Confirmar reestructuración</strong>
+        El sistema automáticamente:
+        <ul>
+          <li>Marca todas las cuotas vencidas anteriores como <span class="badge badge-purple">Condonadas</span></li>
+          <li>Genera la nueva tabla de amortización a partir del último número de cuota</li>
+          <li>Reactiva el crédito a estado <span class="badge badge-green">Activo</span></li>
+          <li>Envía un anuncio al ciudadano notificando la reestructuración</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <div class="box box-warn">
+    <div class="box-title">⚠️ La reestructuración es irreversible</div>
+    Una vez confirmada, las cuotas anteriores quedan condonadas y no pueden recuperarse. Asegúrate de tener la autorización de las instancias correspondientes antes de proceder.
+  </div>
+
+  <hr>
+
+  <h3 id="reportes">15. Reportes y Exportaciones</h3>
+  <p>El sistema ofrece varios reportes para el seguimiento y rendición de cuentas del programa:</p>
+
+  <table>
+    <tr><th>Reporte</th><th>Ruta</th><th>Formato</th><th>Descripción</th></tr>
+    <tr>
+      <td>Cartera de créditos</td>
+      <td><code>/reportes/cartera</code></td>
+      <td>Pantalla + Excel</td>
+      <td>Todos los créditos activos con saldos y estados</td>
+    </tr>
+    <tr>
+      <td>Reporte de pagos</td>
+      <td><code>/reportes/pagos</code></td>
+      <td>Pantalla + Excel</td>
+      <td>Histórico de todos los pagos registrados con filtros por fecha</td>
+    </tr>
+    <tr>
+      <td>Adeudo individual</td>
+      <td>Desde ficha del acreditado</td>
+      <td>PDF imprimible</td>
+      <td>Estado de cuenta actualizado al día del acreditado</td>
+    </tr>
+    <tr>
+      <td>Dictamen de liquidación</td>
+      <td>Desde ficha (crédito liquidado)</td>
+      <td>PDF oficial</td>
+      <td>Carta de liquidación total del crédito</td>
+    </tr>
+    <tr>
+      <td>Recibo de pago</td>
+      <td>Desde ficha de pago</td>
+      <td>PDF</td>
+      <td>Comprobante individual de cada pago registrado</td>
+    </tr>
+    <tr>
+      <td>Movimientos del acreditado</td>
+      <td><code>/exportar/movimientos/{id}</code></td>
+      <td>Excel</td>
+      <td>Todos los movimientos de un acreditado específico</td>
+    </tr>
+  </table>
+
+  <hr>
+
+  <h3 id="admin">16. Administración del Sistema</h3>
+  <p>Solo disponible para usuarios con rol de <strong>Administrador</strong>.</p>
+
+  <h4>Gestión de usuarios</h4>
+  <p>En <strong>Usuarios</strong> (<code>/users</code>) puedes:</p>
+  <ul>
+    <li>Crear nuevos usuarios (operativos y ciudadanos)</li>
+    <li>Asignar roles y permisos</li>
+    <li>Actualizar correo y contraseña</li>
+    <li>Desactivar cuentas</li>
+  </ul>
+
+  <h4>Gestión de roles</h4>
+  <p>En <strong>Roles</strong> (<code>/roles</code>) puedes crear roles personalizados y asignar permisos granulares a cada uno.</p>
+
+  <div class="box box-danger">
+    <div class="box-title">⚠️ Seguridad</div>
+    Nunca compartas credenciales de administrador. Crea un usuario individual para cada persona con acceso al sistema. Cuando un empleado deja el área, desactiva su cuenta inmediatamente.
+  </div>
+
+  <h4>Simulador de crédito</h4>
+  <p>La herramienta <strong>Simulador</strong> (<code>/simulador</code>) permite calcular cuotas hipotéticas para orientar a los solicitantes antes de registrar una solicitud formal. Ingresa monto, plazo y modalidad para ver la cuota mensual resultante.</p>
+</div>
+
+
+<!-- ═══════════════════════ PARTE IV — REFERENCIA ═══════════════════════ -->
+<div class="section" id="referencia">
+  <div class="part-header">
+    <div class="part-num">Parte IV</div>
+    <h2>Referencia Rápida</h2>
+    <p>Catálogos, flujos y respuestas a preguntas frecuentes.</p>
+  </div>
+
+  <h3 id="estados">17. Catálogo de Estados y Significados</h3>
+
+  <h4>Estados de solicitud</h4>
+  <table>
+    <tr><th>Estado</th><th>Descripción</th><th>Próximo paso</th></tr>
+    <tr><td><span class="badge badge-gray">Borrador</span></td><td>En proceso de llenado</td><td>Completar y enviar</td></tr>
+    <tr><td><span class="badge badge-blue">Enviada</span></td><td>Recibida por el IYEM</td><td>Revisión operativa</td></tr>
+    <tr><td><span class="badge badge-yellow">En Revisión</span></td><td>Operador revisando</td><td>Esperar resolución</td></tr>
+    <tr><td><span class="badge badge-orange">Doc. Incompleta</span></td><td>Ciudadano debe corregir documentos</td><td>Subir docs correctos</td></tr>
+    <tr><td><span class="badge badge-green">Aprobada</span></td><td>Lista para registrar crédito</td><td>Registrar crédito</td></tr>
+    <tr><td><span class="badge badge-red">Rechazada</span></td><td>No aprobada</td><td>—</td></tr>
+  </table>
+
+  <h4>Estados de crédito</h4>
+  <table>
+    <tr><th>Estado</th><th>Descripción</th></tr>
+    <tr><td><span class="badge badge-green">Activo</span></td><td>Crédito vigente, el acreditado está pagando</td></tr>
+    <tr><td><span class="badge badge-red">Moroso</span></td><td>Crédito con cuotas vencidas sin pagar</td></tr>
+    <tr><td><span class="badge badge-blue">Liquidado</span></td><td>Todas las cuotas han sido pagadas</td></tr>
+    <tr><td><span class="badge badge-gray">Cancelado</span></td><td>Crédito cancelado/condonado antes de liquidarse</td></tr>
+  </table>
+
+  <h4>Estados de cuotas (amortización)</h4>
+  <table>
+    <tr><th>Estado</th><th>Descripción</th></tr>
+    <tr><td><span class="badge badge-yellow">Pendiente</span></td><td>Cuota por vencer o vencida recientemente</td></tr>
+    <tr><td><span class="badge badge-orange">Parcial</span></td><td>Pagada parcialmente, hay saldo pendiente</td></tr>
+    <tr><td><span class="badge badge-green">Pagado</span></td><td>Cuota liquidada en su totalidad</td></tr>
+    <tr><td><span class="badge badge-purple">Condonado</span></td><td>Cuota cancelada por condonación o reestructuración</td></tr>
+  </table>
+
+  <h4>Estados de expediente jurídico</h4>
+  <table>
+    <tr><th>Estado</th><th>Descripción</th></tr>
+    <tr><td><span class="badge badge-yellow">Pendiente</span></td><td>Recibido, aún no inicia trámite</td></tr>
+    <tr><td><span class="badge badge-red">En Demanda</span></td><td>Proceso legal iniciado</td></tr>
+    <tr><td><span class="badge badge-blue">En Pláticas</span></td><td>Negociando con el acreditado</td></tr>
+    <tr><td><span class="badge badge-purple">Reestructurada</span></td><td>Nuevo plan de pagos acordado</td></tr>
+    <tr><td><span class="badge badge-green">Recuperada</span></td><td>Deuda recuperada totalmente</td></tr>
+  </table>
+
+  <hr>
+
+  <h3 id="flujo-completo">18. Flujo Completo del Crédito</h3>
+
+  <h4>Escenario 1: Ciclo exitoso (pago puntual)</h4>
+  <div class="flow">
+    <div class="flow-item">Ciudadano solicita</div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-item">Sube documentos</div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-item">Operador aprueba</div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-item">Crédito activo</div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-item">Pagos mensuales</div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-item active">Liquidado ✓</div>
+  </div>
+
+  <h4>Escenario 2: Con mora y cobranza administrativa</h4>
+  <div class="flow">
+    <div class="flow-item active">Cuota vencida</div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-item">Aparece en Cobranza</div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-item">Gestiones telefónicas</div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-item">Acreditado paga</div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-item active">Continúa crédito</div>
+  </div>
+
+  <h4>Escenario 3: Escalamiento jurídico con reestructuración</h4>
+  <div class="flow">
+    <div class="flow-item active">Sin respuesta</div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-item">Enviar a Jurídico</div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-item">En Demanda</div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-item">En Pláticas</div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-item">Reestructurada</div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-item active">Nuevo plan de pago</div>
+  </div>
+
+  <hr>
+
+  <h3 id="faq">19. Preguntas Frecuentes</h3>
+
+  <h4>Ciudadanos</h4>
+
+  <div class="highlight">
+    <strong>¿Por qué mi solicitud volvió a "Documentación Incompleta"?</strong><br>
+    El operador revisó tus documentos y encontró algún problema: imagen ilegible, documento vencido, o información incorrecta. Lee el mensaje del anuncio y el motivo de rechazo de cada documento para saber exactamente qué corregir.
+  </div>
+
+  <div class="highlight">
+    <strong>¿Cuánto tiempo tarda la revisión de mi solicitud?</strong><br>
+    El tiempo varía según la carga de trabajo del área. Generalmente entre 5 y 15 días hábiles. Recibirás un anuncio en tu portal cuando haya novedades.
+  </div>
+
+  <div class="highlight">
+    <strong>¿Cómo sé si tengo un pago vencido?</strong><br>
+    En "Mi Crédito", las cuotas vencidas aparecen resaltadas en rojo con la leyenda "EN MORA". También puedes ver los días de atraso y el monto exacto incluyendo moratorios.
+  </div>
+
+  <div class="highlight">
+    <strong>¿Puedo cambiar el monto o plazo de mi solicitud después de enviarla?</strong><br>
+    No. Una vez enviada, los datos no pueden modificarse desde el portal. Si necesitas hacer un cambio, comunícate con el IYEM; el operador puede ajustarlo internamente.
+  </div>
+
+  <h4>Operadores</h4>
+
+  <div class="highlight">
+    <strong>¿Qué hago si registré un pago por error?</strong><br>
+    Ve a la sección de movimientos del acreditado y usa el botón "Cancelar" junto al pago erróneo. La cancelación revierte automáticamente el estado de la cuota. Si el pago es de un día anterior, contacta al administrador.
+  </div>
+
+  <div class="highlight">
+    <strong>¿Cuándo debo marcar un crédito como "Moroso"?</strong><br>
+    El sistema lo detecta automáticamente basado en las fechas de vencimiento. El estado de cobranza se actualiza en tiempo real. No es necesario marcarlo manualmente.
+  </div>
+
+  <div class="highlight">
+    <strong>¿Puedo editar los datos de un acreditado después de registrarlo?</strong><br>
+    Sí. Desde la ficha del acreditado, el botón "Editar" permite modificar los datos personales. Los datos del crédito (monto, tasas) no pueden modificarse; en ese caso se usaría una reestructuración.
+  </div>
+
+  <div class="highlight">
+    <strong>¿Qué diferencia hay entre "Condonar" y "Reestructurar"?</strong><br>
+    <strong>Condonar</strong> cancela el crédito completo (todas las cuotas) de forma definitiva, generalmente por fallecimiento o invalidez total. <strong>Reestructurar</strong> cancela las cuotas vencidas pero genera un nuevo plan de pagos; el acreditado sigue con la obligación de pagar bajo nuevas condiciones.
+  </div>
+
+  <div class="highlight">
+    <strong>¿El sistema genera intereses automáticamente?</strong><br>
+    Sí. Los intereses moratorios se calculan en tiempo real al momento de visualizar o registrar un pago. Se calculan por día de atraso sobre el saldo de capital de la cuota vencida.
+  </div>
+
+  <p class="footnote">
+    Sistema CREA / IYEM — Manual de Usuario v1.0 — Abril 2026<br>
+    Para soporte técnico, contacte al área de sistemas del IYEM.<br>
+    Este documento es de uso interno. Está prohibida su reproducción sin autorización.
+  </p>
+</div>
+
+</body>
+</html>
