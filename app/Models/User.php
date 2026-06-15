@@ -28,6 +28,8 @@ class User extends Authenticatable
         'email',
         'tipo',
         'password',
+        'google_id',
+        'avatar',
     ];
 
     /**

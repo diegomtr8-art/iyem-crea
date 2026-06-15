@@ -5,13 +5,14 @@
 
 set -e
 
-SSH_KEY="$HOME/.ssh/id_deploy"
-SSH_OPTS="-i $SSH_KEY -p 65002"
+SSH_KEY="${HOME}/.ssh/id_deploy"
 SSH_HOST="u489236361@195.35.38.222"
-REMOTE_DIR="$HOME/domains/darkorange-oryx-401326.hostingersite.com/public_html"
+REMOTE_DIR='~/domains/crea.iyemyucatan.com/public_html'
+
+# Array para manejar correctamente rutas con espacios
+SSH_OPTS=(-i "${SSH_KEY}" -p 65002)
 
 echo "=== [1/5] Build del frontend ==="
-npm ci
 npm run build
 
 echo "=== [2/5] Verificaciones previas ==="
@@ -28,17 +29,19 @@ tar czf - \
     --exclude='.env.production' \
     --exclude='database/database.sqlite' \
     --exclude='storage/logs/*' \
-    app bootstrap config database public resources routes storage/app/public \
+    app bootstrap config database lang public resources routes storage/app/public \
     storage/framework artisan composer.json composer.lock \
-    CHANGELOG_AUDITORIA.md | \
-    ssh $SSH_OPTS $SSH_HOST "cd $REMOTE_DIR && tar xzf -"
+    CHANGELOG_AUDITORIA.md PENDIENTES_AUTH.md | \
+    ssh "${SSH_OPTS[@]}" $SSH_HOST "cd $REMOTE_DIR && tar xzf -"
 
 echo "=== [4/5] Instalando dependencias en servidor ==="
-ssh $SSH_OPTS $SSH_HOST "cd $REMOTE_DIR && composer install --optimize-autoloader --no-dev --no-interaction"
+ssh "${SSH_OPTS[@]}" $SSH_HOST "cd $REMOTE_DIR && composer install --optimize-autoloader --no-dev --no-interaction"
 
 echo "=== [5/5] Migraciones, cachés y build assets ==="
-ssh $SSH_OPTS $SSH_HOST "cd $REMOTE_DIR && \
+ssh "${SSH_OPTS[@]}" $SSH_HOST "cd $REMOTE_DIR && \
     php artisan migrate --force && \
+    php artisan db:seed --class=ActualizarModalidadesSeeder --force && \
+    php artisan db:seed --class=RoleAndPermissionSeeder --force && \
     php artisan config:cache && \
     php artisan route:cache && \
     php artisan view:cache && \
@@ -49,7 +52,7 @@ ssh $SSH_OPTS $SSH_HOST "cd $REMOTE_DIR && \
 echo ""
 echo "=== POST-DEPLOY: Pasos manuales requeridos ==="
 echo "1. Subir .env.production al servidor como .env:"
-echo "   scp $SSH_OPTS .env.production $SSH_HOST:$REMOTE_DIR/.env"
+echo "   scp -i \"${SSH_KEY}\" -P 65002 .env.production $SSH_HOST:$REMOTE_DIR/.env"
 echo "   (Editar PASSWORD_CORREO_AQUI antes de subir)"
 echo ""
 echo "2. Configurar DocumentRoot del virtualhost crea.iyemyucatan.com"

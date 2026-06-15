@@ -73,8 +73,8 @@ const estatusConfig: Record<string, { label: string; color: string; bg: string; 
     },
     Rechazada: {
         label: 'Solicitud Rechazada',
-        color: 'text-red-700 dark:text-red-400',
-        bg: 'bg-red-50 dark:bg-red-900/20',
+        color: 'text-[#6B1938] dark:text-[#f4a8c4] dark:text-red-400',
+        bg: 'bg-[#6B1938]/5 dark:bg-[#6B1938]/10',
         icon: XCircle,
         desc: 'Tu solicitud no pudo ser aprobada en esta ocasión. Revisa las observaciones para más información.',
     },
@@ -108,14 +108,14 @@ const today = new Date().toLocaleDateString('es-MX', { weekday: 'long', year: 'n
         <!-- CABECERA DE BIENVENIDA -->
         <div class="mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div class="space-y-1">
-                <p class="text-xs font-bold uppercase tracking-widest text-red-700">Portal Ciudadano CREA</p>
+                <p class="text-xs font-bold uppercase tracking-widest text-[#6B1938] dark:text-[#f4a8c4]">Portal Ciudadano CREA</p>
                 <h1 class="text-2xl md:text-3xl font-black text-slate-900 dark:text-white">
                     ¡Bienvenido a tu portal!
                 </h1>
                 <p class="text-slate-500 dark:text-zinc-400 text-sm capitalize">{{ today }}</p>
             </div>
             <Link v-if="!solicitud" :href="route('portal.solicitud.index')"
-                class="inline-flex items-center gap-2 px-5 py-3 bg-red-700 hover:bg-red-800 text-white font-bold rounded-2xl shadow-lg shadow-red-900/20 transition-all active:scale-[0.98] text-sm shrink-0">
+                class="inline-flex items-center gap-2 px-5 py-3 bg-[#6B1938] hover:bg-[#4A0E22] text-white font-bold rounded-2xl shadow-lg shadow-[#6B1938]/20 transition-all active:scale-[0.98] text-sm shrink-0">
                 <Sparkles size="16" /> Solicitar mi Crédito
             </Link>
         </div>
@@ -166,7 +166,7 @@ const today = new Date().toLocaleDateString('es-MX', { weekday: 'long', year: 'n
                             <span v-if="solicitud.docs_pendientes > 0" class="px-2 py-1 bg-slate-200 dark:bg-zinc-700 rounded-lg">
                                 {{ solicitud.docs_pendientes }} doc(s) pendiente(s)
                             </span>
-                            <span v-if="solicitud.docs_rechazados > 0" class="px-2 py-1 bg-red-100 dark:bg-red-900/20 text-red-700 rounded-lg">
+                            <span v-if="solicitud.docs_rechazados > 0" class="px-2 py-1 bg-red-100 dark:bg-red-900/20 text-[#6B1938] dark:text-[#f4a8c4] rounded-lg">
                                 {{ solicitud.docs_rechazados }} doc(s) rechazado(s)
                             </span>
                         </div>
@@ -176,7 +176,7 @@ const today = new Date().toLocaleDateString('es-MX', { weekday: 'long', year: 'n
                 <!-- TARJETA CUANDO NO HAY SOLICITUD -->
                 <div v-if="!solicitud"
                     class="rounded-2xl border-2 border-dashed border-slate-200 dark:border-zinc-800 p-10 text-center space-y-4">
-                    <div class="w-16 h-16 rounded-2xl bg-red-50 dark:bg-red-900/20 flex items-center justify-center mx-auto text-red-700">
+                    <div class="w-16 h-16 rounded-2xl bg-[#6B1938]/5 dark:bg-[#6B1938]/10 flex items-center justify-center mx-auto text-[#6B1938] dark:text-[#f4a8c4]">
                         <FileText size="28" />
                     </div>
                     <div class="space-y-2">
@@ -186,24 +186,24 @@ const today = new Date().toLocaleDateString('es-MX', { weekday: 'long', year: 'n
                         </p>
                     </div>
                     <Link :href="route('portal.solicitud.index')"
-                        class="inline-flex items-center gap-2 px-6 py-3 bg-red-700 text-white font-bold rounded-2xl hover:bg-red-800 transition-all shadow-lg shadow-red-900/20">
+                        class="inline-flex items-center gap-2 px-6 py-3 bg-[#6B1938] text-white font-bold rounded-2xl hover:bg-[#4A0E22] transition-all shadow-lg shadow-[#6B1938]/20">
                         <Sparkles size="16" /> Comenzar mi Solicitud
                         <ArrowRight size="16" />
                     </Link>
                 </div>
 
                 <!-- CRÉDITO ACTIVO CARD (si existe) -->
-                <div v-if="credito_activo" class="rounded-2xl bg-gradient-to-br from-red-700 to-red-900 p-6 text-white shadow-2xl shadow-red-900/30">
+                <div v-if="credito_activo" class="rounded-2xl bg-gradient-to-br from-[#6B1938] to-[#4A0E22] p-6 text-white shadow-2xl shadow-[#6B1938]/30">
                     <div class="flex items-center justify-between">
                         <div class="space-y-1">
-                            <p class="text-red-200 text-xs font-bold uppercase tracking-wider">Crédito Activo</p>
+                            <p class="text-[#f4a8c4] text-xs font-bold uppercase tracking-wider">Crédito Activo</p>
                             <p class="text-3xl font-black">
                                 ${{ Number(credito_activo.monto_otorgado).toLocaleString('es-MX', { minimumFractionDigits: 2 }) }}
                             </p>
                             <span class="inline-block px-3 py-1 bg-white/20 rounded-full text-xs font-bold capitalize">{{ credito_activo.estatus }}</span>
                         </div>
                         <Link :href="route('portal.credito')"
-                            class="flex items-center gap-2 px-4 py-2.5 bg-white text-red-700 font-bold rounded-xl hover:bg-red-50 transition-colors text-sm shrink-0">
+                            class="flex items-center gap-2 px-4 py-2.5 bg-white text-[#6B1938] dark:text-[#f4a8c4] font-bold rounded-xl hover:bg-red-50 transition-colors text-sm shrink-0">
                             Ver detalle <ChevronRight size="16" />
                         </Link>
                     </div>
@@ -214,15 +214,15 @@ const today = new Date().toLocaleDateString('es-MX', { weekday: 'long', year: 'n
             <div class="space-y-4">
                 <div class="flex items-center justify-between">
                     <h2 class="font-black text-slate-900 dark:text-white flex items-center gap-2">
-                        <Bell size="18" class="text-red-700" />
+                        <Bell size="18" class="text-[#6B1938] dark:text-[#f4a8c4]" />
                         Anuncios y Alertas
                         <span v-if="no_leidos > 0"
-                            class="w-5 h-5 bg-red-600 text-white text-[10px] font-black rounded-full flex items-center justify-center">
+                            class="w-5 h-5 bg-[#6B1938] text-white text-[10px] font-black rounded-full flex items-center justify-center">
                             {{ no_leidos }}
                         </span>
                     </h2>
                     <button v-if="no_leidos > 0" @click="marcarTodos"
-                        class="text-xs font-bold text-red-700 hover:text-red-800 transition-colors">
+                        class="text-xs font-bold text-[#6B1938] dark:text-[#f4a8c4] hover:text-red-800 transition-colors">
                         Marcar todos
                     </button>
                 </div>
@@ -244,7 +244,7 @@ const today = new Date().toLocaleDateString('es-MX', { weekday: 'long', year: 'n
                                     <span class="text-[10px] text-slate-400 dark:text-zinc-600">{{ anuncio.fecha }}</span>
                                     <div class="flex items-center gap-2">
                                         <a v-if="anuncio.url_accion" :href="anuncio.url_accion"
-                                            class="text-[10px] font-bold text-red-700 hover:underline">
+                                            class="text-[10px] font-bold text-[#6B1938] dark:text-[#f4a8c4] hover:underline">
                                             Ver más →
                                         </a>
                                         <button v-if="!anuncio.leido" @click="marcarLeido(anuncio.id)"

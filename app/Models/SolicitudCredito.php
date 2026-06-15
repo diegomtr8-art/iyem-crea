@@ -24,10 +24,13 @@ class SolicitudCredito extends Model
         'telefono',
         'correo',
         'modalidad_id',
+        'tipo_persona',
         'giro_comercial',
         'destino_credito',
         'descripcion_negocio',
         'monto_solicitado',
+        'plazo_meses',
+        'tipo_garantia',
         'alta_sat',
         'estatus',
         'observaciones',
@@ -36,6 +39,8 @@ class SolicitudCredito extends Model
         'motivo_rechazo',
         'acreditado_id',
         'credito_id',
+        'datos_wizard',
+        'formatos_zip_ruta',
     ];
 
     protected $casts = [
@@ -45,6 +50,7 @@ class SolicitudCredito extends Model
         'discapacidad'      => 'boolean',
         'alta_sat'          => 'boolean',
         'monto_solicitado'  => 'decimal:2',
+        'datos_wizard'      => 'array',
     ];
 
     public function user(): BelongsTo
@@ -85,6 +91,11 @@ class SolicitudCredito extends Model
     public function analisis(): \Illuminate\Database\Eloquent\Relations\HasOne
     {
         return $this->hasOne(AnalisisCredito::class, 'solicitud_id');
+    }
+
+    public function aval(): \Illuminate\Database\Eloquent\Relations\HasOne
+    {
+        return $this->hasOne(AvalSolicitud::class, 'solicitud_id');
     }
 
     public function tieneDocumentosRechazados(): bool

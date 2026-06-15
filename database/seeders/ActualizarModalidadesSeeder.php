@@ -16,13 +16,12 @@ class ActualizarModalidadesSeeder extends Seeder
         $modalidades = [
             [
                 'nombre'          => 'Artesanal',
-                'descripcion'     => 'Dirigido a artesanos yucatecos registrados. Apoyo para adquisición de materia prima, herramientas y equipamiento artesanal.',
                 'tasa_interes'    => 0.00,
                 'tasa_moratoria'  => 0.00,
                 'monto_minimo'    => 5000.00,
-                'monto_maximo'    => 50000.00,
-                'plazo_min_meses' => 6,
-                'plazo_max_meses' => 18,
+                'monto_maximo'    => 25000.00,
+                'plazo_min_meses' => 12,
+                'plazo_max_meses' => 24,
                 'requiere_alta_sat'     => false,
                 'requiere_antiguedad'   => false,
                 'documentos_requeridos' => json_encode([
@@ -38,11 +37,10 @@ class ActualizarModalidadesSeeder extends Seeder
             ],
             [
                 'nombre'          => 'Sustentable',
-                'descripcion'     => 'Para negocios con enfoque sustentable o de impacto ambiental positivo. Proyectos de energía renovable, reciclaje, agricultura orgánica, etc.',
                 'tasa_interes'    => 5.00,
                 'tasa_moratoria'  => 12.50,
-                'monto_minimo'    => 10000.00,
-                'monto_maximo'    => 100000.00,
+                'monto_minimo'    => 50000.00,
+                'monto_maximo'    => 500000.00,
                 'plazo_min_meses' => 12,
                 'plazo_max_meses' => 24,
                 'requiere_alta_sat'     => true,
@@ -61,10 +59,9 @@ class ActualizarModalidadesSeeder extends Seeder
             ],
             [
                 'nombre'          => 'Emprendedores',
-                'descripcion'     => 'Para emprendedores con negocios establecidos o nuevos proyectos productivos en Yucatán. Capital de trabajo, equipamiento o expansión.',
                 'tasa_interes'    => 7.00,
                 'tasa_moratoria'  => 17.50,
-                'monto_minimo'    => 10000.00,
+                'monto_minimo'    => 25000.00,
                 'monto_maximo'    => 150000.00,
                 'plazo_min_meses' => 12,
                 'plazo_max_meses' => 24,

@@ -65,9 +65,14 @@ class SolicitudCreditoController extends Controller
             'giro_comercial'     => 'required|string|max:255',
             'destino_credito'    => 'required|string|max:2000',
             'descripcion_negocio'=> 'required|string|max:3000',
-            'monto_solicitado'   => 'nullable|numeric|min:100|max:1000000',
             'alta_sat'           => 'boolean',
         ]);
+
+        $modalidad = ModalidadCrea::findOrFail($data['modalidad_id']);
+        $request->validate([
+            'monto_solicitado' => 'nullable|numeric|min:' . $modalidad->monto_minimo . '|max:' . $modalidad->monto_maximo,
+        ]);
+        $data['monto_solicitado'] = $request->monto_solicitado;
 
         $data['user_id'] = $user->id;
         $data['estatus'] = 'Borrador';
@@ -103,9 +108,14 @@ class SolicitudCreditoController extends Controller
             'giro_comercial'     => 'required|string|max:255',
             'destino_credito'    => 'required|string|max:2000',
             'descripcion_negocio'=> 'required|string|max:3000',
-            'monto_solicitado'   => 'nullable|numeric|min:100|max:1000000',
             'alta_sat'           => 'boolean',
         ]);
+
+        $modalidad = ModalidadCrea::findOrFail($data['modalidad_id']);
+        $request->validate([
+            'monto_solicitado' => 'nullable|numeric|min:' . $modalidad->monto_minimo . '|max:' . $modalidad->monto_maximo,
+        ]);
+        $data['monto_solicitado'] = $request->monto_solicitado;
 
         $solicitud->update($data);
 
@@ -121,7 +131,11 @@ class SolicitudCreditoController extends Controller
             return back()->with('error', 'No puedes subir documentos en este momento.');
         }
 
-        $tiposPermitidos = array_keys(DocumentoSolicitud::tiposRequeridos());
+        $tiposPermitidos = array_keys(DocumentoSolicitud::tiposRequeridos(
+            $solicitud->modalidad_id,
+            $solicitud->tipo_persona,
+            $solicitud->tipo_garantia,
+        ));
 
         $request->validate([
             'tipo_documento' => 'required|in:' . implode(',', $tiposPermitidos),
@@ -134,7 +148,7 @@ class SolicitudCreditoController extends Controller
         $ruta = $archivo->storeAs(
             "solicitudes/{$solicitud->id}",
             "{$tipo}.{$extension}",
-            'public'
+            'local'
         );
 
         // Reemplaza el documento si ya existía
@@ -160,7 +174,11 @@ class SolicitudCreditoController extends Controller
             return back()->with('error', 'No puedes enviar tu solicitud en este momento.');
         }
 
-        $tiposRequeridos = array_keys(DocumentoSolicitud::tiposRequeridos());
+        $tiposRequeridos = array_keys(DocumentoSolicitud::tiposRequeridos(
+            $solicitud->modalidad_id,
+            $solicitud->tipo_persona,
+            $solicitud->tipo_garantia,
+        ));
         $tiposSubidos = $solicitud->documentos->pluck('tipo_documento')->toArray();
         $faltantes = array_diff($tiposRequeridos, $tiposSubidos);
 

@@ -19,12 +19,14 @@ use App\Http\Controllers\ReporteController;
 use App\Http\Controllers\CreditoController;
 use App\Http\Controllers\NotificacionController;
 use App\Http\Controllers\ReestructuracionController;
+use App\Http\Controllers\ContactoController;
 use App\Http\Controllers\SimuladorController;
 use App\Http\Controllers\SolicitudOperativoController;
 use App\Http\Controllers\CobranzaController;
 use App\Http\Controllers\CobranzaJuridicaController;
 use App\Http\Controllers\Portal\BeneficiarioController;
 use App\Http\Controllers\Portal\SolicitudCreditoController;
+use App\Http\Controllers\Portal\WizardSolicitudController;
 use App\Http\Controllers\Portal\MiCreditoController;
 use App\Http\Controllers\Portal\ExpedienteController;
 use Illuminate\Support\Facades\Route;
@@ -33,6 +35,7 @@ use Illuminate\Support\Facades\Route;
 Route::get('/', [PublicController::class, 'index'])->name('welcome');
 Route::get('/consultar-credito', fn() => redirect('/'))->name('public.consultar.redirect');
 Route::post('/consultar-credito', [PublicController::class, 'consultar'])->name('public.consultar');
+Route::post('/contacto', [ContactoController::class, 'enviar'])->middleware('throttle:5,1')->name('contacto.enviar');
 
 // --- PORTAL CIUDADANO (requiere auth + tipo ciudadano) ---
 Route::middleware(['auth', 'ciudadano'])->prefix('mi-portal')->name('portal.')->group(function () {
@@ -45,12 +48,19 @@ Route::middleware(['auth', 'ciudadano'])->prefix('mi-portal')->name('portal.')->
     // Expediente digital
     Route::get('expediente', [ExpedienteController::class, 'index'])->name('expediente');
 
-    // Solicitud de crédito
-    Route::get('solicitud', [SolicitudCreditoController::class, 'index'])->name('solicitud.index');
-    Route::post('solicitud', [SolicitudCreditoController::class, 'store'])->name('solicitud.store');
-    Route::put('solicitud', [SolicitudCreditoController::class, 'update'])->name('solicitud.update');
-    Route::post('solicitud/documento', [SolicitudCreditoController::class, 'subirDocumento'])->name('solicitud.documento');
-    Route::post('solicitud/enviar', [SolicitudCreditoController::class, 'enviar'])->name('solicitud.enviar');
+    // Wizard de solicitud (flujo principal en /solicitud)
+    Route::get('solicitud', [WizardSolicitudController::class, 'index'])->name('solicitud.index');
+    Route::post('solicitud/verificar-curp', [WizardSolicitudController::class, 'verificarCurp'])->name('solicitar.verificar-curp');
+    Route::post('solicitud/paso', [WizardSolicitudController::class, 'guardarPaso'])->name('solicitar.paso');
+    Route::post('solicitud/documento', [WizardSolicitudController::class, 'subirDocumento'])->name('solicitar.documento');
+    Route::post('solicitud/generar-formatos', [WizardSolicitudController::class, 'generarFormatos'])->name('solicitar.generar-formatos');
+    Route::get('solicitud/{solicitud}/descargar-formatos', [WizardSolicitudController::class, 'descargarFormatos'])->name('solicitar.descargar-formatos');
+
+    // Alias para compatibilidad con links legacy
+    Route::get('solicitar', fn() => redirect()->route('portal.solicitud.index'))->name('solicitar.index');
+
+    // Descarga segura de documentos (para ciudadano y revisión operativa)
+    Route::get('documentos/{documento}/descargar', [WizardSolicitudController::class, 'descargarDocumento'])->name('documentos.descargar');
 
     // Mi crédito activo
     Route::get('mi-credito', [MiCreditoController::class, 'index'])->name('credito');
