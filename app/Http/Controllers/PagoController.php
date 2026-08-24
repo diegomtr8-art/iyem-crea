@@ -20,11 +20,11 @@ class PagoController extends Controller
         abort_if($credito->estatus === 'Liquidado', 403, 'Este crédito ya está liquidado.');
         abort_if($credito->estatus === 'Cancelado', 403, 'Este crédito está cancelado.');
 
-        $hoy        = Carbon::now('America/Merida')->startOfDay();
-        $tasaDiaria = ($credito->tasa_interes_moratorio / 100) / 360;
+        $hoy = Carbon::now('America/Merida')->startOfDay();
+        $tasaDiaria = ($credito->tasaMoratoriaEfectiva() / 100) / 360;
 
         $cuotasPendientes = $credito->amortizaciones()
-            ->whereNotIn('estado', ['Pagado', 'Condonado', 'Reestructurada'])
+            ->whereNotIn('estado', ['Pagado', 'Condonado', 'Reestructurada', 'Gracia'])
             ->orderBy('numero_cuota', 'asc')
             ->get()
             ->map(function ($cuota) use ($hoy, $tasaDiaria) {
@@ -78,10 +78,10 @@ class PagoController extends Controller
         $pagoId = DB::transaction(function () use ($validated, $credito) {
             $hoy           = Carbon::parse($validated['fecha_pago'])->startOfDay();
             $montoRestante = (float) $validated['monto_recibido'];
-            $tasaDiaria    = ($credito->tasa_interes_moratorio / 100) / 360;
+            $tasaDiaria    = ($credito->tasaMoratoriaEfectiva() / 100) / 360;
 
             $capitalPendienteTotal = $credito->amortizaciones()
-                ->whereNotIn('estado', ['Pagado', 'Condonado', 'Reestructurada'])
+                ->whereNotIn('estado', ['Pagado', 'Condonado', 'Reestructurada', 'Gracia'])
                 ->lockForUpdate()
                 ->sum(DB::raw('capital_esperado - capital_pagado'));
 
@@ -94,7 +94,7 @@ class PagoController extends Controller
             $totalAplicadoCapital   = 0;
 
             $cuotas = $credito->amortizaciones()
-                ->whereNotIn('estado', ['Pagado', 'Condonado', 'Reestructurada'])
+                ->whereNotIn('estado', ['Pagado', 'Condonado', 'Reestructurada', 'Gracia'])
                 ->lockForUpdate()
                 ->orderBy('numero_cuota', 'asc')
                 ->get();
@@ -200,7 +200,7 @@ class PagoController extends Controller
 
             // Actualizar estatus del crédito (excluir estados finales)
             $activasQuery = fn() => $credito->amortizaciones()
-                ->whereNotIn('estado', ['Pagado', 'Condonado', 'Reestructurada']);
+                ->whereNotIn('estado', ['Pagado', 'Condonado', 'Reestructurada', 'Gracia']);
 
             if ($activasQuery()->count() === 0) {
                 $credito->update(['estatus' => 'Liquidado']);
@@ -225,7 +225,7 @@ class PagoController extends Controller
     private function aplicarAbonoCapital(Credito $credito, float $sobrante, string $tipo, Carbon $hoy): void
     {
         $pendientes = $credito->amortizaciones()
-            ->whereNotIn('estado', ['Pagado', 'Condonado', 'Reestructurada'])
+            ->whereNotIn('estado', ['Pagado', 'Condonado', 'Reestructurada', 'Gracia'])
             ->orderBy('numero_cuota', 'asc')
             ->get();
 
@@ -362,7 +362,7 @@ class PagoController extends Controller
             $credito = $pago->credito;
             // Recalcular estatus: siempre verificar cuotas pendientes/vencidas tras reversión
             $activasQuery = fn() => $credito->amortizaciones()
-                ->whereNotIn('estado', ['Pagado', 'Condonado', 'Reestructurada']);
+                ->whereNotIn('estado', ['Pagado', 'Condonado', 'Reestructurada', 'Gracia']);
 
             if ($activasQuery()->count() === 0) {
                 $credito->update(['estatus' => 'Liquidado']);

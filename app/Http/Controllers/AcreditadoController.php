@@ -37,9 +37,24 @@ class AcreditadoController extends Controller
             ->paginate(10)
             ->withQueryString();
 
+        $kpis = [
+            'total'     => Acreditado::count(),
+            'activos'   => Credito::where('estatus', 'Activo')->count(),
+            'morosos'   => Credito::where('estatus', 'Moroso')->count(),
+            'liquidados'=> Credito::where('estatus', 'Liquidado')->count(),
+            'cartera'   => (float) Credito::whereIn('estatus', ['Activo', 'Moroso'])->sum('monto_otorgado'),
+        ];
+
+        $municipios = Acreditado::whereNotNull('municipio')
+            ->distinct()
+            ->orderBy('municipio')
+            ->pluck('municipio');
+
         return Inertia::render('Acreditados/Index', [
             'acreditados' => $acreditados,
             'filters'     => $request->only('search', 'estatus', 'municipio'),
+            'kpis'        => $kpis,
+            'municipios'  => $municipios,
         ]);
     }
 
@@ -53,10 +68,43 @@ class AcreditadoController extends Controller
         }
 
         return Inertia::render('Acreditados/Create', [
-            'modalidades' => $modalidades,
-            'interesado'  => $interesado,
-            'prefill'     => $request->only(['nombre', 'municipio', 'modalidad', 'sexo', 'correo', 'interesado_id']),
+            'modalidades'   => $modalidades,
+            'interesado'    => $interesado,
+            'prefill'       => $request->only(['nombre', 'municipio', 'modalidad', 'sexo', 'correo', 'interesado_id']),
+            'regimenes_sat' => $this->regimenesFiscalesSat(),
         ]);
+    }
+
+    /**
+     * Catálogo oficial del SAT (c_RegimenFiscal, CFDI 4.0) para personas físicas y morales.
+     */
+    private function regimenesFiscalesSat(): array
+    {
+        return [
+            ['id' => '601', 'nombre' => 'General de Ley Personas Morales'],
+            ['id' => '603', 'nombre' => 'Personas Morales con Fines no Lucrativos'],
+            ['id' => '605', 'nombre' => 'Sueldos y Salarios e Ingresos Asimilados a Salarios'],
+            ['id' => '606', 'nombre' => 'Arrendamiento'],
+            ['id' => '607', 'nombre' => 'Régimen de Enajenación o Adquisición de Bienes'],
+            ['id' => '608', 'nombre' => 'Demás Ingresos'],
+            ['id' => '609', 'nombre' => 'Consolidación'],
+            ['id' => '610', 'nombre' => 'Residentes en el Extranjero sin Establecimiento Permanente en México'],
+            ['id' => '611', 'nombre' => 'Ingresos por Dividendos (socios y accionistas)'],
+            ['id' => '612', 'nombre' => 'Personas Físicas con Actividades Empresariales y Profesionales'],
+            ['id' => '614', 'nombre' => 'Ingresos por Intereses'],
+            ['id' => '615', 'nombre' => 'Régimen de los Ingresos por Obtención de Premios'],
+            ['id' => '616', 'nombre' => 'Sin Obligaciones Fiscales'],
+            ['id' => '620', 'nombre' => 'Sociedades Cooperativas de Producción que Optan por Diferir sus Ingresos'],
+            ['id' => '621', 'nombre' => 'Incorporación Fiscal'],
+            ['id' => '622', 'nombre' => 'Actividades Agrícolas, Ganaderas, Silvícolas y Pesqueras'],
+            ['id' => '623', 'nombre' => 'Opcional para Grupos de Sociedades'],
+            ['id' => '624', 'nombre' => 'Coordinados'],
+            ['id' => '625', 'nombre' => 'Actividades Empresariales con Ingresos a través de Plataformas Tecnológicas'],
+            ['id' => '626', 'nombre' => 'Régimen Simplificado de Confianza (RESICO)'],
+            ['id' => '628', 'nombre' => 'Hidrocarburos'],
+            ['id' => '629', 'nombre' => 'De los Regímenes Fiscales Preferentes y de las Empresas Multinacionales'],
+            ['id' => '630', 'nombre' => 'Enajenación de Acciones en Bolsa de Valores'],
+        ];
     }
 
     public function store(Request $request)
@@ -280,7 +328,7 @@ class AcreditadoController extends Controller
         if ($credito) {
             $amorts          = $credito->amortizaciones;
             $cuotasPagadas   = $amorts->where('estado', 'Pagado')->count();
-            $cuotasActivas   = $amorts->whereNotIn('estado', ['Pagado', 'Condonado', 'Reestructurada']);
+            $cuotasActivas   = $amorts->whereNotIn('estado', ['Pagado', 'Condonado', 'Reestructurada', 'Gracia']);
             $totalPagado     = $credito->pagos->sum('monto_recibido');
             $capitalPendiente= $cuotasActivas->sum('pago_restante');
             $proximaCuota    = $cuotasActivas->sortBy('fecha_vencimiento')->first();

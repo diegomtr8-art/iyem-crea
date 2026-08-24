@@ -131,7 +131,7 @@ const submit = () => {
         <Head title="Recepción de Pago" />
 
         <div class="min-h-screen bg-slate-50 dark:bg-[#0a0a0a] p-4 lg:p-8 transition-colors duration-500">
-            <div class="max-w-[1400px] mx-auto grid grid-cols-12 gap-8">
+            <div class="max-w-[1400px] mx-auto grid grid-cols-1 lg:grid-cols-12 gap-8">
                 
                 <div class="col-span-12 lg:col-span-8 space-y-6">
                     <div class="flex flex-col gap-1">
@@ -147,13 +147,13 @@ const submit = () => {
                             <div class="md:col-span-7 space-y-4">
                                 <label class="text-[10px] font-bold uppercase text-slate-400 tracking-widest">Importe Recibido (MXN)</label>
                                 <div class="relative group">
-                                    <span class="absolute left-0 top-0 text-5xl font-light text-slate-300 dark:text-zinc-700">$</span>
-                                    <input 
-                                        type="text" 
+                                    <span class="absolute left-0 top-0 text-3xl sm:text-4xl lg:text-5xl font-light text-slate-300 dark:text-zinc-700">$</span>
+                                    <input
+                                        type="text"
                                         :value="displayMonto"
                                         @input="formatInput"
                                         placeholder="0.00"
-                                        class="w-full pl-8 text-7xl font-black bg-transparent border-none focus:ring-0 text-slate-900 dark:text-white"
+                                        class="w-full pl-8 text-4xl sm:text-6xl lg:text-7xl font-black bg-transparent border-none focus:ring-0 text-slate-900 dark:text-white"
                                     />
                                 </div>
                                 <div class="flex items-center gap-2">
@@ -216,7 +216,8 @@ const submit = () => {
                     </p>
 
                     <div class="bg-white dark:bg-zinc-900 rounded-[2.5rem] shadow-sm border border-slate-200 dark:border-zinc-800 overflow-hidden">
-                        <table class="w-full text-left border-collapse">
+                        <div class="overflow-x-auto">
+                        <table class="w-full min-w-[480px] text-left border-collapse">
                             <thead>
                                 <tr class="bg-slate-50 dark:bg-zinc-800/50 text-[10px] font-black uppercase text-slate-400 tracking-widest">
                                     <th class="p-6">No.</th>
@@ -246,6 +247,7 @@ const submit = () => {
                                 </tr>
                             </tbody>
                         </table>
+                        </div>
                     </div>
                 </div>
 

@@ -5,7 +5,7 @@ import { ref } from 'vue';
 import {
     ArrowLeft, User, Briefcase, FileText, CheckCircle2, XCircle,
     Clock, ExternalLink, Send, Bell, ChevronDown, CreditCard, Sparkles,
-    AlertCircle, Eye
+    AlertCircle, Eye, ClipboardList, UserCog
 } from 'lucide-vue-next';
 
 const props = defineProps<{
@@ -46,8 +46,22 @@ const props = defineProps<{
             url: string;
             updated_at: string;
         }>;
+        asignado_a?: string;
+        fecha_asignacion?: string;
+        analisis?: {
+            recomendacion?: string;
+            score_cualitativo?: number;
+            puntaje_total?: number;
+            analista?: string;
+            fecha_analisis?: string;
+            monto_recomendado?: number;
+        } | null;
     };
+    operativos: Array<{ id: number; name: string }>;
 }>();
+
+const formAsignar = useForm({ asignado_a: '' });
+const asignar = () => formAsignar.post(route('solicitudes.asignar', props.solicitud.id));
 
 const formEstatus = useForm({ estatus: props.solicitud.estatus, observaciones: props.solicitud.observaciones ?? '' });
 const cambiarEstatus = () => formEstatus.post(route('solicitudes.cambiar-estatus', props.solicitud.id));
@@ -173,7 +187,7 @@ const labelClass = 'block text-xs font-bold uppercase tracking-wider text-slate-
                             <div class="w-9 h-9 rounded-xl bg-red-50 dark:bg-red-900/20 flex items-center justify-center text-red-700"><User size="18" /></div>
                             <h2 class="font-black text-slate-900 dark:text-white">Datos Personales</h2>
                         </div>
-                        <div class="p-5 grid grid-cols-2 gap-4 text-sm">
+                        <div class="p-5 grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
                             <div><p class="text-xs font-bold text-slate-400 uppercase mb-0.5">Nombre</p><p class="font-semibold text-slate-900 dark:text-white">{{ solicitud.nombre_completo || '—' }}</p></div>
                             <div><p class="text-xs font-bold text-slate-400 uppercase mb-0.5">CURP</p><p class="font-mono text-slate-900 dark:text-white text-xs">{{ solicitud.curp || '—' }}</p></div>
                             <div><p class="text-xs font-bold text-slate-400 uppercase mb-0.5">RFC</p><p class="font-mono text-slate-900 dark:text-white text-xs">{{ solicitud.rfc || '—' }}</p></div>
@@ -200,7 +214,7 @@ const labelClass = 'block text-xs font-bold uppercase tracking-wider text-slate-
                             <div class="w-9 h-9 rounded-xl bg-red-50 dark:bg-red-900/20 flex items-center justify-center text-red-700"><Briefcase size="18" /></div>
                             <h2 class="font-black text-slate-900 dark:text-white">Negocio / Proyecto</h2>
                         </div>
-                        <div class="p-5 grid grid-cols-2 gap-4 text-sm">
+                        <div class="p-5 grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
                             <div><p class="text-xs font-bold text-slate-400 uppercase mb-0.5">Modalidad</p><p class="font-semibold text-slate-900 dark:text-white">{{ solicitud.modalidad || '—' }}</p></div>
                             <div><p class="text-xs font-bold text-slate-400 uppercase mb-0.5">Giro Comercial</p><p class="text-slate-900 dark:text-white">{{ solicitud.giro_comercial || '—' }}</p></div>
                             <div class="col-span-2"><p class="text-xs font-bold text-slate-400 uppercase mb-0.5">Destino del Crédito</p><p class="text-slate-900 dark:text-white">{{ solicitud.destino_credito || '—' }}</p></div>
@@ -281,13 +295,13 @@ const labelClass = 'block text-xs font-bold uppercase tracking-wider text-slate-
                                     <textarea v-if="formDoc.estatus === 'Rechazado'" v-model="formDoc.observacion"
                                         placeholder="Motivo del rechazo (requerido)" rows="2"
                                         :class="[inputClass, 'resize-none']"></textarea>
-                                    <div class="flex gap-2">
+                                    <div class="flex flex-col sm:flex-row gap-2">
                                         <button @click="revisarDoc(doc.id)" :disabled="formDoc.processing || (formDoc.estatus === 'Rechazado' && !formDoc.observacion)"
-                                            class="px-4 py-2 bg-red-700 hover:bg-red-800 disabled:opacity-50 text-white font-bold rounded-xl text-sm transition-all">
+                                            class="w-full sm:w-auto px-4 py-2.5 bg-red-700 hover:bg-red-800 disabled:opacity-50 text-white font-bold rounded-xl text-sm transition-all">
                                             Guardar Decisión
                                         </button>
                                         <button @click="docActivo = null"
-                                            class="px-4 py-2 bg-slate-100 dark:bg-zinc-800 text-slate-700 dark:text-zinc-300 font-bold rounded-xl text-sm hover:bg-slate-200 dark:hover:bg-zinc-700 transition-all">
+                                            class="w-full sm:w-auto px-4 py-2.5 bg-slate-100 dark:bg-zinc-800 text-slate-700 dark:text-zinc-300 font-bold rounded-xl text-sm hover:bg-slate-200 dark:hover:bg-zinc-700 transition-all">
                                             Cancelar
                                         </button>
                                     </div>
@@ -338,6 +352,43 @@ const labelClass = 'block text-xs font-bold uppercase tracking-wider text-slate-
                         <CreditCard size="18" />
                         Registrar Crédito
                     </Link>
+
+                    <!-- Análisis crediticio -->
+                    <div v-if="['En_Revision', 'Documentacion_Incompleta'].includes(solicitud.estatus) || solicitud.analisis"
+                        class="bg-white dark:bg-zinc-900 rounded-2xl border border-slate-100 dark:border-zinc-800 p-5 space-y-3 shadow-sm">
+                        <h3 class="font-black text-slate-900 dark:text-white text-sm flex items-center gap-2">
+                            <ClipboardList size="16" class="text-red-700" /> Análisis Crediticio
+                        </h3>
+                        <div v-if="solicitud.analisis" class="text-xs text-slate-500 dark:text-zinc-400 space-y-1">
+                            <p>Puntaje: <strong class="text-slate-800 dark:text-white">{{ solicitud.analisis.puntaje_total ?? '—' }}/100</strong></p>
+                            <p>Recomendación: <strong class="text-slate-800 dark:text-white">{{ solicitud.analisis.recomendacion ?? '—' }}</strong></p>
+                            <p>Analista: {{ solicitud.analisis.analista ?? '—' }} · {{ solicitud.analisis.fecha_analisis ?? '' }}</p>
+                        </div>
+                        <p v-else class="text-xs text-slate-400">Aún no se ha registrado un análisis para esta solicitud.</p>
+                        <Link :href="route('solicitudes.analisis.create', solicitud.id)"
+                            class="flex items-center justify-center gap-2 w-full py-2.5 bg-slate-100 dark:bg-zinc-800 text-slate-700 dark:text-zinc-300 font-bold rounded-xl text-sm hover:bg-slate-200 dark:hover:bg-zinc-700 transition-all">
+                            {{ solicitud.analisis ? 'Editar análisis' : 'Registrar análisis' }}
+                        </Link>
+                    </div>
+
+                    <!-- Asignar analista -->
+                    <div v-if="!['Aprobada', 'Rechazada'].includes(solicitud.estatus)"
+                        class="bg-white dark:bg-zinc-900 rounded-2xl border border-slate-100 dark:border-zinc-800 p-5 space-y-3 shadow-sm">
+                        <h3 class="font-black text-slate-900 dark:text-white text-sm flex items-center gap-2">
+                            <UserCog size="16" class="text-red-700" /> Asignar analista
+                        </h3>
+                        <p v-if="solicitud.asignado_a" class="text-xs text-slate-500 dark:text-zinc-400">
+                            Actualmente asignada a <strong class="text-slate-800 dark:text-white">{{ solicitud.asignado_a }}</strong> ({{ solicitud.fecha_asignacion }})
+                        </p>
+                        <select v-model="formAsignar.asignado_a" :class="inputClass">
+                            <option value="" disabled>Seleccionar operativo...</option>
+                            <option v-for="op in operativos" :key="op.id" :value="op.id">{{ op.name }}</option>
+                        </select>
+                        <button @click="asignar" :disabled="formAsignar.processing || !formAsignar.asignado_a"
+                            class="w-full py-2.5 bg-slate-800 dark:bg-zinc-700 hover:bg-slate-900 disabled:opacity-50 text-white font-bold rounded-xl text-sm transition-all">
+                            {{ formAsignar.processing ? 'Asignando...' : 'Asignar' }}
+                        </button>
+                    </div>
 
                     <!-- Cambiar estatus -->
                     <div v-if="!['Aprobada'].includes(solicitud.estatus) || !solicitud.credito_id"

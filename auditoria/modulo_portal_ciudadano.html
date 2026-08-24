@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Módulo: Portal Ciudadano — Auditoría CREA</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;font-family:'Segoe UI',system-ui,sans-serif;}
+body{background:#0f172a;color:#e2e8f0;min-height:100vh;}
+header{background:linear-gradient(135deg,#006847,#009060);padding:20px 24px;display:flex;align-items:center;gap:14px;}
+header h1{font-size:1.3rem;color:#fff;}
+header .badge{background:rgba(255,255,255,.15);color:#fff;padding:4px 10px;border-radius:20px;font-size:.75rem;}
+.container{max-width:1000px;margin:0 auto;padding:24px 16px;}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px;margin-bottom:24px;}
+.card{background:#1e293b;border-radius:12px;padding:18px;border-left:4px solid #10b981;}
+.card.warn{border-left-color:#f59e0b;}
+.card.danger{border-left-color:#ef4444;}
+.card.info{border-left-color:#3b82f6;}
+.card h3{font-size:.95rem;margin-bottom:10px;color:#fff;}
+.card p,.card li{font-size:.83rem;color:#94a3b8;line-height:1.6;}
+.card ul{padding-left:16px;}
+.card li{margin-bottom:4px;}
+.tag{display:inline-block;padding:2px 8px;border-radius:10px;font-size:.7rem;font-weight:700;margin-right:4px;margin-bottom:4px;}
+.tag.ok{background:#064e3b;color:#34d399;}
+.tag.warn{background:#451a03;color:#fb923c;}
+.tag.danger{background:#450a0a;color:#f87171;}
+.tag.info{background:#0c2a4a;color:#60a5fa;}
+.flow{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin:12px 0;}
+.step{background:#1e3a5f;border:1px solid #3b82f6;border-radius:8px;padding:8px 12px;font-size:.78rem;color:#93c5fd;white-space:nowrap;}
+.arrow{color:#475569;font-size:.9rem;}
+table{width:100%;border-collapse:collapse;font-size:.8rem;}
+th{background:#1e3a5f;color:#93c5fd;padding:8px 10px;text-align:left;}
+td{padding:7px 10px;border-bottom:1px solid #1e293b;color:#cbd5e1;}
+tr:hover td{background:#1e293b;}
+.status-ok::before{content:"✅ ";}
+.status-warn::before{content:"⚠️ ";}
+.status-danger::before{content:"🔴 ";}
+section{margin-bottom:28px;}
+section h2{font-size:1rem;font-weight:700;color:#34d399;border-bottom:1px solid #1e293b;padding-bottom:8px;margin-bottom:14px;}
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <h1>🌐 Portal Ciudadano</h1>
+    <p style="font-size:.82rem;color:#a7f3d0;margin-top:4px;">Mi-Portal — Wizard de solicitud, Mi Crédito, Notificaciones</p>
+  </div>
+  <div class="badge">Módulo 1 / 6</div>
+</header>
+<div class="container">
+
+  <section>
+    <h2>Flujo del ciudadano</h2>
+    <div class="flow">
+      <div class="step">1. Registro / Google OAuth</div><div class="arrow">→</div>
+      <div class="step">2. Verificación CURP</div><div class="arrow">→</div>
+      <div class="step">3. Selección modalidad</div><div class="arrow">→</div>
+      <div class="step">4. Wizard: datos personales</div><div class="arrow">→</div>
+      <div class="step">5. Datos del negocio</div><div class="arrow">→</div>
+      <div class="step">6. Destino crédito</div><div class="arrow">→</div>
+      <div class="step">7. Aval / Garantía</div><div class="arrow">→</div>
+      <div class="step">8. Ingresos y Egresos</div><div class="arrow">→</div>
+      <div class="step">9. Subir documentos</div><div class="arrow">→</div>
+      <div class="step">10. Enviar ✉️</div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Estado actual de las rutas del portal</h2>
+    <table>
+      <thead><tr><th>Ruta</th><th>Controlador</th><th>Estado</th></tr></thead>
+      <tbody>
+        <tr><td>GET /mi-portal</td><td>BeneficiarioController@index</td><td class="status-ok">Funciona — dashboard + anuncios</td></tr>
+        <tr><td>GET /mi-portal/solicitud</td><td>WizardSolicitudController@index</td><td class="status-ok">Wizard completo implementado</td></tr>
+        <tr><td>POST /solicitud/verificar-curp</td><td>verificarCurp()</td><td class="status-ok">Bloquea CURP duplicada</td></tr>
+        <tr><td>POST /solicitud/paso</td><td>guardarPaso()</td><td class="status-ok">Guarda cada paso en datos_wizard JSON</td></tr>
+        <tr><td>POST /solicitud/documento</td><td>subirDocumento()</td><td class="status-warn">Ruta correcta, disco pendiente (¿public?)</td></tr>
+        <tr><td>GET /documentos/{doc}/descargar</td><td>descargarDocumento()</td><td class="status-ok">Autenticada, verifica propiedad</td></tr>
+        <tr><td>POST /solicitud/generar-formatos</td><td>generarFormatos()</td><td class="status-danger">ZIP se genera al enviar, debería ser al APROBAR</td></tr>
+        <tr><td>GET /mi-portal/mi-credito</td><td>MiCreditoController@index</td><td class="status-ok">Tabla amortización + historial pagos</td></tr>
+        <tr><td>GET /mi-credito/estado-cuenta/pdf</td><td>EstadoCuentaController</td><td class="status-ok">PDF generado</td></tr>
+        <tr><td>GET /mi-portal/expediente</td><td>ExpedienteController</td><td class="status-ok">Expediente digital ciudadano</td></tr>
+        <tr><td>POST /anuncios/{id}/leer</td><td>marcarLeido()</td><td class="status-warn">Usa AnuncioCiudadano, no DatabaseNotification</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section>
+    <h2>Documentos requeridos por modalidad</h2>
+    <table>
+      <thead><tr><th>Documento</th><th>Artesanal</th><th>Emprendedores</th><th>Sustentable</th><th>PM</th><th>Con Aval</th></tr></thead>
+      <tbody>
+        <tr><td>INE Frente + Reverso</td><td>✅</td><td>✅</td><td>✅</td><td>✅</td><td>—</td></tr>
+        <tr><td>CURP oficial</td><td>✅</td><td>✅</td><td>✅</td><td>✅</td><td>—</td></tr>
+        <tr><td>Comprobante domicilio</td><td>✅</td><td>✅</td><td>✅</td><td>✅</td><td>—</td></tr>
+        <tr><td>Foto del negocio</td><td>✅</td><td>✅</td><td>✅</td><td>✅</td><td>—</td></tr>
+        <tr><td>Constancia artesano</td><td>✅</td><td>—</td><td>—</td><td>—</td><td>—</td></tr>
+        <tr><td>Constancia sit. fiscal</td><td>—</td><td>✅</td><td>—</td><td>—</td><td>—</td></tr>
+        <tr><td>Opinión cumplimiento SAT</td><td>—</td><td>—</td><td>✅</td><td>—</td><td>—</td></tr>
+        <tr><td>Plan de negocio</td><td>—</td><td>—</td><td>✅</td><td>—</td><td>—</td></tr>
+        <tr><td>Acta constitutiva</td><td>—</td><td>—</td><td>—</td><td>✅</td><td>—</td></tr>
+        <tr><td>Factura bien mueble</td><td>—</td><td>—</td><td>—</td><td>—</td><td>Prendaria</td></tr>
+        <tr><td>ID + Domicilio Aval</td><td>—</td><td>—</td><td>—</td><td>—</td><td>✅ Aval</td></tr>
+        <tr><td style="color:#f87171">Doc. propiedad/posesión negocio</td><td style="color:#f87171">❌ Falta</td><td style="color:#f87171">❌ Falta</td><td style="color:#f87171">❌ Falta</td><td style="color:#f87171">❌ Falta</td><td>—</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <div class="grid">
+    <div class="card">
+      <h3>✅ Lo que ya funciona</h3>
+      <ul>
+        <li>Wizard multi-paso con persistencia en <code>datos_wizard</code> JSON</li>
+        <li>Verificación CURP única por solicitud activa</li>
+        <li>Docs separados por tipo con estatus (Pendiente/Aprobado/Rechazado)</li>
+        <li>Aval con tabla propia (<code>avales_solicitud</code>)</li>
+        <li>Mi Crédito: tabla de amortización + historial de pagos</li>
+        <li>Estado de cuenta PDF descargable</li>
+        <li>Liquidación anticipada calculada</li>
+        <li>Google OAuth integrado</li>
+        <li>Anuncios del equipo operativo al ciudadano</li>
+      </ul>
+    </div>
+    <div class="card warn">
+      <h3>⚠️ Problemas detectados (P0/P1)</h3>
+      <ul>
+        <li><span class="tag danger">P0</span> ZIP con PDFs se genera al enviar, NO al aprobar</li>
+        <li><span class="tag danger">P0</span> Archivos subidos podrían estar en disco <code>public</code> (requiere verificar)</li>
+        <li><span class="tag warn">P1</span> Campanita usa <code>AnuncioCiudadano</code>, no <code>DatabaseNotification</code> — sin badge de no leídos en tiempo real</li>
+        <li><span class="tag warn">P1</span> Footer se sube en pantallas pequeñas (falta <code>flex flex-col min-h-screen</code>)</li>
+        <li><span class="tag warn">P1</span> Falta documento "Propiedad/Posesión del negocio" en todos los tipos</li>
+        <li><span class="tag warn">P1</span> Tabla destino crédito: conceptos no son editables con formato de miles</li>
+        <li><span class="tag warn">P1</span> Próxima cuota card no existe en Mi Crédito</li>
+        <li><span class="tag warn">P1</span> Municipios: no validados los 106 de Yucatán</li>
+        <li><span class="tag warn">P1</span> Regímenes SAT: falta "Público en General"</li>
+      </ul>
+    </div>
+    <div class="card info">
+      <h3>💡 Mejoras sugeridas post-lanzamiento</h3>
+      <ul>
+        <li>PWA / notificaciones push para recordar cuotas</li>
+        <li>Chat en vivo con el equipo CREA desde el portal</li>
+        <li>Firma electrónica del contrato desde el portal</li>
+        <li>Calculadora de cuotas integrada antes de solicitar</li>
+        <li>Subida de documentos directamente desde cámara (móvil)</li>
+        <li>Progreso de solicitud en tiempo real (WebSocket)</li>
+      </ul>
+    </div>
+  </div>
+
+  <section>
+    <h2>Modelos involucrados</h2>
+    <div style="display:flex;flex-wrap:wrap;gap:8px;">
+      <span class="tag info">User</span>
+      <span class="tag info">SolicitudCredito</span>
+      <span class="tag info">DocumentoSolicitud</span>
+      <span class="tag info">AvalSolicitud</span>
+      <span class="tag info">AnuncioCiudadano</span>
+      <span class="tag info">ModalidadCrea</span>
+      <span class="tag info">Credito</span>
+      <span class="tag info">Amortizacion</span>
+      <span class="tag info">Pago</span>
+    </div>
+  </section>
+</div>
+</body>
+</html>

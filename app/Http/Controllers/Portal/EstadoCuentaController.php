@@ -30,7 +30,7 @@ class EstadoCuentaController extends Controller
             ->orderBy('fecha_pago')
             ->get();
 
-        $saldoPendiente = $credito->amortizaciones->whereNotIn('estado', ['Pagado', 'Condonado', 'Reestructurada'])->sum('pago_restante');
+        $saldoPendiente = $credito->amortizaciones->whereNotIn('estado', ['Pagado', 'Condonado', 'Reestructurada', 'Gracia'])->sum('pago_restante');
 
         $resumen = [
             'capital_pagado'  => round($pagos->sum('aplicado_capital'), 2),
@@ -59,7 +59,7 @@ class EstadoCuentaController extends Controller
 
         $hoy = now()->toDateString();
         $amortizacionesPendientes = $credito->amortizaciones()
-            ->whereNotIn('estado', ['Pagado', 'Condonado', 'Reestructurada'])
+            ->whereNotIn('estado', ['Pagado', 'Condonado', 'Reestructurada', 'Gracia'])
             ->orderBy('numero_cuota')
             ->get();
 

@@ -17,7 +17,7 @@ class RecordatoriosPago extends Command
         $en3dias = Carbon::now('America/Merida')->addDays(3)->toDateString();
 
         $cuotas = Amortizacion::with(['credito.acreditado'])
-            ->whereNotIn('estado', ['Pagado', 'Condonado', 'Reestructurada'])
+            ->whereNotIn('estado', ['Pagado', 'Condonado', 'Reestructurada', 'Gracia'])
             ->whereDate('fecha_vencimiento', $en3dias)
             ->get();
 

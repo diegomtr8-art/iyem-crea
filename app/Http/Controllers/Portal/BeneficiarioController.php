@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Portal;
 
 use App\Http\Controllers\Controller;
 use App\Models\AnuncioCiudadano;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -57,7 +58,7 @@ class BeneficiarioController extends Controller
         ]);
     }
 
-    public function marcarLeido(AnuncioCiudadano $anuncio): RedirectResponse
+    public function marcarLeido(AnuncioCiudadano $anuncio): RedirectResponse|JsonResponse
     {
         if ($anuncio->user_id && $anuncio->user_id !== auth()->id()) {
             abort(403);
@@ -65,10 +66,14 @@ class BeneficiarioController extends Controller
 
         $anuncio->update(['leido' => true]);
 
+        if (request()->expectsJson()) {
+            return response()->json(['ok' => true, 'no_leidos' => AnuncioCiudadano::paraUsuario(auth()->id())->where('leido', false)->count()]);
+        }
+
         return back();
     }
 
-    public function marcarTodosLeidos(): RedirectResponse
+    public function marcarTodosLeidos(): RedirectResponse|JsonResponse
     {
         $user = auth()->user();
 
@@ -76,6 +81,33 @@ class BeneficiarioController extends Controller
             ->where('leido', false)
             ->update(['leido' => true]);
 
+        if (request()->expectsJson()) {
+            return response()->json(['ok' => true, 'no_leidos' => 0]);
+        }
+
         return back()->with('success', 'Todos los anuncios marcados como leídos.');
+    }
+
+    public function notificaciones(): JsonResponse
+    {
+        $user = auth()->user();
+
+        $items = AnuncioCiudadano::paraUsuario($user->id)
+            ->latest()
+            ->take(15)
+            ->get()
+            ->map(fn($a) => [
+                'id'         => $a->id,
+                'titulo'     => $a->titulo,
+                'mensaje'    => $a->mensaje,
+                'tipo'       => $a->tipo,
+                'leido'      => $a->leido,
+                'url_accion' => $a->url_accion,
+                'fecha'      => $a->created_at->diffForHumans(),
+            ]);
+
+        $noLeidos = $items->where('leido', false)->count();
+
+        return response()->json(['items' => $items, 'no_leidos' => $noLeidos]);
     }
 }

@@ -1,0 +1,271 @@
+# PROMPT: CORRECCIONES CRÍTICAS PORTAL CIUDADANO (P0 + P1 prioritarios) + DEPLOY
+# Para usar en: Claude Code (sesión interactiva en la raíz del proyecto)
+# Stack: Laravel 11 + Vue 3 + Inertia.js + TypeScript + Tailwind CSS
+# Basado en: AUDITORIA_PORTAL_CIUDADANO.md (ya generado en la raíz del proyecto)
+
+---
+
+## CONTEXTO
+
+Ya se realizó una auditoría del portal ciudadano (`/mi-portal`), documentada en
+`AUDITORIA_PORTAL_CIUDADANO.md`. De ahí se priorizaron los siguientes hallazgos
+para implementar AHORA. Lee primero ese documento completo para tener el contexto
+de cada hallazgo, archivos afectados y propuestas detalladas.
+
+Implementa, en este orden, los siguientes 3 hallazgos P0 y 4 hallazgos P1:
+
+---
+
+## P0-1 — Validación de monto desconectada de la modalidad
+
+`SolicitudCreditoController@store` y `@update` validan `monto_solicitado` con
+`min:100|max:1000000` fijo, ignorando `modalidad_id`. La tabla `modalidad_creas`
+ya tiene `monto_minimo`/`monto_maximo` correctos por modalidad.
+
+- Reemplazar la validación estática por una regla dinámica: cargar la
+  `ModalidadCrea` correspondiente a `modalidad_id` y validar
+  `monto_solicitado` contra su `monto_minimo`/`monto_maximo` (usar `Rule::` con
+  closure o `after()` validator)
+- Mensajes de error en español, claros: "El monto debe estar entre $X y $Y para
+  la modalidad seleccionada"
+- En `Solicitud.vue`: cuando el usuario seleccione una modalidad, actualizar
+  dinámicamente el `min`/`max` del input de monto y mostrar un texto de ayuda
+  ("Monto permitido: $X - $Y")
+- Aplicar la misma validación tanto en `store()` como en `update()`
+
+---
+
+## P0-2 — Documentos requeridos por modalidad ignorados (CRÍTICO)
+
+`DocumentoSolicitud::tiposRequeridos()` devuelve siempre los mismos 5 tipos
+genéricos, pero según la auditoría cada modalidad tiene documentos adicionales
+específicos ya contemplados en la BD/lógica de negocio:
+- Artesanal → `constancia_artesano`
+- Sustentable → `plan_negocio` + `opinion_cumplimiento`
+- Emprendedores → `constancia_situacion`
+
+- Modificar `tiposRequeridos()` para que reciba la modalidad (o el nombre/slug
+  de la modalidad) como parámetro y devuelva el set de 5 documentos genéricos
+  MÁS los específicos de esa modalidad
+- Actualizar todos los lugares donde se llama `tiposRequeridos()`
+  (`SolicitudCreditoController@index`, `@subirDocumento`, validación del tipo de
+  documento) para que pasen la modalidad de la solicitud actual
+- En `Solicitud.vue`, la lista de documentos a subir debe reflejar el set
+  completo (genéricos + específicos de la modalidad elegida), con su nombre
+  legible (ej. "Constancia de Artesano", "Plan de Negocio", "Opinión de
+  Cumplimiento", "Constancia de Situación Fiscal")
+- Si el usuario cambia de modalidad DESPUÉS de haber subido documentos
+  específicos de la modalidad anterior, decidir e implementar el comportamiento
+  correcto: o bien eliminar/marcar como obsoletos esos documentos, o advertir al
+  usuario antes de permitir el cambio. Documentar la decisión tomada en un
+  comentario en el código
+- Validar en `subirDocumento()` que `tipo_documento` esté dentro del set
+  correspondiente a la modalidad de ESA solicitud, no del set genérico fijo
+- Validar en `enviar()` (envío de la solicitud) que TODOS los documentos del set
+  completo (genéricos + específicos de la modalidad) estén cargados antes de
+  permitir el envío; si falta alguno, listar cuáles faltan en el mensaje de error
+
+---
+
+## P0-3 — INE/CURP y demás documentos accesibles públicamente (SEGURIDAD)
+
+Los documentos de `solicitudes/{id}/...` se guardan en el disco `public` y son
+accesibles vía URL predecible sin autenticación (`/storage/solicitudes/1/ine_frente.jpg`).
+Esto expone INE, CURP, comprobantes de domicilio, etc. — incumplimiento de LFPDPPP.
+
+- Cambiar el almacenamiento de estos documentos al disco `local` (privado), NO
+  al disco `public`. Actualizar `subirDocumento()` para guardar con
+  `Storage::disk('local')->put(...)`
+- Crear una ruta autenticada para servir/descargar cada documento, ej.:
+  ```php
+  Route::get('/mi-portal/documentos/{documento}/descargar', [SolicitudCreditoController::class, 'descargarDocumento'])
+      ->name('portal.documentos.descargar');
+  ```
+  - El método `descargarDocumento()` debe verificar que el `DocumentoSolicitud`
+    pertenezca a la solicitud del usuario autenticado (o que el usuario tenga
+    permiso operativo para revisión), y devolver el archivo con
+    `Storage::disk('local')->response($path)` o `download()`
+  - Aplicar también `Gate`/policy si el panel operativo necesita acceder a estos
+    mismos documentos para revisión
+- Migrar (script de migración de datos, NO destructivo) los documentos ya
+  existentes en `storage/app/public/solicitudes/` hacia `storage/app/solicitudes/`
+  (disco local), actualizando las rutas guardadas en `documentos_solicitud` si
+  almacenan la ruta completa
+- Actualizar `Solicitud.vue` y `Expediente.vue` para que los links/preview de
+  documentos usen la nueva ruta autenticada en lugar de la URL pública directa
+- Verificar que el symlink `public/storage` no exponga el subdirectorio
+  `solicitudes/` (puede mantenerse para otros usos del disco `public` que no
+  sean sensibles)
+
+---
+
+## P1 — Campo `plazo_meses` en la solicitud
+
+Las RO (Artículo 12) permiten al solicitante proponer el plazo (12/18/24 meses).
+
+- Migración: agregar `plazo_meses` (smallInteger, nullable) a `solicitudes_credito`
+- Validación: `required|in:12,18,24` en `store()`/`update()`
+- En `Solicitud.vue`: agregar selector de plazo (12/18/24 meses) junto al campo de
+  monto, con la misma estética del resto del formulario
+- Mostrar el plazo seleccionado en el resumen de la solicitud (`Expediente.vue` /
+  `Dashboard.vue` si aplica)
+- Para modalidad Sustentable, mostrar el texto informativo: "Esta modalidad
+  incluye 3 meses de prórroga para el primer pago"
+
+---
+
+## P1 — Captura de datos del aval/garante
+
+Las RO exigen un aval con domicilio comprobable en Yucatán (no familiar hasta 2do
+grado).
+
+- Migración: crear tabla `avales_solicitud` (o agregar campos directamente a
+  `solicitudes_credito` si se prefiere un solo aval por solicitud — usar tabla
+  separada si en el futuro podría haber más de uno):
+  - `solicitud_credito_id` (FK)
+  - `nombre_completo`, `curp`, `telefono`, `direccion`, `municipio`,
+    `parentesco_declarado` (string, para declarar que no es familiar hasta 2do
+    grado)
+- En `Solicitud.vue`: agregar una nueva sección "Datos del Aval" con estos
+  campos, con validación `required` cuando la solicitud se vaya a enviar (puede
+  quedar vacío en `Borrador`)
+- Agregar el tipo de documento `identificacion_aval` al set de documentos
+  requeridos (genérico, aplica a las 3 modalidades) usando el mecanismo de P0-2
+
+---
+
+## P1 — Próxima cuota destacada en "Mi Crédito"
+
+Actualmente el usuario debe buscar en la tabla de amortización completa (hasta 24
+filas) para saber cuánto y cuándo paga.
+
+- En `MiCredito.vue`, agregar una card destacada (arriba de la tabla, estilo
+  similar a las cards de resumen del dashboard) con:
+  - "Próximo pago": monto y fecha de la próxima cuota pendiente
+  - "Saldo insoluto actual"
+  - Badge de estatus del crédito (Al corriente / Moroso / Liquidado)
+- Calcular la "próxima cuota" como la primera fila de la tabla de amortización con
+  estatus "Pendiente" (o el campo equivalente que use el modelo actual — revisar
+  `app/Models/Credito.php` y la relación con pagos/amortización)
+
+---
+
+## P1 — Alerta de mora con instrucciones
+
+Si el crédito está en estatus `Moroso`, el portal no muestra ninguna alerta ni
+guía al usuario.
+
+- En `MiCredito.vue` y `Dashboard.vue`, si `credito.estatus === 'Moroso'`, mostrar
+  un banner visible (no agresivo, tono institucional: ámbar/rojo suave) con:
+  - Monto en mora y número de cuotas vencidas
+  - Texto explicando cómo regularizarse (ej. "Acude a las oficinas del IYEM o
+    contacta a tu asesor para regularizar tu situación")
+  - Datos de contacto (mismo correo/teléfono usados en la sección de Contacto de
+    la landing: crea@iyemyucatan.com)
+
+---
+
+## VERIFICACIÓN
+
+1. `php artisan migrate` — correr nuevas migraciones (plazo_meses, avales_solicitud)
+   sin perder datos existentes
+2. `npm run build` — sin errores
+3. `php artisan test` — debe pasar; agregar tests nuevos para:
+   - Validación de monto fuera de rango según modalidad (rechazado)
+   - Validación de monto dentro de rango según modalidad (aceptado)
+   - `tiposRequeridos()` devuelve el set correcto según modalidad
+   - `subirDocumento()` rechaza tipos no correspondientes a la modalidad de la
+     solicitud
+   - Ruta `portal.documentos.descargar` rechaza acceso a documentos de otro
+     usuario (403)
+   - Acceso directo a `/storage/solicitudes/{id}/...` ya NO sirve los archivos
+     (404 o 403)
+4. Probar manualmente el flujo completo de solicitud para las 3 modalidades:
+   crear solicitud, verificar rangos de monto, verificar lista de documentos
+   requeridos, subir documentos, verificar que el botón "Enviar" valide el set
+   completo
+5. Verificar dark mode y responsividad de los nuevos elementos UI (selector de
+   plazo, sección de aval, card de próxima cuota, banner de mora)
+
+---
+
+## DEPLOY A PRODUCCIÓN (HOSTINGER)
+
+### Datos del servidor
+- IP: 195.35.38.222
+- Puerto SSH: 65002
+- Usuario: u489236361
+- Dominio destino: https://crea.iyemyucatan.com/
+- Ruta: `/home/u489236361/domains/crea.iyemyucatan.com/public_html`
+
+### Build local
+```bash
+npm ci
+npm run build
+composer install --optimize-autoloader --no-dev
+```
+
+### Subir cambios via rsync
+```bash
+rsync -avz --progress \
+  --exclude='.env' \
+  --exclude='node_modules/' \
+  --exclude='vendor/' \
+  --exclude='storage/logs/*' \
+  --exclude='.git/' \
+  --exclude='database/database.sqlite' \
+  -e "ssh -p 65002" \
+  ./ u489236361@195.35.38.222:/home/u489236361/domains/crea.iyemyucatan.com/public_html/
+```
+
+### En el servidor (vía SSH)
+```bash
+cd /home/u489236361/domains/crea.iyemyucatan.com/public_html
+
+composer install --optimize-autoloader --no-dev
+
+# IMPORTANTE: correr la migración de datos de documentos de public→local ANTES
+# de migrar el esquema, o como parte del mismo script de migración, para no
+# perder referencias a archivos existentes
+php artisan migrate --force
+
+php artisan config:clear
+php artisan route:clear
+php artisan view:clear
+php artisan config:cache
+php artisan route:cache
+php artisan view:cache
+
+chmod -R 775 storage bootstrap/cache
+```
+
+### Verificación post-deploy en https://crea.iyemyucatan.com/
+
+- [ ] Crear una solicitud de prueba para cada modalidad y confirmar que el rango
+      de monto se valida correctamente (frontend y backend)
+- [ ] Confirmar que la lista de documentos requeridos varía según la modalidad
+      (Artesanal/Sustentable/Emprendedores muestran sus documentos extra)
+- [ ] Confirmar que `/storage/solicitudes/...` ya NO es accesible públicamente
+- [ ] Confirmar que la descarga autenticada de documentos funciona para el
+      ciudadano dueño de la solicitud y es rechazada para otro usuario
+- [ ] Selector de plazo (12/18/24) visible y funcional en el formulario de
+      solicitud
+- [ ] Sección de datos del aval visible y validada al enviar
+- [ ] "Mi Crédito" muestra la card de próxima cuota destacada
+- [ ] Si hay un crédito de prueba en estatus Moroso, el banner de alerta se
+      muestra correctamente
+- [ ] Sin errores en consola del navegador ni en `storage/logs/laravel.log`
+
+---
+
+## NOTAS
+
+- P0-3 (seguridad de documentos) es el cambio de mayor riesgo — probar
+  exhaustivamente en local/staging antes de tocar producción, incluyendo la
+  migración de archivos ya existentes en el servidor de producción (verificar
+  cuántos archivos existen actualmente en
+  `/home/u489236361/domains/crea.iyemyucatan.com/public_html/storage/app/public/solicitudes/`
+  antes de migrar)
+- No romper solicitudes ya existentes en `Borrador`/`Enviada`/etc. — los nuevos
+  campos (`plazo_meses`, aval) deben ser nullable o tener manejo para registros
+  preexistentes

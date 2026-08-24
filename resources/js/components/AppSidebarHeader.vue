@@ -67,15 +67,15 @@ const money = (v: number) => new Intl.NumberFormat('es-MX', { style: 'currency',
                 <Breadcrumb>
                     <BreadcrumbList>
                         <template v-for="(item, index) in breadcrumbs" :key="index">
-                            <BreadcrumbItem>
+                            <BreadcrumbItem :class="index !== breadcrumbs.length - 1 ? 'hidden sm:flex' : ''">
                                 <template v-if="index === breadcrumbs.length - 1">
-                                    <BreadcrumbPage>{{ item.title }}</BreadcrumbPage>
+                                    <BreadcrumbPage class="truncate max-w-[45vw] sm:max-w-none">{{ item.title }}</BreadcrumbPage>
                                 </template>
                                 <template v-else>
                                     <BreadcrumbLink :href="item.href">{{ item.title }}</BreadcrumbLink>
                                 </template>
                             </BreadcrumbItem>
-                            <BreadcrumbSeparator v-if="index !== breadcrumbs.length - 1" />
+                            <BreadcrumbSeparator v-if="index !== breadcrumbs.length - 1" class="hidden sm:flex" />
                         </template>
                     </BreadcrumbList>
                 </Breadcrumb>
@@ -95,7 +95,7 @@ const money = (v: number) => new Intl.NumberFormat('es-MX', { style: 'currency',
 
             <!-- Panel flotante -->
             <div v-if="panelAbierto"
-                class="absolute right-0 top-12 w-80 bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-700 shadow-2xl z-50 overflow-hidden">
+                class="absolute right-0 top-12 w-[calc(100vw-1rem)] max-w-xs sm:w-80 bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-700 shadow-2xl z-50 overflow-hidden">
 
                 <!-- Header del panel -->
                 <div class="flex items-center justify-between px-4 py-3 border-b border-zinc-100 dark:border-zinc-800">

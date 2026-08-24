@@ -19,6 +19,13 @@ class AnalisisCreditoController extends Controller
 
         $solicitud->load(['user', 'modalidad', 'documentos', 'analisis']);
 
+        $categoriasPuntaje = $solicitud->modalidad
+            ? AnalisisCredito::categoriasPuntajePorModalidad($solicitud->modalidad->nombre)
+            : [];
+        $subcriterios = $solicitud->modalidad
+            ? AnalisisCredito::subcriteriosPorModalidad($solicitud->modalidad->nombre)
+            : [];
+
         return Inertia::render('Solicitudes/Analisis', [
             'solicitud' => [
                 'id'               => $solicitud->id,
@@ -32,6 +39,9 @@ class AnalisisCreditoController extends Controller
                 'giro_comercial'   => $solicitud->giro_comercial,
                 'estatus'          => $solicitud->estatus,
             ],
+            'categorias_puntaje'  => $categoriasPuntaje,
+            'subcriterios'        => $subcriterios,
+            'puntaje_minimo'      => AnalisisCredito::PUNTAJE_MINIMO_APROBACION,
             'analisis_existente' => $solicitud->analisis ? [
                 'id'                      => $solicitud->analisis->id,
                 'ingresos_mensuales'      => $solicitud->analisis->ingresos_mensuales,
@@ -48,6 +58,12 @@ class AnalisisCreditoController extends Controller
                 'referencias_verificadas' => $solicitud->analisis->referencias_verificadas,
                 'antiguedad_negocio_meses'=> $solicitud->analisis->antiguedad_negocio_meses,
                 'score_cualitativo'       => $solicitud->analisis->score_cualitativo,
+                'puntaje_normativa'         => $solicitud->analisis->puntaje_normativa,
+                'puntaje_tecnica'           => $solicitud->analisis->puntaje_tecnica,
+                'puntaje_financiera'        => $solicitud->analisis->puntaje_financiera,
+                'puntaje_impacto_ambiental' => $solicitud->analisis->puntaje_impacto_ambiental,
+                'puntaje_total'             => $solicitud->analisis->puntaje_total,
+                'puntaje_detalle'           => $solicitud->analisis->puntaje_detalle,
                 'observaciones_analisis'  => $solicitud->analisis->observaciones_analisis,
                 'recomendacion'           => $solicitud->analisis->recomendacion,
                 'monto_recomendado'       => $solicitud->analisis->monto_recomendado,
@@ -58,7 +74,16 @@ class AnalisisCreditoController extends Controller
 
     public function store(Request $request, SolicitudCredito $solicitud): RedirectResponse
     {
-        $data = $request->validate([
+        $subcriterios = $solicitud->modalidad
+            ? AnalisisCredito::subcriteriosPorModalidad($solicitud->modalidad->nombre)
+            : [];
+
+        $reglasPuntaje = [];
+        foreach ($subcriterios as $s) {
+            $reglasPuntaje["puntaje_detalle.{$s['clave']}"] = "required|integer|min:0|max:{$s['max']}";
+        }
+
+        $data = $request->validate(array_merge([
             'ingresos_mensuales'      => 'nullable|numeric|min:0',
             'gastos_mensuales'        => 'nullable|numeric|min:0',
             'curp_valida'             => 'boolean',
@@ -74,7 +99,7 @@ class AnalisisCreditoController extends Controller
             'recomendacion'           => 'required|in:Aprobar,Rechazar,Modificar_Monto',
             'monto_recomendado'       => 'nullable|numeric|min:100',
             'motivo_rechazo'          => 'required_if:recomendacion,Rechazar|nullable|string|max:500',
-        ]);
+        ], $reglasPuntaje));
 
         $ingresos = (float) ($data['ingresos_mensuales'] ?? 0);
         $gastos   = (float) ($data['gastos_mensuales'] ?? 0);
@@ -92,13 +117,29 @@ class AnalisisCreditoController extends Controller
 
         $relacionDeuda = ($ingresos > 0) ? round(($cuotaEstimada / $ingresos) * 100, 2) : 0;
 
+        // Agregar los subcriterios capturados a sus totales por categoría
+        $puntajeDetalle = $data['puntaje_detalle'] ?? [];
+        $puntajePorCategoria = ['normativa' => 0, 'tecnica' => 0, 'financiera' => 0, 'impacto_ambiental' => 0];
+        foreach ($subcriterios as $s) {
+            $puntajePorCategoria[$s['categoria']] += (int) ($puntajeDetalle[$s['clave']] ?? 0);
+        }
+        $puntajeTotal = array_sum($puntajePorCategoria);
+
+        $datosGuardar = collect($data)->except('puntaje_detalle')->toArray();
+
         $analisis = AnalisisCredito::updateOrCreate(
             ['solicitud_id' => $solicitud->id],
-            array_merge($data, [
-                'analista_id'            => auth()->id(),
-                'fecha_analisis'         => now()->toDateString(),
-                'capacidad_pago'         => $capacidad,
-                'relacion_deuda_ingreso' => $relacionDeuda,
+            array_merge($datosGuardar, [
+                'analista_id'               => auth()->id(),
+                'fecha_analisis'            => now()->toDateString(),
+                'capacidad_pago'            => $capacidad,
+                'relacion_deuda_ingreso'    => $relacionDeuda,
+                'puntaje_normativa'         => $puntajePorCategoria['normativa'],
+                'puntaje_tecnica'           => $puntajePorCategoria['tecnica'],
+                'puntaje_financiera'        => $puntajePorCategoria['financiera'],
+                'puntaje_impacto_ambiental' => $puntajePorCategoria['impacto_ambiental'],
+                'puntaje_total'             => $puntajeTotal,
+                'puntaje_detalle'           => $puntajeDetalle,
             ])
         );
 
@@ -111,9 +152,13 @@ class AnalisisCreditoController extends Controller
             'analisis',
             null,
             $data['recomendacion'],
-            "Análisis crediticio registrado por " . auth()->user()?->name . ". Recomendación: {$data['recomendacion']}"
+            "Análisis crediticio registrado por " . auth()->user()?->name .
+            ". Recomendación: {$data['recomendacion']}. Puntaje: {$puntajeTotal}/100" .
+            ($puntajeTotal >= AnalisisCredito::PUNTAJE_MINIMO_APROBACION ? ' (APTO)' : ' (NO APTO)')
         );
 
-        return back()->with('success', 'Análisis guardado. Recomendación: ' . $data['recomendacion']);
+        $apto = $puntajeTotal >= AnalisisCredito::PUNTAJE_MINIMO_APROBACION;
+        return back()->with('success', "Análisis guardado. Puntaje: {$puntajeTotal} pts — " .
+            ($apto ? "APTO ({$puntajeTotal} pts)" : "NO APTO ({$puntajeTotal} pts, mín. " . AnalisisCredito::PUNTAJE_MINIMO_APROBACION . ")"));
     }
 }

@@ -1,0 +1,624 @@
+# PROMPT — RESPONSIVE MOBILE: iPhone & iPad
+# Proyecto CREA · Laravel 11 + Vue 3 + Inertia.js + Tailwind CSS
+# Breakpoints Tailwind usados: (default=mobile) sm:640px md:768px lg:1024px xl:1280px
+# ─────────────────────────────────────────────────────────────────────────────────
+
+## OBJETIVO
+Hacer que TODO el sistema CREA funcione perfectamente en:
+- iPhone SE / 12 / 14 / 15 (375–430px)
+- iPad / iPad Pro (768–1024px)
+Sin romper el layout de escritorio (≥1024px) que ya funciona.
+
+Principio: **mobile-first**. Las clases base son para móvil. md: y lg: sobrescriben hacia arriba.
+
+## REGLAS GLOBALES (aplicar en TODOS los archivos)
+1. Toda `<table>` debe estar envuelta en `<div class="overflow-x-auto">` si no lo está ya.
+2. Cualquier `grid-cols-N` sin prefijo responsive → agregar `grid-cols-1 sm:grid-cols-N` o el que corresponda.
+3. `grid-cols-12` → en mobile usar `grid-cols-1`, en lg mantener `grid-cols-12`.
+4. Anchos fijos `w-80`, `w-96` en paneles flotantes → `w-[calc(100vw-2rem)] max-w-sm` en mobile.
+5. Padding lateral: `px-4 sm:px-6` en contenedores padre (no más `px-6` sin prefijo en mobile).
+6. `max-w-7xl mx-auto` es correcto, solo verificar que siempre tenga `px-4`.
+7. Botones en fila en mobile → `flex flex-col sm:flex-row` o `flex flex-wrap`.
+8. Inputs side-by-side sin `sm:` → `grid-cols-1 sm:grid-cols-2`.
+9. Texto truncado: añadir `truncate` o `break-words` donde el texto largo rompe el layout.
+10. Sticky header/nav: ya existe, verificar `z-index` correcto (z-40 nav, z-50 dropdowns).
+
+## ─────────────────────────────────────────────────────────────────
+## MÓDULO 1: LAYOUT OPERATIVO (AppSidebarLayout)
+## Archivo: resources/js/layouts/app/AppSidebarLayout.vue
+## Archivo: resources/js/components/AppShell.vue
+## Archivo: resources/js/components/AppSidebar.vue (Sidebar de shadcn)
+## ─────────────────────────────────────────────────────────────────
+
+### El sidebar usa shadcn `collapsible="icon"` — en mobile debe comportarse como DRAWER.
+El componente `<Sidebar>` de shadcn ya tiene soporte para sheet/drawer en mobile.
+Verificar que en `resources/js/components/ui/sidebar/Sidebar.vue` exista el comportamiento de drawer:
+- En mobile (< lg): el sidebar debe ser un panel deslizable desde la izquierda (Sheet)
+- El `SidebarTrigger` (el botón hamburguesa en el header) abre/cierra este drawer
+- En desktop (≥ lg): comportamiento actual (colapsable a íconos)
+
+Si el Sidebar.vue de shadcn ya tiene esta lógica con `useMediaQuery` o `useSidebar`, solo verificar
+que funcione. Si no, agregar:
+```vue
+<!-- En Sidebar.vue, el sheet para mobile ya debe existir en shadcn-vue -->
+<!-- Si falta, el SidebarProvider maneja isMobile via composable -->
+```
+En AppShell.vue, el `SidebarProvider` ya gestiona `defaultOpen`. En mobile, `defaultOpen` debe ser `false`:
+```vue
+<SidebarProvider :default-open="!isMobile" :open="isOpen" @update:open="handleSidebarChange">
+```
+Importar `useMediaQuery` de `@vueuse/core` o detectar con window.innerWidth.
+
+### AppSidebarHeader.vue — header operativo
+El panel flotante de notificaciones usa `w-80`. En mobile puede salirse:
+```vue
+<!-- ANTES -->
+class="absolute right-0 top-12 w-80 bg-white ..."
+<!-- DESPUÉS -->
+class="absolute right-0 top-12 w-[calc(100vw-1rem)] max-w-xs sm:w-80 bg-white ..."
+```
+El breadcrumb se trunca en mobile — agregar `hidden sm:block` para los segmentos intermedios,
+mostrando solo el último en móvil.
+
+## ─────────────────────────────────────────────────────────────────
+## MÓDULO 2: PORTAL CIUDADANO — BeneficiarioLayout
+## Archivo: resources/js/layouts/BeneficiarioLayout.vue
+## ─────────────────────────────────────────────────────────────────
+
+El layout ciudadano YA tiene hamburger y mobile menu. Verificar y completar:
+
+### El menú mobile ya existe (`mobileOpen`). Revisar que:
+1. Cuando `mobileOpen = true`, el panel ocupe toda la pantalla o sea un drawer desde arriba:
+```vue
+<transition name="slide-down">
+  <div v-if="mobileOpen" class="md:hidden fixed inset-x-0 top-16 z-30 bg-white dark:bg-[#1A0B11] border-b border-slate-200 dark:border-zinc-800 shadow-xl">
+    <!-- nav links -->
+  </div>
+</transition>
+```
+2. El logo en mobile muestra "CREA" sin el subtítulo (ya tiene `hidden sm:block` en subtítulo ✓)
+3. El bell dropdown en mobile ocupa ancho completo — ya tiene `w-80 sm:w-96` ✓, mejorar:
+```vue
+class="bell-dropdown absolute right-0 top-full mt-2 w-[calc(100vw-1rem)] sm:w-96 max-w-sm ..."
+```
+4. El `main` ya tiene `px-4 sm:px-6` ✓ — verificar que todas las páginas del portal respeten esto.
+
+### Footer del portal:
+```vue
+<!-- ANTES -->
+<div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+<!-- DESPUÉS - ya correcto, mantener -->
+```
+
+## ─────────────────────────────────────────────────────────────────
+## MÓDULO 3: DASHBOARD OPERATIVO
+## Archivo: resources/js/Pages/Dashboard.vue
+## ─────────────────────────────────────────────────────────────────
+
+### Grids a corregir:
+```vue
+<!-- ANTES: grid de 12 columnas -->
+<div class="grid grid-cols-12 gap-4 mb-4">
+  <div class="col-span-9 ...">   <!-- gráfica principal -->
+  <div class="col-span-3 ...">   <!-- lateral -->
+
+<!-- DESPUÉS -->
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-4 mb-4">
+  <div class="lg:col-span-9 ...">
+  <div class="lg:col-span-3 ...">
+
+<!-- ANTES: stats de 4 columnas -->
+<div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+<!-- DESPUÉS (ya tiene sm/lg, verificar que funciona en 375px) -->
+<div class="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+
+<!-- ANTES: mini-grid de 3 -->
+<div class="grid grid-cols-3 gap-3">
+<!-- DESPUÉS -->
+<div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+
+<!-- ANTES: grid de 2 -->
+<div class="grid grid-cols-2 gap-3">
+<!-- DESPUÉS — ok en mobile si los items son pequeños, verificar ancho mínimo -->
+```
+
+### Gráficas (Chart.js):
+Las gráficas dentro de `<div class="w-32 h-32">` están bien.
+La gráfica de barra grande necesita altura adaptable:
+```vue
+<div class="h-48 sm:h-64 lg:h-72 relative">
+  <Bar ... />
+</div>
+```
+
+### Filtros de modalidad:
+```vue
+<!-- Los botones de filtro deben hacer wrap -->
+<div class="flex flex-wrap gap-1.5"> <!-- ya tiene flex-wrap ✓ -->
+```
+
+## ─────────────────────────────────────────────────────────────────
+## MÓDULO 4: SOLICITUDES CREA (Operativo)
+## Archivo: resources/js/Pages/Solicitudes/Index.vue
+## Archivo: resources/js/Pages/Solicitudes/Show.vue
+## Archivo: resources/js/Pages/Solicitudes/Analisis.vue
+## ─────────────────────────────────────────────────────────────────
+
+### Index.vue — Lista de solicitudes:
+Los KPI cards (6 tarjetas) necesitan grid responsive:
+```vue
+<!-- ANTES -->
+<div class="grid grid-cols-3 gap-3">   <!-- o grid-cols-6 -->
+<!-- DESPUÉS -->
+<div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+```
+
+La tabla de solicitudes DEBE tener overflow-x-auto:
+```vue
+<div class="overflow-x-auto rounded-2xl">
+  <table class="w-full min-w-[640px] text-sm ...">
+    ...
+  </table>
+</div>
+```
+Agregar `min-w-[640px]` a la tabla para que en mobile haga scroll horizontal.
+
+Los filtros (buscar + select de estatus) en mobile deben apilarse:
+```vue
+<div class="flex flex-col sm:flex-row gap-3">
+  <input ... class="w-full sm:w-64 ...">
+  <select ... class="w-full sm:w-auto ...">
+</div>
+```
+
+### Show.vue — Detalle de solicitud:
+Grids de datos del solicitante:
+```vue
+<!-- ANTES -->
+<div class="p-5 grid grid-cols-2 gap-4 text-sm">
+<!-- DESPUÉS -->
+<div class="p-5 grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
+```
+Botones de acción (Aprobar/Rechazar) en mobile deben ser full-width y apilados:
+```vue
+<div class="flex flex-col sm:flex-row gap-3 mt-6">
+  <button class="w-full sm:w-auto ...">Aprobar</button>
+  <button class="w-full sm:w-auto ...">Rechazar</button>
+</div>
+```
+
+### Analisis.vue — Análisis crediticio con tabla de puntaje:
+La tabla de puntaje debe tener overflow-x-auto:
+```vue
+<div class="overflow-x-auto">
+  <table class="w-full min-w-[500px] ...">
+```
+Los inputs numéricos de puntaje deben ser accesibles en touch (min 44px de alto):
+```vue
+<input type="number" class="w-16 h-11 text-center rounded-lg border ...">
+```
+
+## ─────────────────────────────────────────────────────────────────
+## MÓDULO 5: CARTERA DE CRÉDITOS (Acreditados)
+## Archivo: resources/js/Pages/Acreditados/Index.vue
+## Archivo: resources/js/Pages/Acreditados/Expediente.vue
+## Archivo: resources/js/Pages/Acreditados/Show.vue
+## ─────────────────────────────────────────────────────────────────
+
+### Index.vue — Tabla de cartera:
+```vue
+<div class="overflow-x-auto">
+  <table class="w-full min-w-[700px] ...">
+```
+Barra de búsqueda + filtros: `flex flex-col sm:flex-row gap-3`
+
+### Expediente.vue — Datos del acreditado:
+```vue
+<!-- ANTES -->
+<div class="grid grid-cols-2 gap-x-6 gap-y-4 text-sm">
+<!-- DESPUÉS -->
+<div class="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-4 text-sm">
+```
+
+## ─────────────────────────────────────────────────────────────────
+## MÓDULO 6: PAGOS / CAJA
+## Archivo: resources/js/Pages/Pagos/Index.vue
+## Archivo: resources/js/Pages/Pagos/Recibo.vue
+## ─────────────────────────────────────────────────────────────────
+
+### Index.vue — Registro de pago:
+El layout es de 2 columnas (cuotas | formulario de pago). En mobile debe apilarse:
+Buscar el contenedor principal y agregar:
+```vue
+<!-- ANTES (probablemente flex o grid-cols-2) -->
+<div class="grid grid-cols-2 gap-6">
+<!-- DESPUÉS -->
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+```
+La tabla de cuotas pendientes necesita overflow-x-auto:
+```vue
+<div class="overflow-x-auto">
+  <table class="w-full min-w-[480px] ...">
+```
+La sección de simulación (resumen mora/ordinario/capital) ya usa `grid-cols-3 gap-3` —
+en mobile de 375px puede funcionar si los valores son cortos. Agregar `text-xs` en mobile:
+```vue
+<div class="grid grid-cols-3 gap-2 sm:gap-3">
+```
+
+### Recibo.vue — Pantalla de recibo:
+El grid de distribución (Mora | Ordinario | Capital) ya tiene `grid grid-cols-3 gap-3` ✓
+Verificar padding lateral del max-w-2xl:
+```vue
+<div class="max-w-2xl mx-auto py-6 sm:py-8 px-3 sm:px-4">
+```
+
+## ─────────────────────────────────────────────────────────────────
+## MÓDULO 7: COBRANZA
+## Archivo: resources/js/Pages/Cobranza/Index.vue
+## Archivo: resources/js/Pages/Cobranza/Show.vue
+## ─────────────────────────────────────────────────────────────────
+
+### Show.vue — Detalle de cobranza:
+Múltiples `grid grid-cols-2 gap-4` → todos a `grid grid-cols-1 sm:grid-cols-2 gap-4`
+```vue
+<!-- Líneas 183, 208, 242, 254, 341 aproximadamente -->
+<div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+```
+
+## ─────────────────────────────────────────────────────────────────
+## MÓDULO 8: OPERACIONES (Historial de movimientos)
+## Archivo: resources/js/Pages/Operaciones/Index.vue
+## ─────────────────────────────────────────────────────────────────
+
+El mini-grid de totales usa `grid-cols-3 gap-3` (línea ~208):
+```vue
+<div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4 mt-3">
+```
+La tabla de movimientos: overflow-x-auto + min-w:
+```vue
+<div class="overflow-x-auto">
+  <table class="w-full min-w-[600px] ...">
+```
+
+## ─────────────────────────────────────────────────────────────────
+## MÓDULO 9: REPORTES
+## Archivo: resources/js/Pages/Reportes/Cartera.vue
+## ─────────────────────────────────────────────────────────────────
+
+```vue
+<!-- KPIs: ANTES -->
+<div class="grid grid-cols-3 gap-3 mb-6">
+<!-- DESPUÉS -->
+<div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6">
+```
+Las tablas de reporte: overflow-x-auto en todas.
+
+## ─────────────────────────────────────────────────────────────────
+## MÓDULO 10: COMPROBACIONES DE USO
+## Archivo: resources/js/Pages/Comprobaciones/Index.vue
+## Archivo: resources/js/Pages/Comprobaciones/Show.vue
+## ─────────────────────────────────────────────────────────────────
+(Módulo nuevo — construirlo mobile-first desde el inicio)
+
+### Index.vue — Lista de comprobaciones:
+```vue
+<div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6">  <!-- KPIs semáforo -->
+<div class="overflow-x-auto">
+  <table class="w-full min-w-[600px] text-sm">
+    <!-- Columnas: Acreditado | Modalidad | Desembolso | Límite | Días | Estatus | Acción -->
+  </table>
+</div>
+```
+En mobile, considerar mostrar las filas como "cards" en lugar de tabla (ver patrón en MÓDULO PORTAL).
+
+### Show.vue — Detalle de comprobación:
+Los documentos subidos deben mostrarse en grid responsive:
+```vue
+<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+  <!-- Card por comprobante: icono tipo, descripción, monto, proveedor, link descarga -->
+</div>
+```
+
+## ─────────────────────────────────────────────────────────────────
+## MÓDULO 11: PORTAL CIUDADANO — PÁGINAS
+## Archivos: resources/js/Pages/portal/*.vue
+## ─────────────────────────────────────────────────────────────────
+
+### portal/Dashboard.vue:
+Los anuncios/notificaciones ya deben verse bien (son cards apiladas). Verificar:
+- El botón de CTA (Solicitar Crédito) debe ser `w-full` en mobile.
+- El estado de la solicitud (badge + descripción) OK en mobile si usa clases correctas.
+
+### portal/MiCredito.vue:
+CRÍTICO — tiene 2 tablas y varios grids.
+
+Grid de datos del crédito (línea ~273):
+```vue
+<!-- ANTES -->
+<div class="grid grid-cols-3 gap-4 mb-4">
+<!-- DESPUÉS -->
+<div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
+```
+
+Tabla de amortización (línea ~504):
+```vue
+<div class="overflow-x-auto -mx-4 sm:mx-0">
+  <table class="w-full min-w-[560px] text-left border-collapse text-sm">
+    <!-- Columnas: # | Vence | Capital | Interés | Total | Pagado | Estado -->
+  </table>
+</div>
+```
+El `-mx-4 sm:mx-0` permite que la tabla use el ancho completo del viewport en mobile.
+
+Tabla de pagos (línea ~551):
+```vue
+<div class="overflow-x-auto -mx-4 sm:mx-0">
+  <table class="w-full min-w-[420px] ...">
+```
+
+Datos bancarios de pago (CIE, CLABE) — ya deben ser legibles en mobile.
+Verificar que el CLABE (18 dígitos) no se corte:
+```vue
+<p class="font-mono text-sm sm:text-base break-all">012914002017765339</p>
+```
+
+### portal/WizardCredito.vue:
+CRÍTICO — es el formulario más complejo del sistema.
+
+**Barra de pasos (step indicator):**
+En mobile el wizard tiene muchos pasos (8-9). Mostrar solo el paso actual + dots:
+```vue
+<!-- En mobile: "Paso 3 de 9 — Datos del Negocio" + barra de progreso -->
+<div class="sm:hidden mb-6">
+  <div class="flex items-center justify-between mb-2">
+    <span class="text-xs font-bold text-slate-500">Paso {{ pasoActual }} de {{ totalPasos }}</span>
+    <span class="text-xs font-bold text-[#6B1938]">{{ tituloPasoActual }}</span>
+  </div>
+  <div class="w-full h-1.5 bg-slate-200 rounded-full">
+    <div class="h-1.5 bg-[#6B1938] rounded-full transition-all" :style="{ width: (pasoActual/totalPasos*100)+'%' }"></div>
+  </div>
+</div>
+<!-- En desktop: indicador de pasos actual (numbers/circles) -->
+<div class="hidden sm:flex ...">
+  <!-- step circles existentes -->
+</div>
+```
+
+**Grids de inputs dentro del wizard:**
+```vue
+<!-- Todas las líneas con grid-cols-2 o grid-cols-3 sin prefijo: -->
+<!-- ANTES: -->
+<div class="grid grid-cols-2 gap-2">
+<div class="grid grid-cols-3 gap-2 mt-1">
+<!-- DESPUÉS: -->
+<div class="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
+<div class="grid grid-cols-1 sm:grid-cols-3 gap-2 mt-1">
+```
+
+**Tablas dentro del wizard (proveedores, clientes, ingresos):**
+```vue
+<div class="overflow-x-auto -mx-4 sm:mx-0 mb-4">
+  <table class="w-full min-w-[480px] text-xs sm:text-sm">
+```
+Los botones "Agregar fila" deben ser `w-full` en mobile:
+```vue
+<button class="w-full sm:w-auto ...">+ Agregar proveedor</button>
+```
+
+**Botones de navegación del wizard (Anterior / Siguiente):**
+```vue
+<div class="flex flex-col-reverse sm:flex-row gap-3 justify-between mt-8 pt-6 border-t">
+  <button class="w-full sm:w-auto ...">← Anterior</button>
+  <button class="w-full sm:w-auto ...">Siguiente →</button>
+</div>
+```
+
+**Carga de documentos (paso de documentos):**
+Cada slot de documento en mobile debe ser una tarjeta clara:
+```vue
+<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+  <!-- Card de documento: nombre, estado, botón upload -->
+</div>
+```
+El área de drop/upload debe tener `min-h-[120px]` y touch-friendly.
+
+### portal/Solicitud.vue:
+Grid de resumen de solicitud:
+```vue
+<!-- ANTES -->
+<div class="grid grid-cols-2 gap-4 text-sm">
+<!-- DESPUÉS -->
+<div class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
+```
+
+### portal/Expediente.vue:
+Similar al Acreditados/Expediente.vue — verificar mismos patrones.
+
+## ─────────────────────────────────────────────────────────────────
+## MÓDULO 12: AUDITORIA
+## Archivo: resources/js/Pages/Auditoria/Index.vue
+## ─────────────────────────────────────────────────────────────────
+
+```vue
+<!-- ANTES -->
+<div class="grid grid-cols-2 gap-3 mb-5">
+<!-- DESPUÉS -->
+<div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-5">
+```
+Tabla de auditoría: overflow-x-auto + min-w-[700px].
+
+## ─────────────────────────────────────────────────────────────────
+## MÓDULO 13: SIMULADOR
+## Archivo: resources/js/Pages/Simulador/Index.vue
+## ─────────────────────────────────────────────────────────────────
+
+El formulario de simulación y la tabla de resultados:
+```vue
+<div class="overflow-x-auto">
+  <table class="w-full min-w-[500px] text-sm">
+```
+Los inputs del simulador en mobile deben ser full-width apilados.
+
+## ─────────────────────────────────────────────────────────────────
+## MÓDULO 14: CRÉDITOS (Desembolso, Reestructuración, etc.)
+## Archivos: resources/js/Pages/Creditos/*.vue
+## ─────────────────────────────────────────────────────────────────
+
+En general: todos los formularios de registro (Desembolso.vue, RegistrarCredito.vue, etc.)
+- Inputs: `grid-cols-1 sm:grid-cols-2 gap-4`
+- Botones: `w-full sm:w-auto`
+- Tablas de amortización preview: overflow-x-auto + min-w-[500px]
+
+## ─────────────────────────────────────────────────────────────────
+## MÓDULO 15: AUTH PAGES
+## Archivos: resources/js/Pages/auth/*.vue
+## resources/js/layouts/auth/*.vue
+## ─────────────────────────────────────────────────────────────────
+
+Las páginas de login ya usan AuthSplitLayout (imagen + form). En mobile:
+- Ocultar la imagen: `hidden lg:block`
+- El form ocupa 100% de ancho: `w-full`
+Si AuthSplitLayout usa `grid-cols-2`: cambiar a `grid-cols-1 lg:grid-cols-2`
+
+## ─────────────────────────────────────────────────────────────────
+## MÓDULO 16: WELCOME PAGE
+## Archivo: resources/js/Pages/Welcome.vue
+## ─────────────────────────────────────────────────────────────────
+
+```vue
+<!-- ANTES -->
+<div class="grid grid-cols-3 gap-2">
+<div class="grid grid-cols-2 gap-4 pt-5">
+<!-- DESPUÉS -->
+<div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
+<div class="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-5">
+```
+
+## ─────────────────────────────────────────────────────────────────
+## PATRÓN: TABLA → CARDS EN MOBILE (para tablas de más de 5 columnas)
+## ─────────────────────────────────────────────────────────────────
+
+Para tablas con muchas columnas que son difíciles de leer en mobile aunque hagan scroll,
+usar el patrón de "card list" en mobile:
+
+```vue
+<!-- Tabla solo en sm+ -->
+<div class="hidden sm:block overflow-x-auto">
+  <table class="w-full min-w-[600px] ...">
+    ...
+  </table>
+</div>
+
+<!-- Cards en mobile -->
+<div class="sm:hidden space-y-3">
+  <div v-for="item in items" :key="item.id"
+    class="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-100 dark:border-zinc-800 p-4">
+    <div class="flex items-center justify-between mb-2">
+      <p class="font-bold text-sm">{{ item.nombre }}</p>
+      <span class="badge ...">{{ item.estatus }}</span>
+    </div>
+    <div class="grid grid-cols-2 gap-2 text-xs text-zinc-500">
+      <div><span class="font-medium">Monto:</span> {{ fmt(item.monto) }}</div>
+      <div><span class="font-medium">Modalidad:</span> {{ item.modalidad }}</div>
+      <div><span class="font-medium">Municipio:</span> {{ item.municipio }}</div>
+      <div><span class="font-medium">Fecha:</span> {{ item.fecha }}</div>
+    </div>
+    <div class="mt-3 flex gap-2">
+      <Link :href="route('...', item.id)" class="flex-1 text-center py-2 bg-slate-100 dark:bg-zinc-800 rounded-xl text-xs font-bold">
+        Ver detalle
+      </Link>
+    </div>
+  </div>
+</div>
+```
+
+**Aplicar este patrón cards/tabla en:**
+- Solicitudes/Index.vue → cards en mobile
+- Acreditados/Index.vue → cards en mobile
+- Cobranza/Index.vue → cards en mobile
+- Comprobaciones/Index.vue → cards en mobile (construir mobile-first)
+
+## ─────────────────────────────────────────────────────────────────
+## PATRÓN: TOUCH TARGETS
+## ─────────────────────────────────────────────────────────────────
+
+Todos los botones clickeables en mobile deben tener al menos 44×44px de área táctil:
+- Botones de acción: `py-3 px-4` mínimo
+- Links de navegación en portal: `py-3` mínimo
+- Filas de tabla clicables: `py-3` en las celdas
+- Inputs: `h-11` (44px) mínimo
+- Checkboxes/radios: usar `cursor-pointer` con `label` que envuelva el input
+
+## ─────────────────────────────────────────────────────────────────
+## PATRÓN: MODALES Y DROPDOWNS
+## ─────────────────────────────────────────────────────────────────
+
+Cualquier modal/dialog en mobile debe ser full-screen o bottom sheet:
+```vue
+<div class="fixed inset-0 sm:inset-auto sm:relative z-50 flex items-end sm:items-center justify-center">
+  <div class="w-full sm:max-w-lg bg-white dark:bg-zinc-900 rounded-t-3xl sm:rounded-3xl p-6">
+    ...
+  </div>
+</div>
+```
+
+## ─────────────────────────────────────────────────────────────────
+## LISTA DE CAMBIOS POR ARCHIVO (referencia rápida)
+## ─────────────────────────────────────────────────────────────────
+
+| Archivo | Cambios principales |
+|---------|-------------------|
+| layouts/BeneficiarioLayout.vue | Bell dropdown ancho, overlay cierre, mobile nav |
+| components/AppSidebarHeader.vue | Notif panel ancho, breadcrumb truncado |
+| components/AppShell.vue | defaultOpen false en mobile |
+| Pages/Dashboard.vue | grid-cols-12→1 lg:12, grid-cols-3→1 sm:3, gráficas h-48 sm:h-64 |
+| Pages/Solicitudes/Index.vue | KPI grid-cols-2 sm:3 lg:6, tabla overflow+min-w, cards mobile, filtros flex-col sm:row |
+| Pages/Solicitudes/Show.vue | grid-cols-1 sm:2, botones full-width mobile |
+| Pages/Solicitudes/Analisis.vue | tabla overflow, inputs h-11 |
+| Pages/Acreditados/Index.vue | tabla overflow+min-w, cards mobile |
+| Pages/Acreditados/Expediente.vue | grid-cols-1 sm:2 |
+| Pages/Pagos/Index.vue | layout 1 col → lg:2 col, tabla overflow |
+| Pages/Pagos/Recibo.vue | py-6 sm:8, px-3 sm:4 |
+| Pages/Cobranza/Show.vue | todos grid-cols-2 → 1 sm:2 |
+| Pages/Operaciones/Index.vue | grid-cols-3→1 sm:3, tabla overflow |
+| Pages/Reportes/Cartera.vue | grid-cols-3→1 sm:3, todas tablas overflow |
+| Pages/Comprobaciones/Index.vue | construir mobile-first con cards |
+| Pages/Comprobaciones/Show.vue | grid docs 1→sm:2→lg:3 |
+| Pages/Auditoria/Index.vue | grid-cols-2→1 sm:2, tabla overflow |
+| Pages/portal/Dashboard.vue | botones w-full en mobile |
+| Pages/portal/MiCredito.vue | grid-cols-3→1 sm:3, tablas overflow -mx-4 sm:0 |
+| Pages/portal/WizardCredito.vue | step indicator mobile, todos grids 1 sm:N, tablas overflow, botones full-width |
+| Pages/portal/Solicitud.vue | grid-cols-2→1 sm:2 |
+| Pages/Creditos/*.vue | forms 1 sm:2, tablas overflow |
+| Pages/auth/*.vue | AuthSplitLayout 1 lg:2 |
+| Pages/Welcome.vue | todos grids → 1 sm:N |
+
+## ─────────────────────────────────────────────────────────────────
+## VERIFICACIÓN FINAL
+## ─────────────────────────────────────────────────────────────────
+
+Después de todos los cambios, probar con DevTools (F12 → dispositivo móvil):
+
+1. iPhone SE (375×667) — el más estrecho
+2. iPhone 14 Pro (393×852)
+3. iPad (768×1024)
+4. iPad Pro (1024×1366)
+
+Checklist de prueba:
+- [ ] Login → se ve centrado y legible
+- [ ] Portal Dashboard → botones accesibles, estatus visible
+- [ ] Wizard paso 1-9 → inputs apilados, navegación funcionando, step indicator
+- [ ] Carga de documentos en wizard → área de upload touch-friendly
+- [ ] Mi Crédito → tabla de amortización scrolleable horizontalmente
+- [ ] Panel Operativo → sidebar se abre como drawer (hamburger)
+- [ ] Solicitudes → cards en mobile visibles y clicables
+- [ ] Registro de pago → formulario apilado, cuotas scrolleables
+- [ ] Recibo de pago → legible en 375px
+
+## CONVENCIONES DE CÓDIGO
+- No usar `@apply` en Vue (usar clases directamente en template)
+- Preferir breakpoints Tailwind a media queries CSS custom
+- Siempre probar con `npm run dev` y hot reload antes de dar por terminado
+- No romper el layout desktop existente (≥1024px)
+- El dark mode ya funciona — mantener todas las variantes `dark:` en los cambios

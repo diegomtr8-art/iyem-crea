@@ -4,7 +4,7 @@ import NavMain from '@/components/NavMain.vue';
 import NavUser from '@/components/NavUser.vue';
 import { Sidebar, SidebarContent, SidebarFooter, SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem } from '@/components/ui/sidebar';
 import { Link, usePage } from '@inertiajs/vue3';
-import { LayoutGrid, ShieldCheck, Users, UserPlus, ClipboardList, BarChart2, FileText, Calculator, Receipt, Inbox, TrendingDown, Scale, ScrollText, Wallet, Building2 } from 'lucide-vue-next';
+import { LayoutGrid, ShieldCheck, Users, ClipboardList, BarChart2, FileText, Calculator, Inbox, TrendingDown, ScrollText, ClipboardCheck } from 'lucide-vue-next';
 import AppLogo from './AppLogo.vue';
 import { computed, watch, onMounted, ref } from 'vue';
 
@@ -48,30 +48,46 @@ const can = (permission: string) => {
 
 // --- NAVEGACIÓN DINÁMICA ---
 const mainNavItems = computed(() => {
-    const items = [
-        { title: 'Dashboard', url: '/dashboard', icon: LayoutGrid },
+    const items: { title: string; url: string; icon: any; group: string; badge?: number }[] = [
+        { title: 'Dashboard', url: '/dashboard', icon: LayoutGrid, group: 'Inicio' },
     ];
 
-    // Sección: Interesados (Prospectos)
-    if (can('ver.interesados')) {
-        items.push({ 
-            title: 'Interesados CREA', 
-            url: route('interesados.index'), 
-            icon: Users 
-        });
-        items.push({ 
-            title: 'Captar Interesado', 
-            url: route('interesados.create'), 
-            icon: UserPlus 
+    // Sección: Solicitudes ciudadanas
+    if (can('ver.acreditados')) {
+        items.push({
+            title: 'Solicitudes CREA',
+            url: route('solicitudes.index'),
+            icon: Inbox,
+            group: 'Solicitudes',
         });
     }
 
-    // Sección: Acreditados (Operación)
+    // Sección: Créditos
     if (can('ver.acreditados')) {
-        items.push({ 
-            title: 'Acreditados CREA', 
-            url: route('acreditados.index'), 
-            icon: ClipboardList 
+        items.push({
+            title: 'Cartera de Créditos',
+            url: route('acreditados.index'),
+            icon: ClipboardList,
+            group: 'Créditos',
+        });
+    }
+    if (can('ver.acreditados') && route().has('comprobaciones.index')) {
+        items.push({
+            title: 'Comprobación de Uso',
+            url: route('comprobaciones.index'),
+            icon: ClipboardCheck,
+            group: 'Créditos',
+            badge: page.props.comprobaciones_pendientes as number | undefined,
+        });
+    }
+
+    // Sección: Operación
+    if (can('ver.acreditados')) {
+        items.push({
+            title: 'Cobranza',
+            url: route('cobranza.index'),
+            icon: TrendingDown,
+            group: 'Operación',
         });
     }
 
@@ -81,70 +97,36 @@ const mainNavItems = computed(() => {
             title: 'Reporte Cartera',
             url: route('reportes.cartera'),
             icon: BarChart2,
+            group: 'Reportes',
         });
         items.push({
             title: 'Reporte Pagos',
             url: route('reportes.pagos'),
             icon: FileText,
+            group: 'Reportes',
         });
     }
-
     if (can('ver.simulador')) {
         items.push({
             title: 'Simulador',
             url: route('simulador.index'),
             icon: Calculator,
+            group: 'Reportes',
         });
     }
 
-    // Sección: Solicitudes ciudadanas
-    if (can('ver.acreditados')) {
-        items.push({
-            title: 'Solicitudes CREA',
-            url: route('solicitudes.index'),
-            icon: Inbox,
-        });
-    }
-
-    // Sección: Cobranza
-    if (can('ver.acreditados')) {
-        items.push({
-            title: 'Cobranza',
-            url: route('cobranza.index'),
-            icon: TrendingDown,
-        });
-        items.push({
-            title: 'Cobranza Jurídica',
-            url: route('juridico.index'),
-            icon: Scale,
-        });
-    }
-
-    // Sección: Presupuesto y Finanzas
-    if (can('ver.reportes')) {
-        items.push({
-            title: 'Presupuesto',
-            url: route('presupuesto.index'),
-            icon: Wallet,
-        });
-    }
-
-    // Sección: Auditoría
+    // Sección: Sistema (Solo Admin)
     if (can('ver.usuarios')) {
         items.push({
             title: 'Bitácora Auditoría',
             url: route('auditoria.index'),
             icon: ScrollText,
+            group: 'Sistema',
         });
+        items.push({ title: 'Usuarios', url: '/users', icon: Users, group: 'Sistema' });
     }
-
-    // Sección: Configuración (Solo Admin)
-    if (can('ver.usuarios')) {
-        items.push({ title: 'Usuarios', url: '/users', icon: Users });
-    }
-
     if (can('ver.roles')) {
-        items.push({ title: 'Roles y Permisos', url: '/roles', icon: ShieldCheck });
+        items.push({ title: 'Roles y Permisos', url: '/roles', icon: ShieldCheck, group: 'Sistema' });
     }
 
     return items;

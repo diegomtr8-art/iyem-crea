@@ -32,6 +32,7 @@ class SolicitudCredito extends Model
         'plazo_meses',
         'tipo_garantia',
         'alta_sat',
+        'es_emprendimiento',
         'estatus',
         'observaciones',
         'asignado_a',
@@ -49,6 +50,7 @@ class SolicitudCredito extends Model
         'mayahablante'      => 'boolean',
         'discapacidad'      => 'boolean',
         'alta_sat'          => 'boolean',
+        'es_emprendimiento' => 'boolean',
         'monto_solicitado'  => 'decimal:2',
         'datos_wizard'      => 'array',
     ];

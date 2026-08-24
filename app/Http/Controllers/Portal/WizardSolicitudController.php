@@ -3,28 +3,53 @@
 namespace App\Http\Controllers\Portal;
 
 use App\Http\Controllers\Controller;
+use Illuminate\Support\Facades\Schema;
+use App\Models\Acreditado;
+use App\Models\AnuncioCiudadano;
 use App\Models\AvalSolicitud;
 use App\Models\DocumentoSolicitud;
 use App\Models\ModalidadCrea;
 use App\Models\SolicitudCredito;
+use App\Services\FormatosService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
-use ZipArchive;
 
 class WizardSolicitudController extends Controller
 {
+    public const MUNICIPIOS_YUCATAN = [
+        'Abalá','Acanceh','Akil','Baca','Bokobá','Buctzotz','Cacalchén','Calotmul',
+        'Cansahcab','Cantamayec','Celestún','Cenotillo','Chacsinkín','Chankom',
+        'Chapab','Chemax','Chichimilá','Chicxulub Pueblo','Chikindzonot','Chocholá',
+        'Chumayel','Conkal','Cuncunul','Cuzamá','Dzán','Dzemul','Dzidzantún',
+        'Dzilam de Bravo','Dzilam González','Dzitás','Dzoncauich','Espita',
+        'Halachó','Hocabá','Hoctún','Homún','Huhí','Hunucmá','Ixil','Izamal',
+        'Kanasín','Kantunil','Kaua','Kinchil','Kopomá','Mama','Maní','Maxcanú',
+        'Mayapán','Mérida','Mocochá','Motul','Muna','Muxupip','Opichén','Oxkutzcab',
+        'Panabá','Peto','Progreso','Quintana Roo','Río Lagartos','Sacalum','Samahil',
+        'San Felipe','Sanahcat','Santa Elena','Seyé','Sinanché','Sotuta','Sucilá',
+        'Sudzal','Suma','Tahdziú','Tahmek','Teabo','Tecoh','Tekal de Venegas',
+        'Tekantó','Tekax','Tekit','Tekom','Telchac Pueblo','Telchac Puerto','Temax',
+        'Temozón','Tepakán','Tetiz','Teya','Ticul','Timucuy','Tinum','Tixcacalcupul',
+        'Tixkokob','Tixmehuac','Tixpéhual','Tizimín','Tunkás','Tzucacab','Uayma',
+        'Ucú','Umán','Valladolid','Xocchel','Yaxcabá','Yaxkukul','Yobaín',
+    ];
+
     // ─── Página principal del wizard ─────────────────────────────────────────
 
     public function index(): Response
     {
         $user = auth()->user();
         $solicitud = $user->solicitudCredito()->with(['modalidad', 'aval', 'documentos'])->first();
-        $modalidades = ModalidadCrea::where('activo', true)->get(['id', 'nombre', 'tasa_interes', 'monto_minimo', 'monto_maximo', 'plazo_min_meses', 'plazo_max_meses', 'documentos_requeridos']);
+        $modalidades = ModalidadCrea::where('activo', true)
+            ->orderByRaw("FIELD(nombre, 'Artesanal', 'Emprendedores', 'Sustentable')")
+            ->get(['id', 'nombre', 'tasa_interes', 'monto_minimo', 'monto_maximo', 'plazo_min_meses', 'plazo_max_meses', 'documentos_requeridos']);
 
         // Serializar datos del aval si existe
         $avalDatos = null;
@@ -44,12 +69,27 @@ class WizardSolicitudController extends Controller
             ])->keyBy('tipo_documento');
         }
 
+        // Documentos post-aprobación ya subidos
+        $documentosPostAprobacion = null;
+        if ($solicitud && $solicitud->estatus === 'Aprobada') {
+            $documentosPostAprobacion = $solicitud->documentos()
+                ->whereIn('tipo_documento', array_keys(DocumentoSolicitud::tiposPostAprobacion()))
+                ->get()
+                ->map(fn($d) => [
+                    'tipo_documento'  => $d->tipo_documento,
+                    'nombre_original' => $d->nombre_original,
+                    'estatus'         => $d->estatus,
+                ])->keyBy('tipo_documento');
+        }
+
         return Inertia::render('portal/WizardCredito', [
             'solicitud'  => $solicitud ? array_merge($solicitud->toArray(), [
                 'documentos' => $documentosSubidos,
                 'aval'       => $avalDatos,
             ]) : null,
             'modalidades' => $modalidades,
+            'tipos_documentos_post_aprobacion' => DocumentoSolicitud::tiposPostAprobacion(),
+            'documentos_post_aprobacion'       => $documentosPostAprobacion,
         ]);
     }
 
@@ -74,8 +114,13 @@ class WizardSolicitudController extends Controller
             ]);
         }
 
+        // Renovación: ¿ya tuvo un crédito CREA previo totalmente liquidado?
+        $esRenovacion = Acreditado::where('curp', $curp)
+            ->whereHas('creditos', fn($q) => $q->where('estatus', 'Liquidado'))
+            ->exists();
+
         // Si el propio usuario ya tiene solicitud con esta CURP, permitir continuar
-        return response()->json(['bloqueado' => false]);
+        return response()->json(['bloqueado' => false, 'renovacion' => $esRenovacion]);
     }
 
     // ─── Guardar paso del wizard ──────────────────────────────────────────────
@@ -100,10 +145,23 @@ class WizardSolicitudController extends Controller
 
         $paso = $request->input('paso');
         $datos = $request->input('datos', []);
+        // 'envio' (default): validación estricta antes de generar los formatos.
+        // 'borrador': solo se validan formatos/tipos, no la obligatoriedad, para
+        // permitir guardar el progreso con campos aún incompletos.
+        $modo = $request->input('modo', 'borrador');
+        // Guard: si modo llega como objeto (bug click event Vue), normalizar a 'borrador'
+        if (!is_string($modo) || !in_array($modo, ['borrador', 'envio'])) {
+            $modo = 'borrador';
+        }
 
         // Actualizar wizard_datos en función del paso
         $wizard = $solicitud->datos_wizard ?? [];
         $wizard['paso_completado'] = max($wizard['paso_completado'] ?? 0, $paso);
+
+        file_put_contents(storage_path('logs/debug_aval.txt'),
+            date('Y-m-d H:i:s') . " PASO=$paso MODO=$modo TIPO_GARANTIA=" . ($solicitud->tipo_garantia ?? 'NULL') . "\n",
+            FILE_APPEND
+        );
 
         switch ($paso) {
             case 1: // Tipo crédito, persona, garantía
@@ -120,22 +178,25 @@ class WizardSolicitudController extends Controller
                 break;
 
             case 2: // Datos personales básicos + extendidos
-                $request->validate([
+                $request->validate($this->suavizarReglas([
                     'datos.nombre_completo'  => 'required|string|max:255',
-                    'datos.curp'             => 'required|string|size:18',
-                    'datos.fecha_nacimiento' => 'required|date|before:today',
+                    'datos.curp'             => ['required', 'string', 'size:18', 'regex:/^[A-Z]{4}\d{6}[HM](AS|BC|BS|CC|CS|CH|DF|DG|GT|GR|HG|JC|MC|MN|MS|NT|NL|OC|PL|QT|QR|SP|SL|SR|TC|TS|TL|VZ|YN|ZS|NE)[B-DF-HJ-NP-TV-Z]{3}[A-Z\d]\d$/'],
+                    'datos.fecha_nacimiento' => 'required|date|before:' . now()->subYears(18)->format('Y-m-d'),
                     'datos.sexo'             => 'required|in:M,F',
-                    'datos.municipio'        => 'required|string|max:255',
+                    'datos.municipio'        => ['required', 'string', Rule::in(self::MUNICIPIOS_YUCATAN)],
                     'datos.direccion'        => 'required|string|max:1000',
-                    'datos.telefono'         => 'required|string|max:20',
-                    'datos.correo'           => 'required|email|max:255',
+                    'datos.telefono'         => 'required|digits:10',
+                    'datos.correo'           => 'required|email:rfc|max:255',
+                ], $modo), [
+                    'datos.fecha_nacimiento.before' => 'Debes ser mayor de edad (18 años) para solicitar un crédito.',
+                    'datos.telefono.digits'         => 'El teléfono celular debe tener 10 dígitos.',
                 ]);
                 $solicitud->update([
                     'nombre_completo' => $datos['nombre_completo'],
                     'curp'            => strtoupper(trim($datos['curp'])),
                     'rfc'             => $datos['rfc'] ?? null,
-                    'fecha_nacimiento'=> $datos['fecha_nacimiento'],
-                    'sexo'            => $datos['sexo'],
+                    'fecha_nacimiento'=> $datos['fecha_nacimiento'] ?: null,
+                    'sexo'            => $datos['sexo'] ?: null,
                     'mayahablante'    => (bool)($datos['mayahablante'] ?? false),
                     'discapacidad'    => (bool)($datos['discapacidad'] ?? false),
                     'municipio'       => $datos['municipio'],
@@ -163,6 +224,17 @@ class WizardSolicitudController extends Controller
                     'referencia_telefono' => $datos['referencia_telefono'] ?? '',
                     'referencia_cp'       => $datos['referencia_cp'] ?? '',
                 ];
+
+                if (!empty($datos['rfc']) && strlen($datos['rfc']) >= 4 && strlen($datos['curp']) >= 4) {
+                    if (strtoupper(substr($datos['rfc'], 0, 4)) !== strtoupper(substr($datos['curp'], 0, 4))) {
+                        \Log::warning("CURP/RFC mismatch: solicitud={$solicitud->id} RFC={$datos['rfc']} CURP={$datos['curp']}");
+                    }
+                }
+
+                // Renovación: beneficiario con un crédito CREA previo ya liquidado
+                $wizard['es_renovacion'] = Acreditado::where('curp', strtoupper(trim($datos['curp'])))
+                    ->whereHas('creditos', fn($q) => $q->where('estatus', 'Liquidado'))
+                    ->exists();
                 break;
 
             case 3: // Persona moral (condicional)
@@ -184,14 +256,32 @@ class WizardSolicitudController extends Controller
                 break;
 
             case 4: // Datos del negocio extendidos
-                $request->validate([
+                $request->validate($this->suavizarReglas([
                     'datos.nombre_comercial' => 'required|string|max:255',
                     'datos.giro_comercial'   => 'required|string|max:255',
-                ]);
+                ], $modo));
+
+                $modalidadActual = ModalidadCrea::find($solicitud->modalidad_id);
+                if (!empty($datos['giro_comercial'])) {
+                    $giroProhibido = $this->girosProhibidos($modalidadActual?->nombre, $datos['giro_comercial']);
+                    if ($giroProhibido) {
+                        throw ValidationException::withMessages([
+                            'datos.giro_comercial' => "El giro del negocio no es elegible para esta modalidad CREA ({$giroProhibido}).",
+                        ]);
+                    }
+                }
+
+                if ($modalidadActual && str_contains(strtolower($modalidadActual->nombre), 'sustentable')) {
+                    $request->validate($this->suavizarReglas([
+                        'datos.antiguedad_sat_anios' => 'required|integer|min:1',
+                    ], $modo));
+                }
+
                 $solicitud->update([
                     'giro_comercial'     => $datos['giro_comercial'],
                     'descripcion_negocio'=> $datos['descripcion_negocio'] ?? '',
                     'alta_sat'           => (bool)($datos['alta_sat'] ?? false),
+                    'es_emprendimiento'  => (bool)($datos['es_emprendimiento'] ?? false),
                 ]);
                 $wizard['datos_negocio_ext'] = [
                     'nombre_comercial'      => $datos['nombre_comercial'] ?? '',
@@ -204,6 +294,8 @@ class WizardSolicitudController extends Controller
                     'proceso_operacion'     => $datos['proceso_operacion'] ?? '',
                     'mobiliario'            => $datos['mobiliario'] ?? '',
                     'recursos_humanos'      => $datos['recursos_humanos'] ?? '',
+                    'es_emprendimiento'     => (bool)($datos['es_emprendimiento'] ?? false),
+                    'antiguedad_sat_anios'  => $datos['antiguedad_sat_anios'] ?? null,
                 ];
                 break;
 
@@ -213,14 +305,17 @@ class WizardSolicitudController extends Controller
                 $montoMax = $modalidad ? (float)$modalidad->monto_maximo : 1000000;
                 $plazosValidos = $this->plazosPermitidos($modalidad?->nombre);
 
-                $request->validate([
+                $request->validate($this->suavizarReglas([
                     'datos.monto_solicitado' => "required|numeric|min:{$montoMin}|max:{$montoMax}",
                     'datos.plazo_meses'      => 'required|in:' . implode(',', $plazosValidos),
+                ], $modo), [
+                    'datos.monto_solicitado.min' => 'El monto mínimo para ' . ($modalidad?->nombre ?? 'esta modalidad') . ' es ' . number_format($montoMin, 0, '.', ',') . ' MXN.',
+                    'datos.monto_solicitado.max' => 'El monto máximo para ' . ($modalidad?->nombre ?? 'esta modalidad') . ' es ' . number_format($montoMax, 0, '.', ',') . ' MXN.',
                 ]);
 
                 $solicitud->update([
-                    'monto_solicitado' => $datos['monto_solicitado'],
-                    'plazo_meses'      => (int)$datos['plazo_meses'],
+                    'monto_solicitado' => $datos['monto_solicitado'] !== '' && $datos['monto_solicitado'] !== null ? $datos['monto_solicitado'] : null,
+                    'plazo_meses'      => $datos['plazo_meses'] !== '' && $datos['plazo_meses'] !== null ? (int)$datos['plazo_meses'] : null,
                     'destino_credito'  => $datos['destino_credito'] ?? '',
                 ]);
 
@@ -238,26 +333,80 @@ class WizardSolicitudController extends Controller
                 break;
 
             case 7: // Ingresos y egresos
-                $wizard['ingresos_egresos'] = [
-                    'periodo_del'        => $datos['periodo_del'] ?? '',
-                    'periodo_al'         => $datos['periodo_al'] ?? '',
-                    'ventas'             => $datos['ventas'] ?? null,
-                    'costo_producto'     => $datos['costo_producto'] ?? null,
-                    'gastos_electricidad'=> $datos['gastos_electricidad'] ?? null,
-                    'gastos_agua'        => $datos['gastos_agua'] ?? null,
-                    'gastos_telefono'    => $datos['gastos_telefono'] ?? null,
-                    'gastos_gas'         => $datos['gastos_gas'] ?? null,
-                    'gastos_mano_obra'   => $datos['gastos_mano_obra'] ?? null,
-                    'gastos_nomina'      => $datos['gastos_nomina'] ?? null,
-                    'gastos_renta_local' => $datos['gastos_renta_local'] ?? null,
-                    'otros_gastos'       => $datos['otros_gastos'] ?? [],
-                    'impuestos'          => $datos['impuestos'] ?? null,
+                $camposIe = fn(array $d) => [
+                    'periodo_del'        => $d['periodo_del'] ?? '',
+                    'periodo_al'         => $d['periodo_al'] ?? '',
+                    'ventas'             => $d['ventas'] ?? null,
+                    'costo_producto'     => $d['costo_producto'] ?? null,
+                    'gastos_electricidad'=> $d['gastos_electricidad'] ?? null,
+                    'gastos_agua'        => $d['gastos_agua'] ?? null,
+                    'gastos_telefono'    => $d['gastos_telefono'] ?? null,
+                    'gastos_gas'         => $d['gastos_gas'] ?? null,
+                    'gastos_mano_obra'   => $d['gastos_mano_obra'] ?? null,
+                    'gastos_nomina'      => $d['gastos_nomina'] ?? null,
+                    'gastos_renta_local' => $d['gastos_renta_local'] ?? null,
+                    'otros_gastos'       => $d['otros_gastos'] ?? [],
+                    'impuestos'          => $d['impuestos'] ?? null,
                 ];
+                // Proyección siempre presente
+                if (!empty($datos['proyeccion'])) {
+                    $wizard['proyeccion_ingresos_egresos'] = $camposIe($datos['proyeccion']);
+                }
+                // Historial solo para negocios en operación (no emprendimiento)
+                if (!empty($datos['historico'])) {
+                    $wizard['ingresos_egresos'] = $camposIe($datos['historico']);
+                }
+                // Compatibilidad hacia atrás: si vienen campos planos, guardarlos también
+                if (empty($datos['proyeccion']) && empty($datos['historico'])) {
+                    $wizard['ingresos_egresos'] = $camposIe($datos);
+                }
                 break;
 
             case 8: // Aval o garantía
                 if ($solicitud->tipo_garantia === 'aval') {
-                    $this->guardarAval($solicitud, $datos);
+                    $request->validate($this->suavizarReglas([
+                        'datos.nombre_completo'  => 'required|string|max:150',
+                        'datos.curp'             => ['required', 'size:18', 'regex:/^[A-Z]{4}\d{6}[HM](AS|BC|BS|CC|CS|CH|DF|DG|GT|GR|HG|JC|MC|MN|MS|NT|NL|OC|PL|QT|QR|SP|SL|SR|TC|TS|TL|VZ|YN|ZS|NE)[B-DF-HJ-NP-TV-Z]{3}[A-Z\d]\d$/'],
+                        'datos.telefono_celular' => 'required|digits:10',
+                        'datos.correo'           => 'required|email:rfc',
+                        'datos.fecha_nacimiento' => 'required|date|before:' . now()->subYears(18)->format('Y-m-d'),
+                    ], $modo), [
+                        'datos.nombre_completo.required'  => 'El nombre completo del aval es obligatorio.',
+                        'datos.curp.required'             => 'La CURP del aval es obligatoria.',
+                        'datos.curp.regex'                => 'La CURP del aval no tiene un formato válido.',
+                        'datos.telefono_celular.required' => 'El teléfono celular del aval es obligatorio.',
+                        'datos.telefono_celular.digits'   => 'El teléfono celular del aval debe tener 10 dígitos.',
+                        'datos.correo.required'           => 'El correo del aval es obligatorio.',
+                        'datos.correo.email'              => 'El correo del aval no es válido.',
+                        'datos.fecha_nacimiento.required' => 'La fecha de nacimiento del aval es obligatoria.',
+                        'datos.fecha_nacimiento.before'   => 'El aval debe ser mayor de edad.',
+                    ]);
+
+                    $modalidadActual = ModalidadCrea::find($solicitud->modalidad_id);
+                    if ($modalidadActual && str_contains(strtolower($modalidadActual->nombre), 'artesanal')) {
+                        $parentescosProhibidos = [
+                            'padre', 'madre', 'hijo', 'hija', 'hermano', 'hermana',
+                            'abuelo', 'abuela', 'nieto', 'nieta', 'tío', 'tía',
+                            'tio', 'tia', 'sobrino', 'sobrina',
+                        ];
+                        $parentesco = strtolower(trim($datos['parentesco'] ?? ''));
+                        if (in_array($parentesco, $parentescosProhibidos, true)) {
+                            throw ValidationException::withMessages([
+                                'datos.parentesco' => 'El aval no puede ser familiar hasta 2do grado de consanguinidad del solicitante en la modalidad Artesanal.',
+                            ]);
+                        }
+                    }
+                    try {
+                        $this->guardarAval($solicitud, $datos);
+                    } catch (\Throwable $e) {
+                        file_put_contents(storage_path('logs/debug_aval.txt'),
+                            date('Y-m-d H:i:s') . "\n" .
+                            $e->getMessage() . "\n" .
+                            $e->getTraceAsString() . "\n\n",
+                            FILE_APPEND
+                        );
+                        throw $e;
+                    }
                 } else {
                     $wizard['garantia_datos'] = [
                         'descripcion'   => $datos['descripcion'] ?? '',
@@ -288,11 +437,14 @@ class WizardSolicitudController extends Controller
             return response()->json(['error' => 'No puedes subir documentos en este momento.'], 403);
         }
 
-        $tiposPermitidos = array_keys(DocumentoSolicitud::tiposRequeridos($solicitud->modalidad_id, $solicitud->tipo_persona, $solicitud->tipo_garantia));
+        $tiposPermitidos = array_keys($this->tiposRequeridosSolicitud($solicitud));
 
         $request->validate([
             'tipo_documento' => 'required|in:' . implode(',', $tiposPermitidos),
-            'archivo'        => 'required|file|mimes:pdf,jpg,jpeg,png|max:5120',
+            'archivo'        => 'required|file|mimes:pdf,jpg,jpeg,png|max:10240',
+        ], [
+            'archivo.max'   => 'El archivo no debe pesar más de 10 MB.',
+            'archivo.mimes' => 'El archivo debe ser PDF, JPG o PNG.',
         ]);
 
         $archivo   = $request->file('archivo');
@@ -324,19 +476,19 @@ class WizardSolicitudController extends Controller
         ]);
     }
 
-    // ─── Generar PDFs + ZIP ───────────────────────────────────────────────────
+    // ─── Enviar solicitud (cambia estatus a Enviada y genera el ZIP de formatos) ──
 
     public function generarFormatos(Request $request): JsonResponse
     {
         $user = auth()->user();
-        $solicitud = $user->solicitudCredito()->with(['modalidad', 'aval'])->first();
+        $solicitud = $user->solicitudCredito()->with(['modalidad', 'aval', 'documentos'])->first();
 
         if (!$solicitud || !in_array($solicitud->estatus, ['Borrador', 'Documentacion_Incompleta'])) {
-            return response()->json(['error' => 'No puedes generar formatos ahora.'], 403);
+            return response()->json(['error' => 'No puedes enviar la solicitud en este momento.'], 403);
         }
 
         // Verificar documentos completos
-        $tiposReq    = array_keys(DocumentoSolicitud::tiposRequeridos($solicitud->modalidad_id, $solicitud->tipo_persona, $solicitud->tipo_garantia));
+        $tiposReq    = array_keys($this->tiposRequeridosSolicitud($solicitud));
         $tiposSubidos = $solicitud->documentos()->pluck('tipo_documento')->toArray();
         $faltantes   = array_diff($tiposReq, $tiposSubidos);
 
@@ -347,88 +499,30 @@ class WizardSolicitudController extends Controller
             ], 422);
         }
 
-        DB::beginTransaction();
+        $solicitud->update(['estatus' => 'Enviada']);
+
+        $zipDisponible = false;
         try {
-            $archivosTemp = [];
-            $dompdf       = app('dompdf.wrapper');
-            $dompdf->setPaper('letter', 'portrait');
-
-            $modalidadNombre = strtolower($solicitud->modalidad?->nombre ?? 'emprendedores');
-            $isArtesanal     = str_contains($modalidadNombre, 'artesanal');
-            $tipoPf          = $solicitud->tipo_persona === 'fisica';
-            $conAval         = $solicitud->tipo_garantia === 'aval';
-
-            $templateData = [
-                'solicitud' => $solicitud,
-                'wizard'    => $solicitud->datos_wizard ?? [],
-                'aval'      => $solicitud->aval,
-                'modalidad' => $solicitud->modalidad,
-                'fecha'     => now()->format('d/m/Y'),
-            ];
-
-            // Determinar plantilla de Solicitud de Crédito
-            if ($isArtesanal) {
-                $archivosTemp[] = $this->generarPdf($dompdf, 'pdf.formatos.solicitud-pf-artesanal', $templateData, "F-PR-OCC-01_Solicitud.pdf", $solicitud->id);
-            } elseif ($tipoPf) {
-                $archivosTemp[] = $this->generarPdf($dompdf, 'pdf.formatos.solicitud-pf', $templateData, "F-PR-OCC-02_Solicitud_Fisica.pdf", $solicitud->id);
-            } else {
-                $archivosTemp[] = $this->generarPdf($dompdf, 'pdf.formatos.solicitud-pm', $templateData, "F-PR-OCC-03_Solicitud_Moral.pdf", $solicitud->id);
-            }
-
-            // Ficha Técnica (todas las modalidades)
-            $archivosTemp[] = $this->generarPdf($dompdf, 'pdf.formatos.ficha-tecnica', $templateData, "F-PR-OCC-04_Ficha_Tecnica.pdf", $solicitud->id);
-
-            // Estado de Ingresos y Egresos (todas las modalidades)
-            $archivosTemp[] = $this->generarPdf($dompdf, 'pdf.formatos.ingresos-egresos', $templateData, "F-PR-OCC-05_Ingresos_Egresos.pdf", $solicitud->id);
-
-            // Declaración de Bienes Aval (solo si hay aval)
-            if ($conAval) {
-                $template = $isArtesanal ? 'pdf.formatos.declaracion-aval-artesanal' : 'pdf.formatos.declaracion-aval';
-                $codigo   = $isArtesanal ? 'F-PR-OCC-06' : 'F-PR-OCC-07';
-                $archivosTemp[] = $this->generarPdf($dompdf, $template, $templateData, "{$codigo}_Declaracion_Bienes_Aval.pdf", $solicitud->id);
-            }
-
-            // Empaquetar en ZIP
-            $zipNombre  = "CREA_Formatos_Solicitud_{$solicitud->id}.zip";
-            $zipRutaAbs = Storage::disk('local')->path("solicitudes/{$solicitud->id}/formatos/{$zipNombre}");
-
-            Storage::disk('local')->makeDirectory("solicitudes/{$solicitud->id}/formatos");
-
-            $zip = new ZipArchive();
-            if ($zip->open($zipRutaAbs, ZipArchive::CREATE | ZipArchive::OVERWRITE) !== true) {
-                throw new \RuntimeException('No se pudo crear el archivo ZIP.');
-            }
-
-            foreach ($archivosTemp as [$nombreArchivo, $rutaLocal]) {
-                $zip->addFile(Storage::disk('local')->path($rutaLocal), $nombreArchivo);
-            }
-            $zip->close();
-
-            // Limpiar PDFs temporales
-            foreach ($archivosTemp as [$_, $rutaLocal]) {
-                Storage::disk('local')->delete($rutaLocal);
-            }
-
-            // Actualizar solicitud
-            $solicitud->update([
-                'estatus'          => 'Enviada',
-                'formatos_zip_ruta'=> "solicitudes/{$solicitud->id}/formatos/{$zipNombre}",
-            ]);
-
-            DB::commit();
-
-            return response()->json([
-                'ok'          => true,
-                'solicitud_id'=> $solicitud->id,
-            ]);
+            $zipRuta = \App\Services\FormatosService::generarZip($solicitud);
+            $solicitud->update(['formatos_zip_ruta' => $zipRuta]);
+            $zipDisponible = true;
         } catch (\Throwable $e) {
-            DB::rollBack();
-            // Limpiar archivos temporales si los hay
-            foreach ($archivosTemp ?? [] as [$_, $rutaLocal]) {
-                Storage::disk('local')->delete($rutaLocal);
-            }
-            return response()->json(['error' => 'Error al generar los formatos: ' . $e->getMessage()], 500);
+            \Illuminate\Support\Facades\Log::warning("No se pudo generar el ZIP de formatos al enviar la solicitud {$solicitud->id}: {$e->getMessage()}");
         }
+
+        AnuncioCiudadano::create([
+            'user_id'    => $user->id,
+            'titulo'     => 'Tu solicitud fue recibida',
+            'mensaje'    => 'Tu solicitud de crédito CREA fue enviada correctamente. El equipo estará revisando tu información.',
+            'tipo'       => 'info',
+            'url_accion' => route('portal.solicitud.index'),
+        ]);
+
+        return response()->json([
+            'ok'             => true,
+            'solicitud_id'   => $solicitud->id,
+            'zip_disponible' => $zipDisponible,
+        ]);
     }
 
     // ─── Descargar ZIP ────────────────────────────────────────────────────────
@@ -459,17 +553,131 @@ class WizardSolicitudController extends Controller
         return Storage::disk('local')->response($documento->ruta_archivo, $documento->nombre_original);
     }
 
+    // ─── Documentos post-aprobación ───────────────────────────────────────────
+
+    public function subirDocumentoPostAprobacion(Request $request): JsonResponse
+    {
+        $user = auth()->user();
+        $solicitud = $user->solicitudCredito;
+
+        if (!$solicitud || $solicitud->estatus !== 'Aprobada') {
+            return response()->json(['error' => 'No puedes subir estos documentos en este momento.'], 403);
+        }
+
+        $tiposPermitidos = array_keys(DocumentoSolicitud::tiposPostAprobacion());
+
+        $request->validate([
+            'tipo_documento' => 'required|in:' . implode(',', $tiposPermitidos),
+        ]);
+
+        $tipo = $request->tipo_documento;
+        $solicitud->documentos()->where('tipo_documento', $tipo)->delete();
+
+        if ($tipo === 'google_maps_negocio') {
+            $request->validate(['url' => 'required|url|max:500']);
+
+            $doc = DocumentoSolicitud::create([
+                'solicitud_id'    => $solicitud->id,
+                'tipo_documento'  => $tipo,
+                'nombre_original' => $request->input('url'),
+                'ruta_archivo'    => 'url',
+                'estatus'         => 'Pendiente',
+            ]);
+        } else {
+            $request->validate(['archivo' => 'required|file|mimes:pdf,jpg,jpeg,png|max:10240'], [
+                'archivo.max'   => 'El archivo no debe pesar más de 10 MB.',
+                'archivo.mimes' => 'El archivo debe ser PDF, JPG o PNG.',
+            ]);
+
+            $archivo   = $request->file('archivo');
+            $extension = $archivo->getClientOriginalExtension();
+            $ruta = $archivo->storeAs("solicitudes/{$solicitud->id}", "{$tipo}.{$extension}", 'local');
+
+            $doc = DocumentoSolicitud::create([
+                'solicitud_id'    => $solicitud->id,
+                'tipo_documento'  => $tipo,
+                'nombre_original' => $archivo->getClientOriginalName(),
+                'ruta_archivo'    => $ruta,
+                'estatus'         => 'Pendiente',
+            ]);
+        }
+
+        return response()->json([
+            'ok'             => true,
+            'tipo_documento' => $tipo,
+            'nombre_original'=> $doc->nombre_original,
+        ]);
+    }
+
     // ─── Helpers privados ─────────────────────────────────────────────────────
 
-    private function generarPdf($dompdf, string $view, array $data, string $nombreArchivo, int $solicitudId): array
+    /**
+     * En modo 'borrador' convierte 'required' en 'nullable' para permitir guardar
+     * el progreso con campos aún vacíos, conservando el resto de las reglas
+     * (formato, tipo, longitud, etc.). En modo 'envio' las reglas no cambian.
+     */
+    private function suavizarReglas(array $reglas, string $modo): array
     {
-        $dompdf->loadView($view, $data);
-        $contenido = $dompdf->output();
+        if ($modo === 'envio') {
+            return $reglas;
+        }
 
-        $rutaLocal = "solicitudes/{$solicitudId}/formatos/tmp_{$nombreArchivo}";
-        Storage::disk('local')->put($rutaLocal, $contenido);
+        foreach ($reglas as $campo => $regla) {
+            if (is_string($regla)) {
+                $reglas[$campo] = rtrim(preg_replace('/^required\|?/', 'nullable|', $regla), '|');
+            } elseif (is_array($regla)) {
+                $reglas[$campo] = array_map(fn($r) => $r === 'required' ? 'nullable' : $r, $regla);
+            }
+        }
 
-        return [$nombreArchivo, $rutaLocal];
+        return $reglas;
+    }
+
+    private function tiposRequeridosSolicitud(SolicitudCredito $solicitud): array
+    {
+        $wizard          = $solicitud->datos_wizard ?? [];
+        $estadoCivil     = $wizard['datos_personales_ext']['estado_civil'] ?? null;
+        $estadoCivilAval = $solicitud->aval?->estado_civil;
+
+        return DocumentoSolicitud::tiposRequeridos(
+            $solicitud->modalidad_id,
+            $solicitud->tipo_persona,
+            $solicitud->tipo_garantia,
+            $estadoCivil,
+            $estadoCivilAval,
+            $solicitud->monto_solicitado ? (float) $solicitud->monto_solicitado : null
+        );
+    }
+
+    /**
+     * Devuelve el motivo de rechazo si el giro coincide con la lista prohibida
+     * por modalidad (Arts. 9, 17, 25), o null si es elegible.
+     */
+    private function girosProhibidos(?string $modalidad, string $giro): ?string
+    {
+        $normalizar = fn(string $s) => strtr(strtolower($s), [
+            'á' => 'a', 'é' => 'e', 'í' => 'i', 'ó' => 'o', 'ú' => 'u', 'ñ' => 'n',
+        ]);
+
+        $giroNormalizado = $normalizar($giro);
+        $nombreMod       = strtolower($modalidad ?? '');
+
+        $prohibidos = ['vehiculos de transporte'];
+
+        if (str_contains($nombreMod, 'emprendedores') || str_contains($nombreMod, 'sustentable')) {
+            $prohibidos = array_merge($prohibidos, [
+                'casa de empeño', 'casa de empeno', 'catalogo', 'piramide',
+                'estacionamiento', 'tianguista', 'casino',
+            ]);
+        }
+
+        foreach ($prohibidos as $termino) {
+            if (str_contains($giroNormalizado, $normalizar($termino))) {
+                return $termino;
+            }
+        }
+
+        return null;
     }
 
     private function guardarAval(SolicitudCredito $solicitud, array $datos): void
@@ -478,30 +686,37 @@ class WizardSolicitudController extends Controller
             ['solicitud_id' => $solicitud->id],
             [
                 'nombre_completo'          => $datos['nombre_completo'] ?? '',
+                'parentesco'               => $datos['parentesco'] ?? null,
                 'correo'                   => $datos['correo'] ?? null,
                 'sexo'                     => $datos['sexo'] ?? null,
                 'rfc'                      => $datos['rfc'] ?? null,
                 'curp'                     => $datos['curp'] ?? null,
                 'telefono_celular'         => $datos['telefono_celular'] ?? null,
                 'telefono_fijo'            => $datos['telefono_fijo'] ?? null,
-                'edad'                     => $datos['edad'] ?? null,
-                'fecha_nacimiento'         => $datos['fecha_nacimiento'] ?? null,
+                'edad'                     => $datos['edad'] ?: null,
+                'fecha_nacimiento'         => $datos['fecha_nacimiento'] ?: null,
                 'municipio_nacimiento'     => $datos['municipio_nacimiento'] ?? null,
                 'municipio_residencia'     => $datos['municipio_residencia'] ?? null,
                 'domicilio'                => $datos['domicilio'] ?? null,
                 'colonia'                  => $datos['colonia'] ?? null,
                 'cp'                       => $datos['cp'] ?? null,
                 'domicilio_propio'         => (bool)($datos['domicilio_propio'] ?? true),
-                'renta_mensual'            => $datos['renta_mensual'] ?? null,
+                'renta_mensual'            => $datos['renta_mensual'] ?: null,
                 'lugar_laboral'            => $datos['lugar_laboral'] ?? null,
                 'antiguedad_laboral'       => $datos['antiguedad_laboral'] ?? null,
                 'ocupacion'                => $datos['ocupacion'] ?? null,
-                'fecha_inicio_actividades' => $datos['fecha_inicio_actividades'] ?? null,
-                'dependientes_economicos'  => $datos['dependientes_economicos'] ?? null,
+                'fecha_inicio_actividades' => $datos['fecha_inicio_actividades'] ?: null,
+                'dependientes_economicos'  => $datos['dependientes_economicos'] ?: null,
                 'estado_civil'             => $datos['estado_civil'] ?? null,
                 'regimen_matrimonial'      => $datos['regimen_matrimonial'] ?? null,
                 'nombre_conyuge'           => $datos['nombre_conyuge'] ?? null,
                 'bienes_inmuebles'         => $datos['bienes_inmuebles'] ?? [],
+                // bienes_muebles, ingresos, egresos solo si la columna existe (migration 2026_08_18)
+                ...(Schema::hasColumn('avales_solicitud', 'bienes_muebles') ? [
+                    'bienes_muebles'       => $datos['bienes_muebles'] ?? [],
+                    'ingresos'             => $datos['ingresos'] ?? [],
+                    'egresos'              => $datos['egresos'] ?? [],
+                ] : []),
                 'hipotecas_creditos'       => $datos['hipotecas_creditos'] ?? [],
                 'otras_deudas'             => $datos['otras_deudas'] ?? [],
                 'referencias_personales'   => $datos['referencias_personales'] ?? [],

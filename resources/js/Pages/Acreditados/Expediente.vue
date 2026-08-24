@@ -258,7 +258,7 @@ const progreso = props.stats && props.stats.total_cuotas > 0
                             <h2 class="font-black text-slate-900 dark:text-white">Negocio / Proyecto</h2>
                             <span class="ml-auto text-xs text-slate-400">De la solicitud #{{ solicitud.id }}</span>
                         </div>
-                        <div class="p-5 grid grid-cols-2 gap-x-6 gap-y-4 text-sm">
+                        <div class="p-5 grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-4 text-sm">
                             <div>
                                 <p class="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-0.5">Giro Comercial</p>
                                 <p class="font-semibold text-slate-900 dark:text-white">{{ solicitud.giro_comercial || '—' }}</p>

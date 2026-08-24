@@ -83,10 +83,6 @@ const fmt = (n: number) => '$' + n.toLocaleString('es-MX', { minimumFractionDigi
                     </p>
                 </div>
                 <div class="flex items-center gap-2">
-                    <Link :href="route('juridico.index')"
-                        class="inline-flex items-center gap-2 px-4 py-2 bg-red-700 hover:bg-red-800 text-white font-bold rounded-xl text-sm transition-all shadow-sm">
-                        <Gavel size="15" /> Cobranza Jurídica
-                    </Link>
                     <button @click="router.reload()" class="p-2.5 rounded-xl bg-slate-100 dark:bg-zinc-800 text-slate-600 dark:text-zinc-400 hover:bg-slate-200 dark:hover:bg-zinc-700 transition-all">
                         <RefreshCw size="16" />
                     </button>

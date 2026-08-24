@@ -17,9 +17,9 @@ class CondonacionFormalController extends Controller
     {
         $credito->load(['acreditado', 'modalidad', 'amortizaciones', 'condonaciones.autorizadoPor']);
 
-        $saldoCapital   = $credito->amortizaciones->whereNotIn('estado', ['Pagado', 'Condonado', 'Reestructurada'])->sum('capital_esperado');
-        $saldoIntereses = $credito->amortizaciones->whereNotIn('estado', ['Pagado', 'Condonado', 'Reestructurada'])->sum('interes_ordinario_esperado');
-        $saldoMora      = $credito->amortizaciones->whereNotIn('estado', ['Pagado', 'Condonado', 'Reestructurada'])->sum('moratorio_acumulado');
+        $saldoCapital   = $credito->amortizaciones->whereNotIn('estado', ['Pagado', 'Condonado', 'Reestructurada', 'Gracia'])->sum('capital_esperado');
+        $saldoIntereses = $credito->amortizaciones->whereNotIn('estado', ['Pagado', 'Condonado', 'Reestructurada', 'Gracia'])->sum('interes_ordinario_esperado');
+        $saldoMora      = $credito->amortizaciones->whereNotIn('estado', ['Pagado', 'Condonado', 'Reestructurada', 'Gracia'])->sum('moratorio_acumulado');
 
         return Inertia::render('Creditos/CondonacionFormal', [
             'credito' => [
@@ -72,7 +72,7 @@ class CondonacionFormalController extends Controller
             // Si es condonación total, liquidar todas las cuotas pendientes
             if ($data['tipo'] === 'Total') {
                 $credito->amortizaciones()
-                    ->whereNotIn('estado', ['Pagado', 'Condonado', 'Reestructurada'])
+                    ->whereNotIn('estado', ['Pagado', 'Condonado', 'Reestructurada', 'Gracia'])
                     ->update(['estado' => 'Condonado', 'pago_restante' => 0, 'moratorio_acumulado' => 0]);
                 $credito->update(['estatus' => 'Liquidado']);
             }

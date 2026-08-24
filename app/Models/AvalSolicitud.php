@@ -12,6 +12,7 @@ class AvalSolicitud extends Model
     protected $fillable = [
         'solicitud_id',
         'nombre_completo',
+        'parentesco',
         'correo',
         'sexo',
         'rfc',
@@ -36,8 +37,11 @@ class AvalSolicitud extends Model
         'regimen_matrimonial',
         'nombre_conyuge',
         'bienes_inmuebles',
+        'bienes_muebles',
         'hipotecas_creditos',
         'otras_deudas',
+        'ingresos',
+        'egresos',
         'referencias_personales',
     ];
 
@@ -47,8 +51,11 @@ class AvalSolicitud extends Model
         'domicilio_propio'       => 'boolean',
         'renta_mensual'          => 'decimal:2',
         'bienes_inmuebles'       => 'array',
+        'bienes_muebles'         => 'array',
         'hipotecas_creditos'     => 'array',
         'otras_deudas'           => 'array',
+        'ingresos'               => 'array',
+        'egresos'                => 'array',
         'referencias_personales' => 'array',
     ];
 

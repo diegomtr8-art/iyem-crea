@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Pendientes para Lanzar — Auditoría CREA</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;font-family:'Segoe UI',system-ui,sans-serif;}
+body{background:#0f172a;color:#e2e8f0;}
+header{background:linear-gradient(135deg,#dc2626,#991b1b);padding:20px 24px;display:flex;align-items:center;justify-content:space-between;}
+header h1{font-size:1.3rem;color:#fff;}
+header .badge{background:rgba(255,255,255,.15);color:#fff;padding:4px 10px;border-radius:20px;font-size:.75rem;}
+.container{max-width:1100px;margin:0 auto;padding:24px 16px;}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:16px;margin-bottom:28px;}
+.priority-section{margin-bottom:32px;}
+.priority-section h2{font-size:1.1rem;font-weight:700;padding:10px 16px;border-radius:8px;margin-bottom:14px;}
+.p0-header{background:#450a0a;color:#f87171;}
+.p1-header{background:#451a03;color:#fb923c;}
+.p2-header{background:#064e3b;color:#34d399;}
+.item{background:#1e293b;border-radius:10px;padding:16px;margin-bottom:10px;display:flex;gap:14px;align-items:flex-start;}
+.item-badge{flex-shrink:0;padding:4px 10px;border-radius:8px;font-size:.72rem;font-weight:700;letter-spacing:.5px;}
+.p0{background:#450a0a;color:#f87171;border:1px solid #7f1d1d;}
+.p1{background:#451a03;color:#fb923c;border:1px solid #92400e;}
+.p2{background:#064e3b;color:#34d399;border:1px solid #065f46;}
+.item-body h4{font-size:.88rem;color:#fff;margin-bottom:4px;}
+.item-body p{font-size:.78rem;color:#94a3b8;line-height:1.5;}
+.item-body .prompt{font-size:.75rem;background:#0f172a;color:#60a5fa;padding:4px 8px;border-radius:6px;margin-top:6px;display:inline-block;border:1px solid #1e3a5f;}
+.item-body .effort{font-size:.72rem;color:#64748b;margin-top:6px;}
+.effort span{background:#1e293b;border:1px solid #334155;padding:2px 8px;border-radius:10px;margin-right:6px;}
+.launch-checklist{background:#0c1a0c;border:1.5px solid #166534;border-radius:12px;padding:20px;margin-bottom:28px;}
+.launch-checklist h2{color:#4ade80;margin-bottom:14px;font-size:1rem;}
+.check-item{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid #1a2e1a;font-size:.83rem;}
+.check-item:last-child{border-bottom:none;}
+.check-item input[type=checkbox]{width:16px;height:16px;cursor:pointer;accent-color:#22c55e;}
+.check-item label{color:#d1fae5;cursor:pointer;}
+.check-item label.done{color:#4ade80;text-decoration:line-through;opacity:.6;}
+.summary-bar{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:24px;}
+.sum-card{background:#1e293b;border-radius:10px;padding:12px 18px;text-align:center;flex:1;min-width:120px;}
+.sum-card .num{font-size:2rem;font-weight:700;}
+.sum-card .label{font-size:.72rem;color:#94a3b8;margin-top:2px;}
+</style>
+</head>
+<body>
+<header>
+  <h1>🚀 Plan de Lanzamiento — CREA</h1>
+  <div class="badge">Módulo 6 / 6</div>
+</header>
+<div class="container">
+
+  <div class="summary-bar">
+    <div class="sum-card"><div class="num" style="color:#ef4444">4</div><div class="label">Bloqueantes P0</div></div>
+    <div class="sum-card"><div class="num" style="color:#f97316">7</div><div class="label">Importantes P1</div></div>
+    <div class="sum-card"><div class="num" style="color:#22c55e">6+</div><div class="label">Mejoras post-lanzamiento</div></div>
+    <div class="sum-card"><div class="num" style="color:#38bdf8">2</div><div class="label">Prompts listos en raíz</div></div>
+  </div>
+
+  <!-- CHECKLIST DE LANZAMIENTO -->
+  <div class="launch-checklist">
+    <h2>✅ Checklist pre-lanzamiento</h2>
+    <div class="check-item"><input type="checkbox" id="c1"><label for="c1">Corregir flujo de ZIP: generar solo al aprobar (no al enviar)</label></div>
+    <div class="check-item"><input type="checkbox" id="c2"><label for="c2">Implementar PDFs con overlay FPDI sobre formatos oficiales (prompt_generacion_pdfs_overlay.txt listo)</label></div>
+    <div class="check-item"><input type="checkbox" id="c3"><label for="c3">Verificar que documentos van a disco <code>local</code> (no <code>public</code>) — ruta autenticada</label></div>
+    <div class="check-item"><input type="checkbox" id="c4"><label for="c4">Arreglar footer fijo (flex flex-col min-h-screen en portal)</label></div>
+    <div class="check-item"><input type="checkbox" id="c5"><label for="c5">Agregar los 106 municipios de Yucatán en el wizard</label></div>
+    <div class="check-item"><input type="checkbox" id="c6"><label for="c6">Completar regímenes SAT (incluyendo "Público en General")</label></div>
+    <div class="check-item"><input type="checkbox" id="c7"><label for="c7">Tabla editable de destino de crédito (conceptos libres + formato miles)</label></div>
+    <div class="check-item"><input type="checkbox" id="c8"><label for="c8">Agregar documento "Propiedad/Posesión del negocio" a tipos requeridos</label></div>
+    <div class="check-item"><input type="checkbox" id="c9"><label for="c9">Próxima cuota card en Mi Crédito del portal ciudadano</label></div>
+    <div class="check-item"><input type="checkbox" id="c10"><label for="c10">Campanita de notificaciones funcional (DatabaseNotification)</label></div>
+    <div class="check-item"><input type="checkbox" id="c11"><label for="c11">Prueba end-to-end completa (ciudadano crea solicitud → operativo aprueba → descarga ZIP → pago)</label></div>
+    <div class="check-item"><input type="checkbox" id="c12"><label for="c12">Deploy a crea.iyemyucatan.com y verificación post-deploy</label></div>
+  </div>
+
+  <!-- P0 -->
+  <div class="priority-section">
+    <h2 class="p0-header">🔴 P0 — Bloqueantes: sin esto no lanzar</h2>
+
+    <div class="item">
+      <div class="item-badge p0">P0</div>
+      <div class="item-body">
+        <h4>PDFs generados con Blade/dompdf — no coinciden con el formato oficial IYEM</h4>
+        <p>Los formatos F-PR-OCC-01 al 07 se recrean en HTML con dompdf. El resultado no tiene los logos, colores ni layout exacto del IYEM. Los ciudadanos no pueden firmar y entregar PDFs que no coinciden con el formato oficial.</p>
+        <div class="prompt">📄 prompt_generacion_pdfs_overlay.txt — listo para ejecutar en Claude Code</div>
+        <div class="effort"><span>~4-6 hrs</span><span>composer require setasign/fpdi</span><span>Referencia: formatos_pdf_overlay_real.html</span></div>
+      </div>
+    </div>
+
+    <div class="item">
+      <div class="item-badge p0">P0</div>
+      <div class="item-body">
+        <h4>ZIP con PDFs se genera al ENVIAR la solicitud, no al APROBAR</h4>
+        <p>El ciudadano descarga el ZIP antes de que el operativo apruebe, con datos que aún pueden cambiar. El flujo correcto: ZIP solo disponible cuando estatus = Aprobada. Observer en SolicitudCredito faltante.</p>
+        <div class="effort"><span>~1 hr</span><span>SolicitudCredito Observer + evento SolicitudAprobada</span></div>
+      </div>
+    </div>
+
+    <div class="item">
+      <div class="item-badge p0">P0</div>
+      <div class="item-body">
+        <h4>Archivos subidos podrían estar en disco public (acceso sin autenticación)</h4>
+        <p>Si los documentos del ciudadano (INE, CURP, comprobantes) están en disco <code>public</code>, cualquiera con la URL los puede ver. Verificar que la ruta de almacenamiento es <code>storage/app/local</code> y la descarga usa la ruta autenticada.</p>
+        <div class="effort"><span>~30 min</span><span>Revisar WizardSolicitudController@subirDocumento</span></div>
+      </div>
+    </div>
+
+    <div class="item">
+      <div class="item-badge p0">P0</div>
+      <div class="item-body">
+        <h4>Footer del portal ciudadano se sube en pantallas pequeñas</h4>
+        <p>El layout principal del portal no tiene <code>flex flex-col min-h-screen</code> + <code>flex-1</code> en el main, por lo que el footer queda encima del contenido en pantallas cortas o móviles.</p>
+        <div class="effort"><span>~15 min</span><span>Layout del portal: portal/Dashboard.vue / WizardCredito.vue</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- P1 -->
+  <div class="priority-section">
+    <h2 class="p1-header">🟠 P1 — Importantes: arreglar antes o justo después del lanzamiento</h2>
+
+    <div class="item">
+      <div class="item-badge p1">P1</div>
+      <div class="item-body">
+        <h4>Campanita de notificaciones sin funcionalidad real</h4>
+        <p>El portal usa el modelo <code>AnuncioCiudadano</code> para mensajes del operativo, pero la "campanita" no usa Laravel <code>DatabaseNotification</code> → no hay badge de no leídos en tiempo real ni dropdown estándar.</p>
+        <div class="prompt">📄 prompt_portal_mejoras_v2.txt — Sección 7</div>
+        <div class="effort"><span>~2 hrs</span><span>DatabaseNotification + eventos: SolicitudEnviada, Aprobada, Rechazada, DocIncompleta</span></div>
+      </div>
+    </div>
+
+    <div class="item">
+      <div class="item-badge p1">P1</div>
+      <div class="item-body">
+        <h4>Municipios y regímenes SAT incompletos</h4>
+        <p>El wizard no valida los 106 municipios exactos de Yucatán. Faltan regímenes SAT como "Público en General" (625) y otros del catálogo completo del SAT.</p>
+        <div class="prompt">📄 prompt_portal_mejoras_v2.txt — Sección 9</div>
+        <div class="effort"><span>~1 hr</span><span>Lista de 106 municipios + catálogo SAT completo en el prompt</span></div>
+      </div>
+    </div>
+
+    <div class="item">
+      <div class="item-badge p1">P1</div>
+      <div class="item-body">
+        <h4>Tabla de destino del crédito no editable</h4>
+        <p>En el paso "Destino del Crédito" del wizard, los conceptos (qué se va a comprar y cuánto cuesta) no son editables con formato de miles. El total debe coincidir con el monto solicitado.</p>
+        <div class="prompt">📄 prompt_portal_mejoras_v2.txt — Sección 4</div>
+        <div class="effort"><span>~2 hrs</span><span>Vue component tabla editable + v-model + thousands mask</span></div>
+      </div>
+    </div>
+
+    <div class="item">
+      <div class="item-badge p1">P1</div>
+      <div class="item-body">
+        <h4>Falta documento "Propiedad o Posesión del Negocio"</h4>
+        <p>El tipo de documento <code>propiedad_posesion_negocio</code> no está en el método <code>tiposRequeridos()</code> del modelo DocumentoSolicitud. Todos los solicitantes deben aportarlo.</p>
+        <div class="effort"><span>~20 min</span><span>DocumentoSolicitud::tiposRequeridos() + campo en wizard</span></div>
+      </div>
+    </div>
+
+    <div class="item">
+      <div class="item-badge p1">P1</div>
+      <div class="item-body">
+        <h4>Mi Crédito: falta card "Próxima Cuota"</h4>
+        <p>El portal ciudadano no muestra de forma destacada cuánto es la próxima cuota, cuándo vence y si hay mora pendiente. Es la información más importante para el acreditado.</p>
+        <div class="effort"><span>~1 hr</span><span>MiCreditoController + portal/MiCredito.vue</span></div>
+      </div>
+    </div>
+
+    <div class="item">
+      <div class="item-badge p1">P1</div>
+      <div class="item-body">
+        <h4>Sin alerta de presupuesto agotado al registrar crédito</h4>
+        <p>El operativo puede registrar créditos aunque el presupuesto de la modalidad esté agotado. Debería haber una alerta (o bloqueo) en el formulario de registro de crédito.</p>
+        <div class="effort"><span>~1 hr</span><span>SolicitudOperativoController@guardarCredito + PresupuestoPrograma query</span></div>
+      </div>
+    </div>
+
+    <div class="item">
+      <div class="item-badge p1">P1</div>
+      <div class="item-body">
+        <h4>Sin alertas automáticas de cuotas próximas</h4>
+        <p>El endpoint <code>/api/notificaciones/cuotas</code> existe pero no está schedulado. Laravel Scheduler + job diario para notificar acreditados con cuota mañana.</p>
+        <div class="effort"><span>~2 hrs</span><span>Kernel::schedule() + NotificacionController + mail/notification</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MEJORAS POST-LANZAMIENTO -->
+  <div class="priority-section">
+    <h2 class="p2-header">💡 Mejoras post-lanzamiento</h2>
+    <div class="grid">
+      <div class="item" style="background:#0c1a0c;border:1px solid #166534;">
+        <div class="item-badge p2">FUTURO</div>
+        <div class="item-body">
+          <h4>Pagos en línea</h4>
+          <p>Integrar Stripe, CoDi/SPEI o OXXO Pay para que los acreditados paguen desde el portal sin ir a ventanilla.</p>
+          <div class="effort"><span>Alta complejidad</span><span>Requiere convenio IYEM con proveedor</span></div>
+        </div>
+      </div>
+      <div class="item" style="background:#0c1a0c;border:1px solid #166534;">
+        <div class="item-badge p2">FUTURO</div>
+        <div class="item-body">
+          <h4>Firma electrónica del contrato</h4>
+          <p>FEA o e.firma SAT para que el acreditado firme el contrato digitalmente desde el portal, sin necesidad de impresión.</p>
+          <div class="effort"><span>Alta complejidad</span><span>API e.firma o Docusign</span></div>
+        </div>
+      </div>
+      <div class="item" style="background:#0c1a0c;border:1px solid #166534;">
+        <div class="item-badge p2">FUTURO</div>
+        <div class="item-body">
+          <h4>Verificación automática RFC/CURP con SAT</h4>
+          <p>Integrar con el servicio de validación del SAT para verificar en tiempo real si el RFC y CURP son válidos, sin que el analista lo haga manualmente.</p>
+          <div class="effort"><span>Media complejidad</span><span>API SAT o servicio tercero</span></div>
+        </div>
+      </div>
+      <div class="item" style="background:#0c1a0c;border:1px solid #166534;">
+        <div class="item-badge p2">FUTURO</div>
+        <div class="item-body">
+          <h4>PWA / App móvil para ciudadanos</h4>
+          <p>Convertir el portal en una Progressive Web App para que los ciudadanos en municipios remotos puedan acceder sin conexión estable.</p>
+          <div class="effort"><span>Media complejidad</span><span>Service Worker + manifest.json</span></div>
+        </div>
+      </div>
+      <div class="item" style="background:#0c1a0c;border:1px solid #166534;">
+        <div class="item-badge p2">FUTURO</div>
+        <div class="item-body">
+          <h4>2FA para operativos</h4>
+          <p>Autenticación de dos factores (TOTP o SMS) para los usuarios con rol operativo que tienen acceso a datos sensibles y pueden aprobar créditos.</p>
+          <div class="effort"><span>Baja-media complejidad</span><span>Laravel Fortify 2FA</span></div>
+        </div>
+      </div>
+      <div class="item" style="background:#0c1a0c;border:1px solid #166534;">
+        <div class="item-badge p2">FUTURO</div>
+        <div class="item-body">
+          <h4>Dashboard ejecutivo con gráficas</h4>
+          <p>Gráficas interactivas de colocación mensual, recuperación, mora por municipio y género. Chart.js ya está instalado en el proyecto.</p>
+          <div class="effort"><span>Baja complejidad</span><span>Chart.js ya disponible</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<script>
+// Guardar estado del checklist en localStorage (ya que es un archivo local)
+document.querySelectorAll('input[type=checkbox]').forEach(cb => {
+  cb.checked = localStorage.getItem(cb.id) === '1';
+  if(cb.checked && cb.nextElementSibling) cb.nextElementSibling.classList.add('done');
+  cb.addEventListener('change', () => {
+    localStorage.setItem(cb.id, cb.checked ? '1' : '0');
+    if(cb.nextElementSibling) cb.nextElementSibling.classList.toggle('done', cb.checked);
+  });
+});
+</script>
+</body>
+</html>

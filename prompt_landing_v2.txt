@@ -1,0 +1,277 @@
+# PROMPT: AJUSTES LANDING PAGE CREA + LOGO/FAVICON + CALCULADORA + DEPLOY
+# Para usar en: Claude Code (sesión interactiva en la raíz del proyecto)
+# Stack: Laravel 11 + Vue 3 + Inertia.js + TypeScript + Tailwind CSS
+# Archivo principal: resources/js/Pages/Welcome.vue
+# Documento de referencia: public/formatos/RO.pdf (Reglas de Operación, Acuerdo IYEM 03/2025)
+
+---
+
+## CONTEXTO
+
+Ya existe una landing page en `resources/js/Pages/Welcome.vue`. Ahora se requieren
+ajustes puntuales: mejorar el logotipo/favicon, eliminar una sección de estadísticas
+del Hero, alinear toda la información del programa con las Reglas de Operación
+oficiales (`public/formatos/RO.pdf`), corregir/crear la calculadora de crédito con
+los datos reales de las 3 modalidades, y hacer el deploy a producción.
+
+Antes de tocar nada, **lee completo** `public/formatos/RO.pdf` (Acuerdo IYEM 03/2025,
+116 páginas) para extraer: descripciones de cada modalidad (Artesanal, Emprendedores,
+Sustentable), requisitos, documentación, montos, tasas, plazos, cobertura (106
+municipios de Yucatán), proceso/procedimiento, criterios de selección, vigencia del
+programa (hasta 31 de diciembre de 2030), y cualquier dato relevante para mostrar en
+la landing. Usa esta información para reemplazar textos genéricos o inventados que
+existan actualmente en `Welcome.vue`.
+
+---
+
+## 1. NUEVO LOGOTIPO Y FAVICON
+
+El logo actual (`public/logo.svg`) es el logo genérico del starter kit de Laravel/Vue
+(con el texto "Laravel" y el ícono de Vue) — NO es un logo de CREA y debe
+reemplazarse por completo.
+
+### 1.1 Diseñar un logo CREA original (SVG)
+
+- Izotipo + logotipo "CREA" en SVG vectorial puro (sin imágenes externas, sin fuentes
+  externas — los trazos del texto deben ser paths SVG o usar una fuente del sistema
+  con peso bold si se usa `<text>`, pero preferible paths)
+- El símbolo debe evocar crecimiento/emprendimiento/Yucatán: por ejemplo una hoja
+  estilizada combinada con una flecha ascendente, o una semilla/brote — algo
+  elegante y geométrico, no literal
+- Paleta: verde institucional (#006847) como color principal, dorado/ámbar (#E8A020)
+  como acento. Debe verse bien tanto en fondo claro como oscuro
+- Crear:
+  - `public/logo.svg` → versión horizontal (símbolo + texto "CREA"), viewBox
+    aproximado "0 0 240 64"
+  - Isotipo cuadrado (solo símbolo, viewBox "0 0 40 40") para usar en
+    `resources/js/components/AppLogoIcon.vue`
+- Actualizar `resources/js/components/AppLogoIcon.vue` con el nuevo isotipo SVG
+- Actualizar `resources/js/components/AppLogo.vue` para que use el nuevo isotipo +
+  texto "CREA" (mantener el layout actual del componente, solo cambiar el SVG)
+
+### 1.2 Favicon
+
+- Generar `public/favicon.svg` usando el isotipo (verde sobre fondo transparente,
+  o con fondo blanco/circular si se requiere contraste)
+- Regenerar `public/favicon.ico` a partir del nuevo isotipo (puede usarse un script
+  con `sharp`/`png-to-ico` via Node, o cualquier herramienta CLI disponible en el
+  proyecto; si no hay herramienta de conversión, dejar `favicon.svg` como principal)
+- Ubicar el layout principal (`resources/views/app.blade.php` o equivalente) y
+  asegurar que tenga:
+  ```html
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <link rel="icon" type="image/x-icon" href="/favicon.ico">
+  <link rel="apple-touch-icon" href="/favicon.svg">
+  ```
+
+---
+
+## 2. ELIMINAR ESTADÍSTICAS DEL HERO
+
+En `Welcome.vue`, dentro del Hero Section, localizar y **eliminar por completo** el
+bloque de estadísticas que muestra:
+
+- "500+ Emprendedores apoyados"
+- "3 Modalidades de crédito"
+- "100% Proceso digital"
+
+Elimina el componente/markup completo de estas tres métricas (incluyendo contadores
+animados, wrappers de grid/flex que las contenían, y cualquier lógica JS asociada
+exclusivamente a ellas — por ejemplo funciones de animación de conteo que ya no se
+usen en ningún otro lado).
+
+Después de eliminarlas, revisa el espaciado del Hero para que quede equilibrado
+visualmente (ajustar paddings/márgenes si es necesario, sin dejar un hueco vacío
+extraño).
+
+Si existe una sección separada de "Estadísticas / Impacto" más abajo en la página
+(banda verde con métricas), esa SÍ se conserva — solo se elimina el bloque dentro
+del Hero.
+
+---
+
+## 3. ALINEAR CONTENIDO CON LAS REGLAS DE OPERACIÓN
+
+Usando la información extraída de `public/formatos/RO.pdf`, revisa y corrige en
+`Welcome.vue` (y cualquier componente relacionado):
+
+- **Descripción del programa**: "Crédito para el Renacimiento de Emprendedores y
+  Artesanos" (CREA), del Instituto Yucateco de Emprendedores (IYEM), Gobierno del
+  Estado de Yucatán
+- **Cobertura**: los 106 municipios del Estado de Yucatán
+- **Las 3 modalidades** (Artículo 4 y siguientes de las RO):
+  - **Artesanal**: para artesanos mayores de 18 años con micronegocios en Yucatán.
+    Tasa de interés ordinario anual de 0%. Financiamiento para compra de activos
+    fijos (excepto vehículos) e insumos para transformación, comercialización y
+    distribución
+  - **Emprendedores**: para emprendedores mayores de 18 años, micro y pequeñas
+    empresas con domicilio fiscal en Yucatán
+  - **Sustentable**: enfoque en proyectos con enfoque sostenible (biodiversidad,
+    energía, recursos hídricos, residuos y contaminación)
+- **Requisitos generales** (Artículo 9, aplicable de forma análoga a las 3
+  modalidades, ajustando según corresponda):
+  - Ser mexicano/mexicana, mayor de 18 años
+  - Tener capacidad jurídica para contraer obligaciones
+  - Tener actividad económica en el territorio del Estado de Yucatán (o, para
+    emprendedores, modelo de negocio que implique actividades en el estado)
+  - Contar con un proyecto productivo viable (ficha técnica anexo 2)
+  - No ser empleado de la Administración Pública durante la vigencia del crédito
+  - Contar con una garantía personal (aval) con domicilio comprobable en Yucatán,
+    que no sea familiar hasta segundo grado
+  - (Para Artesanal) presentar productos muestra representativos de la actividad
+- **Documentación requerida** (resumen del Artículo 10): solicitud de crédito, acta
+  de nacimiento, comprobante domiciliario (no mayor a 90 días), identificación
+  oficial vigente, descripción del negocio/proyecto productivo, relación de
+  ingresos/egresos de los últimos 6 meses (si aplica), proyección de ingresos y
+  egresos a 6 meses, documento que acredite propiedad/posesión del local,
+  cotizaciones de lo que se va a adquirir, y documentación del aval
+- **Vigencia del programa**: hasta el 31 de diciembre de 2030
+- **Sitio oficial de referencia**: http://iyem.yucatan.gob.mx/
+
+Actualiza las secciones de "Modalidades", "Requisitos", "¿Cómo funciona?" y
+"Preguntas Frecuentes" con esta información real, manteniendo el diseño/estructura
+visual ya existente (animaciones, cards, accordion, etc.) pero corrigiendo el
+contenido textual.
+
+---
+
+## 4. CALCULADORA / SIMULADOR DE CRÉDITO
+
+Localiza la calculadora de crédito en la landing (o en `Simulador/Index.vue` /
+`SimuladorController.php` si la landing la reutiliza). Debe configurarse con los
+siguientes parámetros EXACTOS por modalidad:
+
+| Modalidad     | Monto mínimo | Monto máximo | Tasa de interés anual | Plazos disponibles | Notas |
+|---------------|--------------|--------------|------------------------|---------------------|-------|
+| Artesanal     | $5,000       | $25,000      | 0%                      | 12, 18, 24 meses    | — |
+| Emprendedores | $25,000      | $150,000     | 7%                      | 12, 18, 24 meses    | — |
+| Sustentable   | $50,000      | $500,000     | 5%                      | 12, 18, 24 meses    | 3 meses de prórroga para el primer pago |
+
+### 4.1 Comportamiento esperado
+
+- Selector de modalidad (Artesanal / Emprendedores / Sustentable)
+- Input de monto deseado, con validación de rango según la modalidad seleccionada
+  (slider o input numérico, mostrando el mínimo y máximo permitido como ayuda)
+- Selector de plazo: 12, 18 o 24 meses (los tres disponibles para las tres
+  modalidades)
+- Cálculo de la tabla de amortización / cuota mensual usando la tasa correspondiente:
+  - Artesanal → 0% anual (cuota = monto / número de meses, sin interés)
+  - Emprendedores → 7% anual (sistema de amortización francés / cuota fija
+    estándar, igual al usado en `CreditService.php` del backend para mantener
+    consistencia)
+  - Sustentable → 5% anual, con **3 meses de prórroga para el primer pago**: el
+    primer pago de capital e interés ordinario se recorre 3 meses (los intereses
+    durante la prórroga deben tratarse según el mismo criterio usado por
+    `CreditService.php`, o bien indicarse claramente al usuario que "el primer pago
+    se realiza hasta el mes 4")
+- Mostrar al usuario: monto solicitado, plazo, tasa aplicable, monto de la cuota
+  mensual estimada, y total a pagar
+- Si la calculadora ya existe pero usa valores distintos a los de la tabla anterior,
+  corrígelos
+- Si la calculadora no existe en la landing y solo se simula visualmente, créala
+  como un componente interactivo (Vue, sin recargar página) dentro de
+  `Welcome.vue`, ubicada en una sección dedicada "Calcula tu crédito" cerca de la
+  sección de Modalidades
+- Revisar que `app/Services/CreditService.php` y `SimuladorController.php` tengan
+  configurados estos mismos montos/tasas/plazos para las 3 modalidades (y
+  `ModalidadCrea` en base de datos / seeders si aplica), de modo que el simulador
+  del área operativa y el de la landing sean consistentes. Si encuentras
+  discrepancias, ajústalas.
+
+---
+
+## 5. VERIFICACIÓN ANTES DEL DEPLOY
+
+1. `npm run build` — debe compilar sin errores
+2. Revisar visualmente (o con `php artisan serve` + build) que:
+   - El nuevo logo aparece en navbar y footer, y el favicon se actualizó
+   - El Hero ya NO muestra el bloque de las 3 estadísticas eliminadas
+   - Las secciones de Modalidades, Requisitos, Cómo Funciona y FAQ reflejan la
+     información de las RO
+   - La calculadora funciona con los 3 sets de datos (Artesanal/Emprendedores/
+     Sustentable) y respeta montos mínimos/máximos, tasas y plazos
+3. `php artisan test` — debe pasar
+4. Confirmar que no se rompió ninguna ruta existente (`/mi-portal`, `/login`,
+   `/consultar-credito`, `/simulador`)
+
+---
+
+## 6. DEPLOY A PRODUCCIÓN (HOSTINGER)
+
+### Datos del servidor
+- IP: 195.35.38.222
+- Puerto SSH: 65002
+- Usuario: u489236361
+- Dominio destino: https://crea.iyemyucatan.com/
+- Ruta esperada: `/home/u489236361/domains/crea.iyemyucatan.com/public_html`
+
+### 6.1 Build y optimización local
+
+```bash
+npm ci
+npm run build
+composer install --optimize-autoloader --no-dev
+```
+
+### 6.2 Subir cambios via rsync sobre SSH
+
+```bash
+rsync -avz --progress \
+  --exclude='.env' \
+  --exclude='node_modules/' \
+  --exclude='vendor/' \
+  --exclude='storage/logs/*' \
+  --exclude='.git/' \
+  --exclude='database/database.sqlite' \
+  -e "ssh -p 65002" \
+  ./ u489236361@195.35.38.222:/home/u489236361/domains/crea.iyemyucatan.com/public_html/
+```
+
+### 6.3 En el servidor (vía SSH)
+
+```bash
+cd /home/u489236361/domains/crea.iyemyucatan.com/public_html
+
+# Si hubo cambios en composer.json:
+composer install --optimize-autoloader --no-dev
+
+# Limpiar y regenerar cachés:
+php artisan config:clear
+php artisan route:clear
+php artisan view:clear
+php artisan config:cache
+php artisan route:cache
+php artisan view:cache
+
+# Si hubo cambios en ModalidadCrea / seeders relacionados a la calculadora:
+# revisar si requiere un seeder/actualización de datos en BD (NO ejecutar
+# seeders destructivos en producción; usar un script de actualización puntual
+# si los montos/tasas de ModalidadCrea ya existen como registros en la tabla)
+
+# Permisos:
+chmod -R 775 storage bootstrap/cache
+```
+
+### 6.4 Verificación post-deploy en https://crea.iyemyucatan.com/
+
+- [ ] El nuevo logo y favicon se ven correctamente (forzar recarga sin caché)
+- [ ] El Hero ya no muestra las 3 estadísticas eliminadas
+- [ ] Las secciones de contenido reflejan la información de las RO
+- [ ] La calculadora funciona correctamente para las 3 modalidades con los montos,
+      tasas y plazos especificados
+- [ ] El simulador operativo (`/simulador`, dentro del área autenticada) usa los
+      mismos parámetros
+- [ ] Sin errores en consola del navegador ni en `storage/logs/laravel.log`
+- [ ] Rutas existentes (`/mi-portal`, `/login`, `/consultar-credito`) siguen
+      funcionando
+
+---
+
+## NOTAS
+
+- No inventar datos: toda la información textual de la landing debe poder
+  rastrearse a `public/formatos/RO.pdf`
+- Los montos/tasas/plazos de la calculadora son datos de negocio sensibles —
+  deben coincidir EXACTAMENTE con la tabla de la sección 4
+- Mantener el diseño, animaciones y estructura visual ya implementados; este
+  prompt es de ajuste de contenido y datos, no un rediseño completo

@@ -31,7 +31,14 @@ class DocumentoSolicitud extends Model
         return route('portal.documentos.descargar', $this->id);
     }
 
-    public static function tiposRequeridos(?int $modalidadId = null, ?string $tipoPersona = null, ?string $tipoGarantia = null): array
+    public static function tiposRequeridos(
+        ?int $modalidadId = null,
+        ?string $tipoPersona = null,
+        ?string $tipoGarantia = null,
+        ?string $estadoCivil = null,
+        ?string $estadoCivilAval = null,
+        ?float $montoSolicitado = null
+    ): array
     {
         $base = [
             'ine_frente'           => 'INE / Credencial (Frente)',
@@ -39,29 +46,84 @@ class DocumentoSolicitud extends Model
             'curp'                 => 'Documento CURP oficial',
             'comprobante_domicilio'=> 'Comprobante de Domicilio',
             'foto_negocio'         => 'Fotografía del Negocio o Proyecto',
+            'acta_nacimiento'      => 'Acta de nacimiento',
+            'propiedad_negocio'    => 'Documento de propiedad/posesión del negocio',
+            'carta_no_servidor'    => 'Carta de no ser servidor público',
         ];
+
+        if ($estadoCivil === 'Casado(a)') {
+            $base['acta_matrimonio'] = 'Acta de matrimonio';
+        }
+
+        $esArtesanal = $esEmprendedores = $esSustentable = false;
 
         if ($modalidadId) {
             $modalidad = \App\Models\ModalidadCrea::find($modalidadId);
             $nombre    = strtolower($modalidad?->nombre ?? '');
 
-            if (str_contains($nombre, 'artesanal'))      $base['constancia_artesano']    = 'Constancia de Artesano';
-            if (str_contains($nombre, 'emprendedores'))  $base['constancia_situacion']   = 'Constancia de Situación Fiscal';
-            if (str_contains($nombre, 'sustentable'))    { $base['opinion_cumplimiento'] = 'Opinión de Cumplimiento SAT'; $base['plan_negocio'] = 'Plan de Negocio'; }
+            $esArtesanal     = str_contains($nombre, 'artesanal');
+            $esEmprendedores = str_contains($nombre, 'emprendedores');
+            $esSustentable   = str_contains($nombre, 'sustentable');
+
+            if ($esArtesanal) {
+                $base['constancia_artesano']  = 'Constancia de Artesano';
+                $base['cotizaciones_proveedor'] = '2 cotizaciones de proveedores';
+            }
+
+            if ($esEmprendedores || $esSustentable) {
+                $base['cotizaciones_proveedor'] = '3 cotizaciones de proveedores';
+                $base['buro_credito'] = 'Reporte buró de crédito vigente (≤180 días)';
+            }
+
+            if ($esEmprendedores) {
+                $base['constancia_situacion'] = 'Constancia de Situación Fiscal';
+            }
+
+            if ($esSustentable) {
+                $base['opinion_cumplimiento']      = 'Opinión de Cumplimiento SAT';
+                $base['plan_trabajo_sostenible']   = 'Plan de trabajo sostenible con impacto ambiental';
+
+                if ($montoSolicitado !== null && $montoSolicitado >= 200000) {
+                    $base['escritura_hipotecaria'] = 'Escritura de garantía hipotecaria';
+                }
+            }
         }
 
         if ($tipoPersona === 'moral') {
             $base['acta_constitutiva'] = 'Acta Constitutiva';
             $base['poder_rep_legal']   = 'Poder del Representante Legal';
             $base['id_rep_legal']      = 'Identificación del Representante Legal';
+
+            if ($esEmprendedores || $esSustentable) {
+                $base['balance_general'] = 'Balance general + estado de resultados';
+            }
         }
 
-        if ($tipoGarantia === 'aval')        { $base['id_aval'] = 'Identificación del Aval'; $base['comprobante_domicilio_aval'] = 'Comprobante de Domicilio del Aval'; }
+        if ($tipoGarantia === 'aval') {
+            $base['id_aval'] = 'Identificación del Aval';
+            $base['comprobante_domicilio_aval'] = 'Comprobante de Domicilio del Aval';
+            $base['acta_nacimiento_aval'] = 'Acta de nacimiento del aval';
+
+            if ($estadoCivilAval === 'Casado(a)') {
+                $base['acta_matrimonio_aval'] = 'Acta de matrimonio del aval';
+            }
+        }
         if ($tipoGarantia === 'prendaria')   $base['factura_bien_mueble']     = 'Factura del Bien Mueble en Garantía';
         if ($tipoGarantia === 'hipotecaria') $base['doc_propiedad_inmueble']  = 'Documento de Propiedad del Inmueble';
 
-        $base['cotizaciones'] = 'Cotizaciones del Destino del Crédito (mínimo 2)';
-
         return $base;
+    }
+
+    /**
+     * Documentos que el ciudadano sube después de que su solicitud fue aprobada
+     * (previos a la firma de formalización en oficinas IYEM).
+     */
+    public static function tiposPostAprobacion(): array
+    {
+        return [
+            'foto_fachada'           => 'Fotografía de fachada del negocio',
+            'google_maps_negocio'    => 'Enlace de Google Maps del negocio',
+            'cuenta_bancaria_caratula'=> 'Carátula de estado de cuenta bancaria (últimos 3 meses)',
+        ];
     }
 }

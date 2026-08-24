@@ -33,7 +33,7 @@ class CreditoController extends Controller
             $moratorioCondonado = 0;
 
             $cuotasPendientes = $credito->amortizaciones()
-                ->whereNotIn('estado', ['Pagado', 'Condonado', 'Reestructurada'])
+                ->whereNotIn('estado', ['Pagado', 'Condonado', 'Reestructurada', 'Gracia'])
                 ->lockForUpdate()
                 ->get();
 
@@ -173,7 +173,7 @@ class CreditoController extends Controller
             ->get();
 
         $cuotasPagadas = $credito->amortizaciones->whereIn('estado', ['Pagado', 'Condonado'])->count();
-        $saldoPendiente = $credito->amortizaciones->whereNotIn('estado', ['Pagado', 'Condonado', 'Reestructurada'])->sum('pago_restante');
+        $saldoPendiente = $credito->amortizaciones->whereNotIn('estado', ['Pagado', 'Condonado', 'Reestructurada', 'Gracia'])->sum('pago_restante');
 
         $resumen = [
             'capital_pagado'  => round($pagos->sum('aplicado_capital'), 2),

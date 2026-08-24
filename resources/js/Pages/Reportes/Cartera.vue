@@ -120,7 +120,7 @@ const exportUrl = computed(() => {
             </div>
 
             <!-- CONTADORES RÁPIDOS -->
-            <div class="grid grid-cols-3 gap-3 mb-6">
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6">
                 <div class="flex items-center gap-3 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-4">
                     <CheckCircle2 :size="20" class="text-green-500" />
                     <div>

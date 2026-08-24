@@ -70,6 +70,10 @@ const montoMin      = computed(() => configActual.value.min);
 const montoMax      = computed(() => configActual.value.max);
 const prorrogaMeses = computed(() => configActual.value.prorroga);
 const montoValido   = computed(() => calc.monto >= montoMin.value && calc.monto <= montoMax.value);
+const plazosDisponibles = computed(() => calc.modalidad === 'CREA Artesanal' ? [6, 12, 18] : [12, 18, 24]);
+watch(plazosDisponibles, (opciones) => {
+    if (!opciones.includes(calc.plazo)) calc.plazo = opciones[opciones.length - 1];
+});
 
 const calcResult = computed(() => {
     const { monto, plazo } = calc;
@@ -119,7 +123,7 @@ const MODALIDADES = [
         beneficios: ['Activos fijos para producción artesanal', 'Materia prima e insumos', 'Herramientas y equipamiento', 'Sin intereses ordinarios (0%)'],
         tasa: '0% interés anual',
         monto: '$5,000 – $25,000',
-        plazo: '12, 18 o 24 meses',
+        plazo: '6, 12 o 18 meses',
         accent: '#E8A020',
         bg: 'bg-amber-50 dark:bg-amber-900/10',
         border: 'border-amber-200/70 dark:border-amber-700/30',
@@ -180,7 +184,7 @@ const REQUISITOS = [
 const FAQS = [
     { pregunta: '¿Qué significa CREA?', respuesta: 'CREA son las siglas de "Crédito para el Renacimiento de Emprendedores y Artesanos". Es un programa del Instituto Yucateco de Emprendedores (IYEM), enmarcado en el programa "Renacimiento Maya de Yucatán" del Gobierno del Estado, con vigencia hasta el 31 de diciembre de 2030.' },
     { pregunta: '¿Quién puede solicitar un crédito CREA?', respuesta: 'Mexicanos mayores de 18 años con actividad económica en el estado de Yucatán, que no sean empleados de la Administración Pública durante la vigencia del crédito, cuenten con un proyecto productivo viable y un aval solidario con domicilio comprobable en Yucatán (no familiar hasta segundo grado consanguíneo).' },
-    { pregunta: '¿Cuáles son las tres modalidades y sus condiciones?', respuesta: 'CREA Artesanal: $5,000 a $25,000 a tasa 0%, para artesanos de Yucatán. CREA Emprendedores: $25,000 a $150,000 al 7% anual, para micro y pequeñas empresas con domicilio fiscal en Yucatán. CREA Sustentable: $50,000 a $500,000 al 5% anual con 3 meses de prórroga, para proyectos con impacto ambiental positivo. Las tres modalidades manejan plazos de 12, 18 o 24 meses.' },
+    { pregunta: '¿Cuáles son las tres modalidades y sus condiciones?', respuesta: 'CREA Artesanal: $5,000 a $25,000 a tasa 0%, para artesanos de Yucatán. CREA Emprendedores: $25,000 a $150,000 al 7% anual, para micro y pequeñas empresas con domicilio fiscal en Yucatán. CREA Sustentable: $50,000 a $500,000 al 5% anual con 3 meses de prórroga, para proyectos con impacto ambiental positivo. CREA Artesanal maneja plazos de 6, 12 o 18 meses; CREA Emprendedores y CREA Sustentable manejan plazos de 12, 18 o 24 meses.' },
     { pregunta: '¿En cuántos municipios opera el programa?', respuesta: 'El programa CREA tiene cobertura en los 106 municipios del estado de Yucatán, conforme al Acuerdo de Reglas de Operación emitido por el IYEM (Acuerdo 03/2025).' },
     { pregunta: '¿Puedo realizar toda la solicitud en línea?', respuesta: 'Sí, el proceso de solicitud es completamente digital a través del portal ciudadano. Puedes registrarte, llenar tu solicitud, subir documentos y dar seguimiento a tu trámite sin acudir físicamente a las oficinas del IYEM.' },
     { pregunta: '¿Qué documentos necesito para mi solicitud?', respuesta: 'Identificación oficial vigente (INE o pasaporte), CURP, comprobante de domicilio no mayor a 90 días, Ficha Técnica del proyecto productivo (Anexo 2), y documentación del aval solidario. Para CREA Artesanal se requiere presentar productos muestra representativos.' },
@@ -696,7 +700,7 @@ onUnmounted(() => {
                         <div class="space-y-3">
                             <label class="block text-xs font-black uppercase tracking-wider text-slate-500 dark:text-zinc-400">Plazo de pago</label>
                             <div class="grid grid-cols-3 gap-2">
-                                <button v-for="p in [12, 18, 24]" :key="p"
+                                <button v-for="p in plazosDisponibles" :key="p"
                                     @click="calc.plazo = p"
                                     :class="['py-3.5 rounded-xl text-sm transition-all font-bold', calc.plazo === p
                                         ? 'bg-[#6B1938] text-white shadow-lg shadow-[#6B1938]/30 scale-[1.02]'
@@ -741,7 +745,7 @@ onUnmounted(() => {
                                         ★ Primer pago a partir del mes {{ prorrogaMeses + 1 }} ({{ prorrogaMeses }} meses de prórroga)
                                     </p>
                                 </div>
-                                <div class="grid grid-cols-2 gap-4 pt-5 border-t border-white/15">
+                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-5 border-t border-white/15">
                                     <div>
                                         <p class="text-[#F4BAC8] text-[10px] uppercase tracking-widest mb-1 font-bold">Total a pagar</p>
                                         <p class="text-xl font-black">{{ (calcResult && montoValido) ? formatCurrency(calcResult.total) : '—' }}</p>

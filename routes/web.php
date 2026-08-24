@@ -6,10 +6,11 @@ use App\Http\Controllers\AcreditadoController;
 use App\Http\Controllers\AnalisisCreditoController;
 use App\Http\Controllers\AuditoriaController;
 use App\Http\Controllers\CondonacionFormalController;
+use App\Http\Controllers\ComprobacionController;
 use App\Http\Controllers\DesembolsoController;
-use App\Http\Controllers\InteresadoController;
+// use App\Http\Controllers\InteresadoController; // Módulo eliminado (Interesados CREA / Captar Interesado)
 use App\Http\Controllers\Portal\EstadoCuentaController;
-use App\Http\Controllers\PresupuestoController;
+// use App\Http\Controllers\PresupuestoController; // Módulo eliminado (Presupuesto)
 use App\Http\Controllers\PublicController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\OperacionesController;
@@ -23,9 +24,9 @@ use App\Http\Controllers\ContactoController;
 use App\Http\Controllers\SimuladorController;
 use App\Http\Controllers\SolicitudOperativoController;
 use App\Http\Controllers\CobranzaController;
-use App\Http\Controllers\CobranzaJuridicaController;
+// use App\Http\Controllers\CobranzaJuridicaController; // Módulo eliminado (Cobranza Jurídica / listado juridico.*)
 use App\Http\Controllers\Portal\BeneficiarioController;
-use App\Http\Controllers\Portal\SolicitudCreditoController;
+use App\Http\Controllers\Portal\ComprobacionPortalController;
 use App\Http\Controllers\Portal\WizardSolicitudController;
 use App\Http\Controllers\Portal\MiCreditoController;
 use App\Http\Controllers\Portal\ExpedienteController;
@@ -36,14 +37,16 @@ Route::get('/', [PublicController::class, 'index'])->name('welcome');
 Route::get('/consultar-credito', fn() => redirect('/'))->name('public.consultar.redirect');
 Route::post('/consultar-credito', [PublicController::class, 'consultar'])->name('public.consultar');
 Route::post('/contacto', [ContactoController::class, 'enviar'])->middleware('throttle:5,1')->name('contacto.enviar');
+Route::get('/aviso-privacidad', [PublicController::class, 'avisoPrivacidad'])->name('aviso-privacidad');
 
 // --- PORTAL CIUDADANO (requiere auth + tipo ciudadano) ---
-Route::middleware(['auth', 'ciudadano'])->prefix('mi-portal')->name('portal.')->group(function () {
+Route::middleware(['auth', 'verified', 'ciudadano'])->prefix('mi-portal')->name('portal.')->group(function () {
     Route::get('/', [BeneficiarioController::class, 'index'])->name('dashboard');
 
-    // Anuncios
+    // Anuncios / Notificaciones
     Route::post('anuncios/{anuncio}/leer', [BeneficiarioController::class, 'marcarLeido'])->name('anuncios.leer');
     Route::post('anuncios/leer-todos', [BeneficiarioController::class, 'marcarTodosLeidos'])->name('anuncios.leer-todos');
+    Route::get('notificaciones', [BeneficiarioController::class, 'notificaciones'])->name('notificaciones.lista');
 
     // Expediente digital
     Route::get('expediente', [ExpedienteController::class, 'index'])->name('expediente');
@@ -53,6 +56,7 @@ Route::middleware(['auth', 'ciudadano'])->prefix('mi-portal')->name('portal.')->
     Route::post('solicitud/verificar-curp', [WizardSolicitudController::class, 'verificarCurp'])->name('solicitar.verificar-curp');
     Route::post('solicitud/paso', [WizardSolicitudController::class, 'guardarPaso'])->name('solicitar.paso');
     Route::post('solicitud/documento', [WizardSolicitudController::class, 'subirDocumento'])->name('solicitar.documento');
+    Route::post('solicitud/documento-post-aprobacion', [WizardSolicitudController::class, 'subirDocumentoPostAprobacion'])->name('solicitar.documento-post-aprobacion');
     Route::post('solicitud/generar-formatos', [WizardSolicitudController::class, 'generarFormatos'])->name('solicitar.generar-formatos');
     Route::get('solicitud/{solicitud}/descargar-formatos', [WizardSolicitudController::class, 'descargarFormatos'])->name('solicitar.descargar-formatos');
 
@@ -66,6 +70,10 @@ Route::middleware(['auth', 'ciudadano'])->prefix('mi-portal')->name('portal.')->
     Route::get('mi-credito', [MiCreditoController::class, 'index'])->name('credito');
     Route::get('mi-credito/estado-cuenta/pdf', [EstadoCuentaController::class, 'pdf'])->name('credito.estado-cuenta.pdf');
     Route::get('mi-credito/liquidacion-anticipada', [EstadoCuentaController::class, 'liquidacionAnticipada'])->name('credito.liquidacion');
+
+    // Comprobación de uso del crédito
+    Route::post('comprobacion/{comprobacion}/enviar', [ComprobacionPortalController::class, 'enviar'])->name('comprobacion.enviar');
+    Route::get('documentos-comprobacion/{documento}/descargar', [ComprobacionPortalController::class, 'descargarDocumento'])->name('documentos-comprobacion.descargar');
 });
 
 // --- RUTAS OPERATIVAS (requiere auth + tipo operativo) ---
@@ -85,9 +93,9 @@ Route::middleware(['auth', 'verified', 'operativo'])->group(function () {
     Route::resource('roles', RoleController::class)->except(['create', 'show', 'edit']);
     Route::resource('users', UserController::class)->except(['create', 'show', 'edit']);
 
-    // INTERESADOS
-    Route::post('interesados/{id}/convertir', [InteresadoController::class, 'convertir'])->name('interesados.convertir');
-    Route::resource('interesados', InteresadoController::class);
+    // INTERESADOS — módulo eliminado (Interesados CREA / Captar Interesado)
+    // Route::post('interesados/{id}/convertir', [InteresadoController::class, 'convertir'])->name('interesados.convertir');
+    // Route::resource('interesados', InteresadoController::class);
 
     // ACREDITADOS
     Route::resource('acreditados', AcreditadoController::class);
@@ -105,6 +113,12 @@ Route::middleware(['auth', 'verified', 'operativo'])->group(function () {
     // DESEMBOLSO
     Route::get('creditos/{credito}/desembolso', [DesembolsoController::class, 'create'])->name('creditos.desembolso.create');
     Route::post('creditos/{credito}/desembolso', [DesembolsoController::class, 'store'])->name('creditos.desembolso.store');
+
+    // COMPROBACIÓN DE USO DEL CRÉDITO
+    Route::get('comprobaciones', [ComprobacionController::class, 'index'])->name('comprobaciones.index');
+    Route::get('comprobaciones/{comprobacion}', [ComprobacionController::class, 'show'])->name('comprobaciones.show');
+    Route::post('comprobaciones/{comprobacion}/aprobar', [ComprobacionController::class, 'aprobar'])->name('comprobaciones.aprobar');
+    Route::post('comprobaciones/{comprobacion}/rechazar', [ComprobacionController::class, 'rechazar'])->name('comprobaciones.rechazar');
 
     // REESTRUCTURACIÓN
     Route::get('creditos/{credito}/reestructurar', [ReestructuracionController::class, 'create'])->name('creditos.reestructurar.create');
@@ -145,10 +159,10 @@ Route::middleware(['auth', 'verified', 'operativo'])->group(function () {
     Route::post('cobranza/{credito}/gestion', [CobranzaController::class, 'storeGestion'])->name('cobranza.gestion');
     Route::post('cobranza/{credito}/juridico', [CobranzaController::class, 'enviarJuridico'])->name('cobranza.juridico');
 
-    // COBRANZA JURÍDICA
-    Route::get('juridico', [CobranzaJuridicaController::class, 'index'])->name('juridico.index');
-    Route::get('juridico/{juridico}', [CobranzaJuridicaController::class, 'show'])->name('juridico.show');
-    Route::put('juridico/{juridico}', [CobranzaJuridicaController::class, 'update'])->name('juridico.update');
+    // COBRANZA JURÍDICA — módulo de listado eliminado (se conserva el botón "Enviar a Jurídico" en Cobranza)
+    // Route::get('juridico', [CobranzaJuridicaController::class, 'index'])->name('juridico.index');
+    // Route::get('juridico/{juridico}', [CobranzaJuridicaController::class, 'show'])->name('juridico.show');
+    // Route::put('juridico/{juridico}', [CobranzaJuridicaController::class, 'update'])->name('juridico.update');
 
     // EXPORTACIONES EXCEL
     Route::get('exportar/movimientos/{acreditado}', [ExportController::class, 'movimientosAcreditado'])->name('operaciones.export');
@@ -158,9 +172,9 @@ Route::middleware(['auth', 'verified', 'operativo'])->group(function () {
     // AUDITORÍA
     Route::get('auditoria', [AuditoriaController::class, 'index'])->name('auditoria.index');
 
-    // PRESUPUESTO
-    Route::get('presupuesto', [PresupuestoController::class, 'index'])->name('presupuesto.index');
-    Route::post('presupuesto', [PresupuestoController::class, 'store'])->name('presupuesto.store');
+    // PRESUPUESTO — módulo eliminado
+    // Route::get('presupuesto', [PresupuestoController::class, 'index'])->name('presupuesto.index');
+    // Route::post('presupuesto', [PresupuestoController::class, 'store'])->name('presupuesto.store');
 
     // REPORTES ADICIONALES
     Route::get('reportes/beneficiarios', [ReporteController::class, 'beneficiarios'])->name('reportes.beneficiarios');

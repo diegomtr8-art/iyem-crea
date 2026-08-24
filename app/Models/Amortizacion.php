@@ -30,6 +30,7 @@ class Amortizacion extends Model
         'pago_restante',
         'estado',
         'fecha_ultimo_pago',
+        'observaciones',
     ];
 
     // Relación inversa: Una amortización pertenece a un crédito

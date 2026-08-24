@@ -9,8 +9,10 @@ use App\Models\AuditoriaLog;
 use App\Models\Credito;
 use App\Models\DocumentoSolicitud;
 use App\Models\ModalidadCrea;
+use App\Models\PresupuestoPrograma;
 use App\Models\SolicitudCredito;
 use App\Models\SolicitudEstatusHistorial;
+use App\Services\FormatosService;
 use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -134,11 +136,13 @@ class SolicitudOperativoController extends Controller
                 'analisis' => $solicitud->analisis ? [
                     'recomendacion'    => $solicitud->analisis->recomendacion,
                     'score_cualitativo'=> $solicitud->analisis->score_cualitativo,
+                    'puntaje_total'    => $solicitud->analisis->puntaje_total,
                     'analista'         => $solicitud->analisis->analista?->name,
                     'fecha_analisis'   => $solicitud->analisis->fecha_analisis?->format('d/m/Y'),
                     'monto_recomendado'=> $solicitud->analisis->monto_recomendado,
                 ] : null,
             ],
+            'operativos' => \App\Models\User::where('tipo', 'operativo')->orderBy('name')->get(['id', 'name']),
         ]);
     }
 
@@ -219,13 +223,24 @@ class SolicitudOperativoController extends Controller
                     ?? match ($request->estatus) {
                         'En_Revision'              => 'Un asesor CREA está revisando tu solicitud y documentos.',
                         'Documentacion_Incompleta' => 'Algunos documentos requieren corrección. Revisa tu solicitud.',
-                        'Aprobada'                 => '¡Felicidades! Tu solicitud fue aprobada. Pronto te contactaremos.',
+                        'Aprobada'                 => '¡Felicidades! Tu solicitud fue aprobada. Ya puedes descargar tus formatos.',
                         'Rechazada'                => 'Lamentablemente tu solicitud no fue aprobada. Contáctanos para más información.',
                         default                    => '',
                     },
                 'tipo'       => $cfg['tipo'],
                 'url_accion' => route('portal.solicitud.index'),
             ]);
+        }
+
+        // Al aprobar, generar ZIP con los formatos oficiales
+        if ($request->estatus === 'Aprobada') {
+            try {
+                $zipRuta = FormatosService::generarZip($solicitud);
+                $solicitud->update(['formatos_zip_ruta' => $zipRuta]);
+            } catch (\Throwable $e) {
+                // No bloquear el cambio de estatus si falla la generación del ZIP
+                logger()->error('Error generando ZIP para solicitud ' . $solicitud->id . ': ' . $e->getMessage());
+            }
         }
 
         return back()->with('success', 'Estatus actualizado y notificación enviada al ciudadano.');
@@ -300,6 +315,12 @@ class SolicitudOperativoController extends Controller
         $nextNum   = isset($m[2]) ? str_pad((int)$m[2] + 1, 3, '0', STR_PAD_LEFT) : '001';
         $claveSugerida = 'CREA-' . now()->year . '-' . $nextNum;
 
+        $tasaPreview = null;
+        if ($solicitud->modalidad) {
+            [$tasaOrdinaria, $tasaMoratoria] = $this->calcularTasas($solicitud, $solicitud->modalidad);
+            $tasaPreview = ['ordinaria' => $tasaOrdinaria, 'moratoria' => $tasaMoratoria];
+        }
+
         return Inertia::render('Solicitudes/RegistrarCredito', [
             'solicitud' => [
                 'id'               => $solicitud->id,
@@ -313,11 +334,72 @@ class SolicitudOperativoController extends Controller
                 'modalidad_id'     => $solicitud->modalidad_id,
                 'modalidad_nombre' => $solicitud->modalidad?->nombre,
                 'monto_solicitado' => $solicitud->monto_solicitado,
+                'tipo_garantia'    => $solicitud->tipo_garantia,
                 'user_email'       => $solicitud->user?->email,
             ],
-            'modalidades'    => $modalidades,
-            'clave_sugerida' => $claveSugerida,
+            'modalidades'        => $modalidades,
+            'clave_sugerida'     => $claveSugerida,
+            'tasa_preview'       => $tasaPreview,
+            'presupuesto_status' => $solicitud->modalidad_id
+                ? $this->verificarPresupuesto((int) $solicitud->modalidad_id, (float) $solicitud->monto_solicitado)
+                : null,
         ]);
+    }
+
+    /**
+     * Calcula la tasa ordinaria (con el recargo por renovación si aplica) y la
+     * tasa moratoria (ordinaria × 2.5) para una solicitud y modalidad dadas.
+     *
+     * @return array{0: float, 1: float}
+     */
+    private function calcularTasas(SolicitudCredito $solicitud, ModalidadCrea $modalidad): array
+    {
+        $tasaOrdinaria = (float) $modalidad->tasa_interes;
+
+        $esRenovacion = (bool) ($solicitud->datos_wizard['es_renovacion'] ?? false);
+        if ($esRenovacion) {
+            $nombreMod = strtolower($modalidad->nombre);
+            if (str_contains($nombreMod, 'emprendedores') || str_contains($nombreMod, 'sustentable')) {
+                $tasaOrdinaria = round($tasaOrdinaria + 1, 2);
+            }
+        }
+
+        return [$tasaOrdinaria, round($tasaOrdinaria * 2.5, 2)];
+    }
+
+    private function verificarPresupuesto(int $modalidadId, float $monto): array
+    {
+        $anio = now()->year;
+        $presupuesto = PresupuestoPrograma::where('modalidad_id', $modalidadId)
+            ->where('ejercicio_fiscal', $anio)
+            ->first();
+
+        if (!$presupuesto) {
+            return ['alerta' => true, 'mensaje' => "No hay presupuesto registrado para esta modalidad en {$anio}."];
+        }
+
+        $ejercido = Credito::where('modalidad_id', $modalidadId)
+            ->where('estatus', '!=', 'Cancelado')
+            ->whereYear('fecha_entrega', $anio)
+            ->sum('monto_otorgado');
+
+        $disponible = (float) $presupuesto->monto_autorizado - (float) $ejercido;
+
+        if ($monto > $disponible) {
+            return [
+                'bloqueado' => true,
+                'mensaje'   => 'El monto solicitado ($' . number_format($monto, 2) . ') supera el presupuesto disponible ($' . number_format($disponible, 2) . ') para esta modalidad.',
+            ];
+        }
+
+        if ($disponible < ((float) $presupuesto->monto_autorizado * 0.1)) {
+            return [
+                'alerta'  => true,
+                'mensaje' => '⚠️ Presupuesto casi agotado. Disponible: $' . number_format($disponible, 2) . '.',
+            ];
+        }
+
+        return ['ok' => true, 'disponible' => $disponible];
     }
 
     public function guardarCredito(Request $request, SolicitudCredito $solicitud): RedirectResponse
@@ -338,11 +420,17 @@ class SolicitudOperativoController extends Controller
             'monto_otorgado'  => 'required|numeric|min:100',
             'plazo_meses'     => 'required|integer|min:1|max:60',
             'fecha_entrega'   => 'required|date',
+            'fecha_contrato'  => 'nullable|date',
         ]);
 
         $modalidad = ModalidadCrea::findOrFail($data['modalidad_id']);
-        $tasaOrdinaria = (float) $modalidad->tasa_interes;
-        $tasaMoratoria = round($tasaOrdinaria * 2.5, 2);
+
+        $presupuesto = $this->verificarPresupuesto((int) $data['modalidad_id'], (float) $data['monto_otorgado']);
+        if (!empty($presupuesto['bloqueado'])) {
+            return back()->withErrors(['monto_otorgado' => $presupuesto['mensaje']])->withInput();
+        }
+
+        [$tasaOrdinaria, $tasaMoratoria] = $this->calcularTasas($solicitud, $modalidad);
 
         return DB::transaction(function () use ($data, $solicitud, $modalidad, $tasaOrdinaria, $tasaMoratoria) {
             $acreditado = Acreditado::create([
@@ -361,43 +449,21 @@ class SolicitudOperativoController extends Controller
                 'monto_otorgado'         => $data['monto_otorgado'],
                 'plazo_meses'            => $data['plazo_meses'],
                 'fecha_entrega'          => $data['fecha_entrega'],
+                'fecha_contrato'         => $data['fecha_contrato'] ?? $data['fecha_entrega'],
                 'tasa_interes_ordinario' => $tasaOrdinaria,
                 'tasa_interes_moratorio' => $tasaMoratoria,
                 'estatus'                => 'Activo',
             ]);
 
-            // Generar tabla de amortización (igual que AcreditadoController)
-            $monto       = (float) $data['monto_otorgado'];
-            $plazo       = (int) $data['plazo_meses'];
-            $tasaMensual = ($tasaOrdinaria / 100) / 12;
-            $fechaInicial = Carbon::parse($data['fecha_entrega']);
-            $mesesProrroga = str_contains($modalidad->nombre, 'Sustentable') ? 3 : 0;
-
-            $cuotaFija = ($tasaMensual > 0)
-                ? $monto * ($tasaMensual / (1 - pow(1 + $tasaMensual, -$plazo)))
-                : $monto / $plazo;
-
-            $saldo = $monto;
-            for ($i = 1; $i <= $plazo; $i++) {
-                $interes  = round($saldo * $tasaMensual, 2);
-                $capital  = ($i === $plazo) ? round($saldo, 2) : round($cuotaFija - $interes, 2);
-                $cuota    = round($capital + $interes, 2);
-                $credito->amortizaciones()->create([
-                    'numero_cuota'               => $i,
-                    'fecha_vencimiento'          => $fechaInicial->copy()->addMonths($i + $mesesProrroga)->format('Y-m-d'),
-                    'saldo_insoluto'             => round($saldo, 2),
-                    'capital_esperado'           => $capital,
-                    'interes_ordinario_esperado' => $interes,
-                    'cuota_fija'                 => $cuota,
-                    'pago_restante'              => $cuota,
-                    'estado'                     => 'Pendiente',
-                    'capital_pagado'             => 0,
-                    'interes_ordinario_pagado'   => 0,
-                    'interes_moratorio_pagado'   => 0,
-                    'interes_moratorio_generado' => 0,
-                ]);
-                $saldo -= $capital;
-            }
+            // Generar tabla de amortización (incluye período de gracia Sustentable)
+            (new \App\Services\CreditService())->generarTablaAmortizacion(
+                $credito,
+                (float) $data['monto_otorgado'],
+                (int) $data['plazo_meses'],
+                $tasaOrdinaria,
+                Carbon::parse($data['fecha_entrega']),
+                $modalidad->nombre
+            );
 
             // Vincular solicitud → acreditado y crédito
             $solicitud->update([

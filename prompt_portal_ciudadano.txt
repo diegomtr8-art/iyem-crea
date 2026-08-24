@@ -1,0 +1,221 @@
+# PROMPT: AUDITORÍA Y MEJORA DEL PORTAL CIUDADANO (/mi-portal)
+# Para usar en: Claude Code (sesión interactiva en la raíz del proyecto)
+# Stack: Laravel 11 + Vue 3 + Inertia.js + TypeScript + Tailwind CSS
+# Documento de referencia: public/formatos/RO.pdf (Reglas de Operación, Acuerdo IYEM 03/2025)
+
+---
+
+## CONTEXTO
+
+Ya tenemos definidos: la landing page, la sección de contacto y el flujo de Auth
+(login/registro/Google) con la identidad visual de CREA (verde institucional
+#006847, dorado #E8A020, animaciones suaves, dark mode, componentes ShadCN/ui).
+
+Ahora toca auditar y mejorar el **Portal del Ciudadano** (`/mi-portal`), que es
+donde un usuario con `tipo = 'ciudadano'` gestiona su solicitud de crédito y, una
+vez aprobado, su crédito activo.
+
+### Archivos involucrados
+
+Backend:
+- `app/Http/Controllers/Portal/BeneficiarioController.php` (dashboard del portal)
+- `app/Http/Controllers/Portal/SolicitudCreditoController.php` (solicitud de
+  crédito + documentos)
+- `app/Http/Controllers/Portal/ExpedienteController.php` (expediente digital)
+- `app/Http/Controllers/Portal/MiCreditoController.php` (crédito activo)
+- `app/Http/Controllers/Portal/EstadoCuentaController.php` (PDF estado de cuenta)
+- `app/Models/SolicitudCredito.php`, `app/Models/DocumentoSolicitud.php`,
+  `app/Models/ModalidadCrea.php`
+
+Frontend (`resources/js/Pages/portal/`):
+- `Dashboard.vue` (272 líneas)
+- `Expediente.vue` (253 líneas)
+- `MiCredito.vue` (355 líneas)
+- `Solicitud.vue` (515 líneas)
+
+Rutas en `routes/web.php` bajo `prefix('mi-portal')->name('portal.')`, protegidas
+por middleware `auth + ciudadano`.
+
+### Las 3 modalidades de crédito (recordatorio, ya configuradas en la calculadora)
+
+| Modalidad     | Monto             | Tasa | Plazos          | Notas |
+|---------------|-------------------|------|-----------------|-------|
+| Artesanal     | $5,000 - $25,000  | 0%   | 12, 18, 24 meses| — |
+| Emprendedores | $25,000 - $150,000| 7%   | 12, 18, 24 meses| — |
+| Sustentable   | $50,000 - $500,000| 5%   | 12, 18, 24 meses| 3 meses de prórroga primer pago |
+
+El modelo `SolicitudCredito` actualmente tiene un campo genérico
+`monto_solicitado` (numeric, min:100, max:1000000) y `modalidad_id`, sin validar
+que el monto esté dentro del rango permitido por la modalidad seleccionada, ni
+captura el plazo deseado (`plazo_meses`).
+
+---
+
+## FASE 1 — AUDITORÍA
+
+Analiza a fondo el flujo completo del portal ciudadano y entrega un informe
+detallado (lista priorizada de hallazgos: P0/P1/P2/P3) cubriendo los siguientes
+puntos:
+
+### 1.1 Flujo de solicitud de crédito (`Solicitud.vue` + `SolicitudCreditoController`)
+
+- **Selección de modalidad y monto**: actualmente el usuario puede ingresar
+  `monto_solicitado` entre 100 y 1,000,000 sin relación con los rangos reales de
+  cada modalidad (Artesanal $5,000-$25,000, Emprendedores $25,000-$150,000,
+  Sustentable $50,000-$500,000). Evaluar:
+  - Validación dinámica en frontend (al elegir modalidad, ajustar min/max del
+    input de monto y mostrarlos como ayuda)
+  - Validación backend correspondiente (`required_if` / regla custom según
+    `modalidad_id`)
+  - Falta el campo **plazo deseado** (12/18/24 meses) — evaluar si debe
+    agregarse a `solicitudes_credito` (migración) y al formulario, ya que es un
+    dato que el comité usa para la tabla de amortización (Artículo 12 RO: "El
+    solicitante podrá proponer el número de cuotas... aprobado o modificado por
+    el comité")
+  - Para la modalidad **Sustentable**, considerar mostrar al usuario que tendrá
+    3 meses de prórroga para el primer pago (informativo)
+
+- **Datos personales**: revisar que los campos capturados (`curp`, `rfc`, sexo,
+  mayahablante, discapacidad, municipio, dirección, etc.) cubran lo necesario
+  según el Artículo 9 y 10 de las RO. Evaluar si falta capturar:
+  - Datos del **aval/garantía personal** (la RO exige un aval con domicilio en
+    Yucatán, no familiar hasta 2do grado) — actualmente no parece existir ningún
+    campo ni tabla para esto
+  - Relación de ingresos/egresos de los últimos 6 meses y proyección a 6 meses
+    (Artículo 10, incisos f y g) — verificar si se solicita como documento o
+    como datos estructurados
+
+- **Documentos requeridos** (`DocumentoSolicitud::tiposRequeridos()`): actualmente
+  son 5 tipos genéricos (`ine_frente`, `ine_reverso`, `curp`, `comprobante_domicilio`,
+  `foto_negocio`). Comparar contra el Artículo 10 de las RO, que pide adicionalmente
+  (según corresponda):
+  - Acta de nacimiento
+  - Documento que acredite propiedad/posesión del local
+  - Cotizaciones de lo que se va a adquirir con el crédito (mínimo 2)
+  - Documentación del aval (identificación + declaración de bienes patrimoniales)
+  - Para modalidad Artesanal: evidencia de productos muestra
+  Evaluar si el set de documentos debe variar SEGÚN LA MODALIDAD seleccionada
+  (ej. "productos muestra" solo aplica a Artesanal), y si se debe permitir
+  documentos opcionales/condicionales
+
+- **Estados de la solicitud** (enum `estatus`): `Borrador`, `Enviada`,
+  `En_Revision`, `Documentacion_Incompleta`, `Aprobada`, `Rechazada`. Verificar:
+  - Que `Solicitud.vue` muestre claramente en qué estado está la solicitud, con
+    un componente visual tipo "stepper"/timeline (Borrador → Enviada → En
+    Revisión → Aprobada/Rechazada), reutilizando el lenguaje visual de la landing
+  - Que el usuario entienda qué acción le corresponde en cada estado (ej. si está
+    `Documentacion_Incompleta`, mostrar claramente qué documento(s) tiene
+    `observacion` y debe resubir)
+  - Que `motivo_rechazo` se muestre claramente al ciudadano si la solicitud fue
+    rechazada, junto con info de si puede volver a aplicar
+
+- **Edición y envío**: revisar `update()` y `enviar()` — confirmar que una vez
+  enviada (`Enviada` o posterior) el formulario quede en modo lectura, y que el
+  botón "Enviar solicitud" valide que TODOS los documentos requeridos (según la
+  modalidad) estén cargados antes de habilitarse
+
+- **UX de carga de documentos**: revisar que cada documento muestre su estatus
+  (Pendiente/Aceptado/Rechazado con `observacion`), preview de PDF/imagen, y
+  permita reemplazar el archivo fácilmente. Verificar tamaño máximo (5MB) y tipos
+  permitidos (pdf, jpg, jpeg, png) estén comunicados claramente al usuario en la UI
+
+### 1.2 Dashboard del portal (`BeneficiarioController` + `Dashboard.vue`)
+
+- ¿Qué información muestra hoy? Revisar que sea relevante según el estado del
+  usuario:
+  - Si NO tiene solicitud → CTA prominente para iniciar solicitud, con
+    explicación breve de las 3 modalidades (mini cards con link a la calculadora
+    de la landing o a `/simulador`)
+  - Si tiene solicitud en proceso → resumen del estatus, próximos pasos
+  - Si tiene crédito activo → resumen rápido (saldo, próxima cuota, fecha
+    límite) con link a "Mi Crédito"
+- Revisar la sección de anuncios (`AnuncioCiudadano`, rutas
+  `anuncios.leer` / `anuncios.leer-todos`): confirmar que la UI sea clara, con
+  badge de no leídos, y que el diseño sea consistente
+- Verificar responsividad y dark mode
+
+### 1.3 Expediente digital (`ExpedienteController` + `Expediente.vue`)
+
+- Confirmar qué muestra esta vista vs. la sección de documentos dentro de
+  `Solicitud.vue` — ¿hay duplicación de funcionalidad/confusión para el usuario?
+  Evaluar si conviene unificar "mi expediente" como una sola fuente de verdad
+  para todos los documentos (de la solicitud + los que se agreguen después,
+  como el contrato firmado, dictamen, etc.)
+- Si el crédito ya fue aprobado, ¿el expediente muestra también documentos
+  generados por el sistema (contrato PDF, dictamen PDF, tabla de amortización)?
+  Revisar `CreditoController` (`contratoPdf`, `dictamenPdf`, `estadoCuentaPdf`,
+  `constanciaPdf`) y si el ciudadano tiene acceso a descargarlos desde su portal
+
+### 1.4 Mi Crédito (`MiCreditoController` + `MiCredito.vue`, `EstadoCuentaController`)
+
+- Revisar que se muestre correctamente: monto otorgado, modalidad, tasa, plazo,
+  saldo insoluto, próxima cuota (monto y fecha), historial de pagos
+- Para la modalidad **Sustentable** con 3 meses de prórroga: verificar que la
+  tabla de amortización mostrada al ciudadano refleje correctamente ese periodo
+  de gracia (sin confundir al usuario pensando que "no le cobran" esos meses, si
+  en realidad se siguen generando intereses)
+- Botón/sección "Estado de cuenta PDF" y "Liquidación anticipada" — confirmar que
+  funcionen y que la liquidación anticipada explique claramente el beneficio
+  (condonación de intereses futuros) en lenguaje sencillo para el ciudadano
+- Si el crédito está en estatus `Moroso`, mostrar de forma clara (sin alarmismo
+  excesivo, pero visible) el monto de mora y cómo regularizarse
+
+### 1.5 Consistencia visual y de navegación
+
+- Confirmar que el portal use un layout/sidebar propio para ciudadanos
+  (diferenciado del panel operativo), con el logo CREA, navegación a:
+  Dashboard, Mi Solicitud / Mi Crédito (según el estado), Expediente, Mi Perfil
+- Revisar que la navegación entre estas vistas sea intuitiva — un ciudadano sin
+  experiencia técnica debe entender en todo momento "dónde estoy" y "qué sigue"
+- Mensajes de error/éxito (vue-sonner) en español, sin jerga técnica
+- Dark mode y responsividad (mobile-first, ya que muchos ciudadanos accederán
+  desde el celular)
+
+### 1.6 Seguridad y validaciones
+
+- Confirmar que un ciudadano no pueda ver/editar la solicitud de otro usuario
+  (scoping por `user_id` en todos los controllers del portal)
+- Confirmar que los archivos subidos (`storage/app/public/solicitudes/{id}/...`)
+  no sean accesibles públicamente por URL predecible sin autenticación si
+  contienen datos sensibles (INE, comprobantes) — evaluar si deben servirse vía
+  ruta autenticada con `Storage::disk('local')` + signed routes en lugar de
+  `public` disk
+- Confirmar límites de tasa (throttling) en `subirDocumento` y `enviar` para
+  evitar abuso
+
+---
+
+## FASE 2 — PROPUESTA DE MEJORAS (sin implementar todavía)
+
+Con base en la auditoría, entrega una lista priorizada de mejoras concretas,
+agrupadas por:
+
+- **P0 — Crítico**: problemas de seguridad, datos faltantes que impiden cumplir
+  las RO (ej. validación de monto/modalidad, plazo, aval), bugs que bloquean el
+  flujo
+- **P1 — Alto**: campos/documentos faltantes según RO, mejoras de claridad en
+  estados de la solicitud, scoping de seguridad
+- **P2 — Medio**: mejoras de UX/UI (stepper visual, unificación de expediente,
+  mensajes más claros), consistencia visual con landing/auth
+- **P3 — Bajo**: pulido visual, microanimaciones, copywriting
+
+Para cada ítem indicar: archivo(s) afectado(s), qué cambiar, y si requiere
+migración de base de datos.
+
+**No implementar los cambios todavía** — esta fase es de diagnóstico y
+planificación. Al final, preguntar al usuario cuáles ítems priorizar para una
+siguiente iteración (probablemente un nuevo prompt dedicado a implementación).
+
+---
+
+## ENTREGABLE
+
+Un documento `AUDITORIA_PORTAL_CIUDADANO.md` en la raíz del proyecto con:
+1. Resumen ejecutivo (3-5 líneas)
+2. Tabla de hallazgos priorizados (P0-P3) con archivo, descripción, y propuesta
+3. Sección específica sobre el manejo de las 3 modalidades (montos, plazos, tasas,
+   prórroga de Sustentable) y cómo el flujo de solicitud debería capturarlas y
+   validarlas
+4. Sección sobre documentos requeridos por modalidad según las RO vs. lo
+   actualmente implementado
+5. Recomendación de siguiente paso (qué abordar primero)

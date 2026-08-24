@@ -35,25 +35,25 @@ class ReporteController extends Controller
             $morRec = (float) Pago::where('credito_id', $c->id)->where('cancelado', false)->sum('aplicado_mora');
 
             $cuotasVencidas = Amortizacion::where('credito_id', $c->id)
-                ->whereNotIn('estado', ['Pagado', 'Condonado', 'Reestructurada'])
+                ->whereNotIn('estado', ['Pagado', 'Condonado', 'Reestructurada', 'Gracia'])
                 ->where('fecha_vencimiento', '<', $hoy)
                 ->count();
 
             // Cartera vencida: monto pendiente de cuotas ya vencidas
             $montoVencido = (float) Amortizacion::where('credito_id', $c->id)
-                ->whereNotIn('estado', ['Pagado', 'Condonado', 'Reestructurada'])
+                ->whereNotIn('estado', ['Pagado', 'Condonado', 'Reestructurada', 'Gracia'])
                 ->where('fecha_vencimiento', '<', $hoy)
                 ->sum('pago_restante');
 
             // Por vencer: monto pendiente de cuotas aún vigentes
             $montoPorVencer = (float) Amortizacion::where('credito_id', $c->id)
-                ->whereNotIn('estado', ['Pagado', 'Condonado', 'Reestructurada'])
+                ->whereNotIn('estado', ['Pagado', 'Condonado', 'Reestructurada', 'Gracia'])
                 ->where('fecha_vencimiento', '>=', $hoy)
                 ->sum('pago_restante');
 
             // Devengado: interés ordinario esperado en cuotas no pagadas aún no vencidas
             $devengado = (float) Amortizacion::where('credito_id', $c->id)
-                ->whereNotIn('estado', ['Pagado', 'Condonado', 'Reestructurada'])
+                ->whereNotIn('estado', ['Pagado', 'Condonado', 'Reestructurada', 'Gracia'])
                 ->where('fecha_vencimiento', '>=', $hoy)
                 ->sum(DB::raw('interes_ordinario_esperado - interes_ordinario_pagado'));
 
@@ -220,7 +220,7 @@ class ReporteController extends Controller
         // Créditos que tienen al menos una cuota vencida sin pagar
         $creditos = Credito::with(['acreditado', 'modalidad', 'amortizaciones'])
             ->whereHas('amortizaciones', fn($q) => $q
-                ->whereNotIn('estado', ['Pagado', 'Condonado', 'Reestructurada'])
+                ->whereNotIn('estado', ['Pagado', 'Condonado', 'Reestructurada', 'Gracia'])
                 ->where('fecha_vencimiento', '<', $hoy)
             )
             ->when($modalidadId, fn($q) => $q->where('modalidad_id', $modalidadId))

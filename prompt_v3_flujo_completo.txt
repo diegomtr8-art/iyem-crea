@@ -1,0 +1,559 @@
+# PROMPT CLAUDE CODE v3 — FLUJO COMPLETO CREA
+# Proyecto: Laravel 11 · Vue 3 · Inertia.js · TypeScript · Tailwind CSS
+# Ejecutar desde la raíz del proyecto: C:\xampp\htdocs\CREA
+# ────────────────────────────────────────────────────────────────────────────────
+
+## CONTEXTO
+Sistema de microcréditos CREA del IYEM (Instituto Yucateco de Emprendedores).
+Stack: Laravel 11, Vue 3, Inertia.js, TypeScript, Tailwind CSS, DomPDF.
+El objetivo de este prompt es: dejar el flujo completo funcionando de punta a punta,
+limpiar módulos no necesarios y mejorar la calidad visual de los PDFs con logos oficiales.
+
+## MÓDULOS A ELIMINAR (limpiar por completo)
+Elimina estas secciones del sistema. Para cada una:
+a) Quita el ítem del sidebar (AppSidebar.vue)
+b) Elimina las rutas correspondientes en routes/web.php
+c) Comenta (no borres) los controladores para no romper autoloading
+
+### Módulos a eliminar:
+1. **Presupuesto** — ruta: presupuesto.index / presupuesto.store, controlador: PresupuestoController
+2. **Interesados CREA** — rutas: interesados.* + interesados.convertir, controlador: InteresadoController
+3. **Cobranza Jurídica** — ítem del sidebar y ruta juridico.index (mantén el botón "Enviar a Jurídico"
+   dentro de CobranzaController si existe, solo quita el módulo de listado/gestión jurídica separado)
+4. **Captar Interesado** — si existe como ruta o página separada, eliminarla
+
+En AppSidebar.vue, elimina únicamente los ítems de navegación correspondientes.
+No toques otros módulos del sidebar.
+
+─────────────────────────────────────────────────────────────────────────────────
+## TAREA 1 — LOGOS OFICIALES EN LOS PDFs
+
+Los PDFs actuales en resources/views/pdf/formatos/_header.blade.php muestran solo texto.
+Deben mostrar logos institucionales reales.
+
+### 1a. Descargar logos con Guzzle (o file_get_contents)
+Crea un Artisan command: `php artisan crea:descargar-logos`
+Que descargue y guarde en `public/img/logos/`:
+- Logo IYEM: https://iyem.yucatan.gob.mx/img/logo-iyem-blanco.png (intenta, si falla usa SVG inline)
+- Escudo Yucatán: https://www.yucatan.gob.mx/img/escudo-yucatan.png (intenta, si falla usa SVG inline)
+- Logo CREA: texto con estilo CREA en verde #006847
+
+Si las URLs no están disponibles en runtime, usa estos SVGs embebidos base64 como fallback:
+- Escudo genérico de Gobierno de Yucatán (círculo con texto "GY" en #006847)
+- Logo IYEM: rectángulo verde #006847 con "IYEM" en blanco
+
+### 1b. Actualizar _header.blade.php
+Reemplaza el header actual por uno con 3 columnas usando tabla HTML (compatible DomPDF):
+
+```
+| [Escudo Yucatán] | INSTITUTO YUCATECO DE EMPRENDEDORES | [Logo IYEM] |
+|                  | IYEM — Gobierno del Estado de Yucatán |             |
+|                  | Programa CREA                          |             |
+```
+Columna izquierda: escudo (img src="{{ public_path('img/logos/escudo-yucatan.png') }}" con fallback inline SVG)
+Columna central: nombre institucional verde #006847, bold
+Columna derecha: código del documento + título + fecha + folio (si aplica)
+
+Línea divisoria verde #006847 debajo del header (ya existe, mantenerla).
+
+### 1c. Actualizar _styles.blade.php — agregar:
+```css
+.header-logo { width: 55px; height: auto; }
+.header-center { text-align: center; }
+.iyem-title-crea { font-size: 14px; font-weight: bold; color: #006847; letter-spacing: 1px; }
+.doc-box { text-align: right; background: #f5f5f5; border: 1px solid #ddd; padding: 4px 6px; border-radius: 3px; }
+```
+
+### 1d. Verificar que TODOS los blade de formatos incluyen correctamente:
+- `@include('pdf.formatos._styles')`
+- `@include('pdf.formatos._header', ['codigo'=>..., 'titulo'=>..., 'fecha'=>..., 'folio'=>...])`
+- Footer institucional al final: `<div class="footer">{{ $codigo }} | Programa CREA — IYEM | {{ $fecha }}</div>`
+
+Archivos a revisar:
+- pdf/formatos/solicitud-pf-artesanal.blade.php
+- pdf/formatos/solicitud-pf.blade.php
+- pdf/formatos/solicitud-pm.blade.php
+- pdf/formatos/ficha-tecnica.blade.php
+- pdf/formatos/ingresos-egresos.blade.php
+- pdf/formatos/declaracion-aval-artesanal.blade.php
+- pdf/formatos/declaracion-aval.blade.php
+- pdf/formatos/pagare.blade.php
+- pdf/formatos/carta-compromiso.blade.php
+- pdf/formatos/carta-no-servidor.blade.php
+- pdf/formatos/cedula-geolocalizacion.blade.php
+- pdf/formatos/instructivo-pago.blade.php
+
+─────────────────────────────────────────────────────────────────────────────────
+## TAREA 2 — WIZARD CIUDADANO: FLUJO COMPLETO DE PUNTA A PUNTA
+
+El wizard está en: resources/js/Pages/portal/WizardCredito.vue
+El controlador está en: app/Http/Controllers/Portal/WizardSolicitudController.php
+
+### 2a. Completar campos faltantes en el wizard (verificar que TODOS estos se muestran en la UI)
+
+PASO 1 — Tipo de crédito:
+- Select modalidad (ya existe)
+- Radio tipo_persona: Física / Moral (ya existe)
+- Radio tipo_garantia: Aval / Prendaria / Hipotecaria (ya existe)
+- Nota visual explicativa para cada modalidad (montos, tasa, plazo)
+
+PASO 2 — Datos personales (verificar que TODOS se muestran en el form Vue):
+- Nombre completo ✓, CURP ✓, RFC, Fecha nacimiento ✓, Sexo ✓
+- Lugar de nacimiento (campo de texto)
+- Estado civil: Select ['Soltero(a)', 'Casado(a)', 'Divorciado(a)', 'Viudo(a)', 'Unión libre']
+- Si estado_civil = 'Casado(a)': mostrar campos: Nombre cónyuge, CURP cónyuge, Régimen matrimonial
+- Municipio (select con 106 municipios de Yucatán) ✓
+- Dirección / calle y número ✓, Colonia, CP (5 dígitos), Teléfono celular ✓, Teléfono fijo, Correo ✓
+- Toggle: ¿Domicilio propio o rentado? Si rentado → campo renta mensual
+- Checkboxes: ¿Habla maya? ¿Discapacidad? (si sí → campo tipo discapacidad)
+- Sección "Referencia personal (no familiar)": Nombre, Teléfono, CP
+
+PASO 3 — Solo si tipo_persona = 'moral':
+- Razón social, RFC moral, Domicilio, Colonia, Municipio, CP, Teléfono, Correo
+- Representante legal: Nombre, CURP, fecha constitución
+
+PASO 4 — Datos del negocio:
+- Nombre comercial, Giro / Actividad económica, Municipio del negocio
+- Fecha de inicio del negocio, Toggle: ¿Dado de alta en SAT? ✓
+- Si Sustentable: campo extra "Años de antigüedad en SAT" (validar ≥ 1 año)
+- Toggle: ¿Es emprendimiento nuevo o negocio en operación?
+- Descripción del negocio (textarea)
+- Proceso de operación, Mobiliario/equipamiento disponible, Recursos humanos actuales
+- Ventas mensuales promedio
+
+PASO 5 — Destino del crédito:
+- Tabla repetible: Concepto → Importe cotizado (ya existe ✓)
+- Campo monto_solicitado (dentro del rango de la modalidad) ✓
+- Select plazo_meses (solo los permitidos por modalidad: Artesanal 6/12/18, Emp/Sust 12/18/24) ✓
+- Tabla: ¿Recibiste apoyos de gobierno antes? (ya existe ✓)
+- Importe total del proyecto
+
+PASO 6 — Ficha técnica:
+- Tabla proveedores: Nombre, Antigüedad, Insumo, Compras mensuales, Política de pago (ya existe ✓)
+- Tabla clientes: Nombre, Sector, Ventas mensuales, Política de cobro (ya existe ✓)
+- Tabla deudas del negocio: Acreedor, Monto, Mensualidad (ya existe ✓)
+- Productos/servicios que ofrece
+- ¿Tiene distribución en otros municipios?
+
+PASO 7 — Ingresos y egresos:
+- Si negocio en operación: tabla histórico últimos 6 meses (ya existe ✓)
+- Siempre: tabla proyección próximos 6 meses (ya existe ✓)
+- Campos: Periodo del/al, Ventas, Costo del producto/servicio, Gastos (electricidad, agua, teléfono,
+  gas, mano de obra, nómina, renta local), Otros gastos (tabla repetible), Impuestos
+
+PASO 8 — Aval o garantía:
+- Si tipo_garantia = 'aval':
+  * Datos del aval: Nombre completo, CURP, RFC, Sexo, Fecha nacimiento, Edad
+  * Municipio de nacimiento, Municipio de residencia
+  * Domicilio completo (calle, colonia, CP)
+  * Toggle: Domicilio propio / rentado → renta mensual
+  * Teléfonos: celular + fijo, Correo, Ocupación, Lugar laboral, Antigüedad laboral
+  * Estado civil del aval: si Casado(a) → campos cónyuge del aval
+  * Parentesco con el solicitante (importante para validación Artesanal)
+  * Bienes inmuebles del aval: tabla (descripción, valor, gravamen)
+  * Bienes muebles del aval: tabla (descripción, valor)
+  * Ingresos del aval: tabla de fuentes de ingreso (fuente, monto mensual)
+  * Egresos del aval: tabla de gastos (concepto, monto mensual)
+
+- Si tipo_garantia = 'prendaria':
+  * Descripción del bien, Valor estimado, Fecha factura, Valor en factura
+
+- Si tipo_garantia = 'hipotecaria':
+  * Descripción del inmueble, Valor estimado, Datos del notario, No. de escritura
+
+PASO 9 — Documentos:
+- Mostrar la lista COMPLETA de documentos requeridos según modalidad + tipo_persona + tipo_garantia + estado_civil
+- Para cada documento: nombre, botón de subida, preview si es imagen, estado (subido/pendiente)
+- Documentos base (todos): INE frente, INE reverso, CURP, Comprobante domicilio, Foto del negocio,
+  Acta de nacimiento, Documento propiedad/posesión del negocio, Carta no ser servidor público
+- Condicional estado_civil='Casado(a)': Acta de matrimonio
+- Artesanal: Constancia de artesano, 2 cotizaciones de proveedores
+- Emprendedores: Constancia situación fiscal, Buró de crédito (≤180 días), 3 cotizaciones
+- Sustentable: Opinión cumplimiento SAT, Buró de crédito, Plan trabajo sostenible, 3 cotizaciones
+- Sustentable ≥$200,000: Escritura hipotecaria
+- PM (Emprendedores/Sustentable): Acta constitutiva, Poder representante legal, Balance general + E. Resultados
+- Si tipo_garantia='aval': Acta nacimiento aval + Comprobante domicilio aval + ID aval
+  + Si aval casado: Acta matrimonio aval
+
+### 2b. Botón final del wizard — "Enviar solicitud y descargar mis formatos"
+Al terminar todos los pasos, mostrar un paso de revisión/resumen con:
+- Resumen de la solicitud (modalidad, nombre, monto, plazo, tipo garantía)
+- Checklist de documentos subidos vs requeridos
+- Si todos los documentos están subidos: botón "ENVIAR SOLICITUD"
+
+Al hacer clic en "ENVIAR SOLICITUD":
+1. Llamar POST /mi-portal/solicitud/generar-formatos (ruta ya existe)
+2. El controlador (WizardSolicitudController::generarFormatos) debe:
+   a. Validar documentos completos (ya lo hace ✓)
+   b. Cambiar estatus a 'Enviada' (ya lo hace ✓)
+   c. **NUEVO**: Llamar `FormatosService::generarZip($solicitud)` para generar el ZIP
+   d. Guardar la ruta del ZIP en `solicitud->formatos_zip_ruta` (columna ya existe en la tabla)
+   e. Retornar JSON: `{ ok: true, solicitud_id: X, zip_disponible: true }`
+3. En el front Vue: mostrar pantalla de éxito con:
+   - ✅ "¡Solicitud enviada! Folio: SOL-000001"
+   - Botón grande verde "⬇ DESCARGAR MIS FORMATOS PDF (ZIP)"
+     → Enlace a GET /mi-portal/solicitud/{id}/descargar-formatos (ruta ya existe)
+   - Instrucciones: "Imprime y lleva estos formatos firmados a las oficinas IYEM"
+   - Dirección: Av. Principal Industrias No Contaminantes, Tablaje 13613, Sodzil Norte, CP 97110, Mérida
+   - Contacto: crea@iyemyucatan.com | WhatsApp 9992342693 | (999) 469.53.06 Ext. 29263/29264
+
+Si el ciudadano regresa al wizard después de enviado:
+- Mostrar el estado (Enviada/En Revisión) con botón de descarga disponible si el ZIP existe
+- No permitir editar los datos (ya implementado con `puedeEditar`)
+
+─────────────────────────────────────────────────────────────────────────────────
+## TAREA 3 — PANEL OPERATIVO: SOLICITUDES CREA — FLUJO COMPLETO
+
+El panel operativo de solicitudes está en:
+- app/Http/Controllers/SolicitudOperativoController.php
+- resources/js/Pages/Solicitudes/ (varios archivos .vue)
+
+### 3a. Vista de lista (Solicitudes/Index.vue) — verificar que muestra:
+- Tabla con: Folio, Nombre, Modalidad, Monto solicitado, Municipio, Estatus, Fecha envío
+- Filtros: por estatus, por modalidad, por municipio, búsqueda por nombre/CURP
+- Badge de color por estatus (Borrador=gris, Enviada=azul, En_Revision=amarillo,
+  Doc_Incompleta=naranja, Aprobada=verde, Rechazada=rojo)
+- Paginación
+
+### 3b. Vista de detalle (Solicitudes/Show.vue o expediente) — verificar que el operativo puede ver:
+- Todos los datos del wizard: personales, negocio, destino, ficha técnica, IE
+- Lista de documentos con enlace de descarga individual (ruta documentos.descargar ya existe)
+- Si tipo_garantia='aval': todos los datos del aval
+- Historial de estatus con quién lo cambió y cuándo
+- Botones de acción según el estatus actual:
+  * Estatus 'Enviada' → botones: "Iniciar Revisión" (→ En_Revision), "Rechazar"
+  * Estatus 'En_Revision' → botones: "Solicitar Documentos" (→ Doc_Incompleta, con nota),
+    "Registrar Análisis Crediticio", "Aprobar" (→ Aprobada), "Rechazar"
+  * Estatus 'Aprobada' → botón: "Registrar Crédito" (redirige a RegistrarCredito.vue)
+  * Estatus 'Rechazada' → solo lectura + motivo del rechazo
+
+### 3c. Módulo de Análisis Crediticio — REFACTORIZAR para usar tablas oficiales del Acuerdo
+Archivo: app/Http/Controllers/AnalisisCreditoController.php
+Vista: resources/js/Pages/Analisis/ (buscar el archivo Vue del análisis)
+
+El análisis crediticio debe mostrar la tabla de puntaje según la modalidad:
+
+**Artesanal (100 pts total, mínimo 60 para aprobar):**
+| Criterio | Subcriterio | Pts máx | Pts obtenidos |
+|---|---|---|---|
+| Normativa (45 pts) | Municipio de atención prioritaria (10) | 10 | [input 0-10] |
+| Normativa (45 pts) | Situación jurídica del solicitante (10) | 10 | [input 0-10] |
+| Normativa (45 pts) | Artesano con constancia certificada (25) | 25 | [input 0-25] |
+| Técnica (40 pts) | Viabilidad del negocio/proyecto (20) | 20 | [input 0-20] |
+| Técnica (40 pts) | Destino del crédito adecuado (10) | 10 | [input 0-10] |
+| Técnica (40 pts) | Experiencia en el giro (10) | 10 | [input 0-10] |
+| Financiera (15 pts) | Capacidad de pago demostrada (10) | 10 | [input 0-10] |
+| Financiera (15 pts) | Solvencia del aval (5) | 5 | [input 0-5] |
+
+**Emprendedores (100 pts total, mínimo 60 para aprobar):**
+| Normativa (20 pts) | Municipio de atención (10) | 10 | |
+| Normativa (20 pts) | Situación jurídica (10) | 10 | |
+| Técnica (50 pts) | Viabilidad técnica (15) | 15 | |
+| Técnica (50 pts) | Destino del crédito (10) | 10 | |
+| Técnica (50 pts) | Experiencia en el giro (15) | 15 | |
+| Técnica (50 pts) | Empleos formales IMSS (10) | 10 | |
+| Financiera (30 pts) | Capacidad de pago (15) | 15 | |
+| Financiera (30 pts) | Historial crediticio Buró (15) | 15 | |
+
+**Sustentable (100 pts total, mínimo 60 para aprobar):**
+| Normativa (10 pts) | Situación jurídica (5) | 5 | |
+| Normativa (10 pts) | Municipio (5) | 5 | |
+| Financiera (40 pts) | Capacidad de pago (20) | 20 | |
+| Financiera (40 pts) | Historial crediticio (20) | 20 | |
+| Impacto Ambiental (50 pts) | Certificaciones ambientales (20) | 20 | |
+| Impacto Ambiental (50 pts) | Plan de trabajo sostenible (20) | 20 | |
+| Impacto Ambiental (50 pts) | Generación empleos verdes (10) | 10 | |
+
+Cada fila tiene un input numérico (0 al máximo del subcriterio).
+Al final: Total = suma de pts, con indicador visual:
+- ≥ 60: "✅ APTO para Comité — X/100 puntos"
+- < 60: "❌ NO APTO — X/100 puntos (mínimo requerido: 60)"
+
+Guardar puntaje_total y el JSON de subcriterios en el modelo AnalisisCredito.
+Campo nuevo: `puntaje_total` (integer), `puntaje_detalle` (json).
+
+Si el modelo AnalisisCredito no tiene estos campos, crea una migration:
+```
+php artisan make:migration add_puntaje_to_analisis_creditos_table
+```
+Con columnas: `puntaje_total` integer nullable, `puntaje_detalle` json nullable.
+
+### 3d. Acción "Aprobar" → flujo de desembolso
+Cuando el operativo hace clic en "Aprobar":
+1. Cambiar estatus a 'Aprobada'
+2. Llamar `FormatosService::generarZip($solicitud)` si aún no tiene ZIP (actualizar formatos_zip_ruta)
+3. Enviar notificación DatabaseNotification al ciudadano con mensaje de aprobación
+4. Redirigir a la vista de detalle mostrando botón "Registrar Crédito"
+
+### 3e. RegistrarCredito.vue — verificar que funciona
+Este es el último paso del operativo antes del desembolso.
+El formulario debe mostrar y permitir editar:
+- Monto otorgado (puede ser diferente al solicitado, dentro del rango de la modalidad)
+- Plazo final (select con opciones de la modalidad)
+- Fecha de contrato y fecha de entrega (desembolso)
+- Tasa de interés ordinario (pre-llenada según modalidad: Artesanal 0%, Emp 7%, Sust 5%)
+- Tasa de interés moratorio (pre-llenada: ordinaria × 2.5, no editable)
+- Clave/número de contrato (generada automáticamente o ingresada manualmente)
+- Tipo de garantía (ya capturado en solicitud, solo mostrar)
+
+Al guardar:
+1. Crear el registro Credito con todos los campos
+2. Crear el registro Acreditado con datos de la solicitud (si no existe)
+3. Llamar CreditService::generarTablaAmortizacion() para crear las cuotas
+4. Llamar DesembolsoController o crear registro Desembolso con monto y fecha
+5. Actualizar solicitud.credito_id y solicitud.estatus = 'Aprobada' (mantener)
+6. Redirigir a /creditos/{id} (vista del crédito registrado)
+
+─────────────────────────────────────────────────────────────────────────────────
+## TAREA 4 — MÓDULO DE COMPROBACIÓN DE USO DEL CRÉDITO (NUEVO)
+
+### 4a. Migration
+```bash
+php artisan make:migration create_comprobaciones_uso_table
+```
+Campos:
+```php
+$table->id();
+$table->foreignId('credito_id')->constrained('creditos')->onDelete('cascade');
+$table->foreignId('solicitud_id')->constrained('solicitud_creditos')->onDelete('cascade');
+$table->foreignId('acreditado_id')->constrained('acreditados')->onDelete('cascade');
+$table->date('fecha_desembolso');
+$table->date('fecha_limite_comprobacion'); // fecha_desembolso + 45 días (o 60 para Sustentable)
+$table->enum('estatus', ['Pendiente', 'En_Revision', 'Aprobada', 'Rechazada'])->default('Pendiente');
+$table->text('observaciones_acreditado')->nullable();
+$table->text('observaciones_operativo')->nullable();
+$table->date('fecha_revision')->nullable();
+$table->foreignId('revisado_por')->nullable()->constrained('users');
+$table->decimal('monto_comprobado', 12, 2)->nullable();
+$table->integer('dias_restantes')->virtualAs('DATEDIFF(fecha_limite_comprobacion, CURDATE())'); // o calcular en PHP
+$table->timestamps();
+```
+
+### 4b. Migration para tabla de documentos de comprobación
+```bash
+php artisan make:migration create_documentos_comprobacion_table
+```
+Campos:
+```php
+$table->id();
+$table->foreignId('comprobacion_id')->constrained('comprobaciones_uso')->onDelete('cascade');
+$table->string('tipo'); // 'factura', 'nota_venta', 'foto_bien', 'otro'
+$table->string('descripcion')->nullable();
+$table->decimal('monto', 12, 2)->nullable();
+$table->string('proveedor')->nullable();
+$table->string('ruta_archivo');
+$table->string('nombre_original');
+$table->timestamps();
+```
+
+### 4c. Modelos
+Crear `app/Models/ComprobacionUso.php` con:
+- Relaciones: credito(), solicitud(), acreditado(), documentos(), revisadoPor()
+- Método: `diasRestantes()` → DATEDIFF en PHP
+- Método: `estaVencida()` → fecha_limite_comprobacion < today && estatus === 'Pendiente'
+- Método: `semaforo()` → 'verde' (>15 días), 'amarillo' (8-15), 'rojo' (1-7), 'vencido' (0)
+
+Crear `app/Models/DocumentoComprobacion.php`
+
+### 4d. Crear ComprobacionUso automáticamente al registrar el desembolso
+En DesembolsoController o donde se crea el Desembolso, después de crearlo:
+```php
+// Calcular días según modalidad
+$diasLimite = str_contains(strtolower($credito->modalidad->nombre), 'sustentable') ? 60 : 45;
+ComprobacionUso::create([
+    'credito_id'               => $credito->id,
+    'solicitud_id'             => $solicitud->id,
+    'acreditado_id'            => $credito->acreditado_id,
+    'fecha_desembolso'         => $desembolso->fecha_desembolso,
+    'fecha_limite_comprobacion'=> Carbon::parse($desembolso->fecha_desembolso)->addDays($diasLimite),
+    'estatus'                  => 'Pendiente',
+]);
+```
+
+### 4e. Portal ciudadano — página de comprobación
+En MiCreditoController::index(), incluir en la respuesta:
+```php
+'comprobacion' => $comprobacion ? [
+    'id'                       => $comprobacion->id,
+    'estatus'                  => $comprobacion->estatus,
+    'fecha_desembolso'         => $comprobacion->fecha_desembolso->format('d/m/Y'),
+    'fecha_limite'             => $comprobacion->fecha_limite_comprobacion->format('d/m/Y'),
+    'dias_restantes'           => $comprobacion->diasRestantes(),
+    'semaforo'                 => $comprobacion->semaforo(),
+    'documentos'               => $comprobacion->documentos,
+    'observaciones_operativo'  => $comprobacion->observaciones_operativo,
+] : null,
+```
+
+En el portal ciudadano (MiCredito.vue), agregar pestaña/sección "Comprobación de uso":
+- Mostrar semáforo visual con días restantes
+- Si semaforo='vencido': alerta roja "Tu plazo de comprobación ha vencido"
+- Si semaforo='rojo': alerta naranja "Te quedan X días para comprobar el uso de tu crédito"
+- Formulario de carga de documentos:
+  * Por cada factura/comprobante: upload archivo, campo descripción, campo monto, campo proveedor
+  * Botón "Agregar otro comprobante"
+  * Total comprobado vs monto del crédito
+  * Campo observaciones del acreditado
+  * Botón "Enviar comprobación" → POST /mi-portal/comprobacion/{id}/enviar
+
+Ruta POST: `Route::post('comprobacion/{comprobacion}/enviar', [ComprobacionPortalController::class, 'enviar'])->name('portal.comprobacion.enviar');`
+
+### 4f. Panel operativo — módulo de comprobación
+Crear ComprobacionController (operativo):
+- `index()`: lista de comprobaciones pendientes, con semáforo y días restantes
+  Filtros: por estatus, por modalidad, vencidas/por vencer
+- `show()`: detalle con todos los documentos del acreditado descargables
+- `aprobar()`: cambiar estatus a 'Aprobada', registrar monto_comprobado, observaciones_operativo
+- `rechazar()`: estatus a 'Rechazada' con observaciones + notificación al ciudadano para corregir
+
+Rutas (añadir en routes/web.php dentro del grupo operativo):
+```php
+Route::get('comprobaciones', [ComprobacionController::class, 'index'])->name('comprobaciones.index');
+Route::get('comprobaciones/{comprobacion}', [ComprobacionController::class, 'show'])->name('comprobaciones.show');
+Route::post('comprobaciones/{comprobacion}/aprobar', [ComprobacionController::class, 'aprobar'])->name('comprobaciones.aprobar');
+Route::post('comprobaciones/{comprobacion}/rechazar', [ComprobacionController::class, 'rechazar'])->name('comprobaciones.rechazar');
+```
+
+Agregar ítem en AppSidebar.vue dentro del grupo "Créditos":
+```
+{ title: 'Comprobación de Uso', url: route('comprobaciones.index'), icon: ClipboardCheck }
+```
+Con badge numérico mostrando cuántas están pendientes/vencidas.
+
+Vista Comprobaciones/Index.vue:
+- Tabla: Acreditado, Contrato, Modalidad, Fecha desembolso, Fecha límite, Días restantes, Estatus
+- Semáforo visual por días restantes (verde/amarillo/rojo/gris)
+- Filtro rápido: "Vencidas", "Próximas a vencer (≤7 días)", "Todas"
+
+─────────────────────────────────────────────────────────────────────────────────
+## TAREA 5 — FIXES DE BUGS PENDIENTES
+
+### 5a. FormatosService — agregar generación individual de PDFs
+Además del ZIP, agregar método para generar un PDF individual:
+```php
+public static function generarPdfIndividual(SolicitudCredito $solicitud, string $tipo): string
+```
+Donde $tipo puede ser: 'solicitud', 'ficha_tecnica', 'ingresos_egresos', 'declaracion_aval', etc.
+Retorna el contenido PDF para descarga directa.
+
+### 5b. FormatosService — manejo de errores
+Envolver la generación en try/catch. Si falla un PDF individual, continuar con el siguiente y
+loggear el error. El ZIP debe generarse aunque algún PDF falle.
+
+### 5c. Validar que el modelo SolicitudCredito tiene la columna formatos_zip_ruta
+Si no existe, crear migration:
+```bash
+php artisan make:migration add_formatos_zip_ruta_to_solicitud_creditos_table
+```
+```php
+$table->string('formatos_zip_ruta')->nullable()->after('datos_wizard');
+```
+Verificar que está en el array `$fillable` del modelo.
+
+### 5d. Fix en la vista de solicitudes operativo — documentos descargables
+En la vista de detalle de solicitud (Solicitudes/Show.vue o expediente),
+cada documento debe tener un enlace funcional:
+```vue
+<a :href="route('documentos.descargar', documento.id)" target="_blank">
+  Descargar {{ documento.tipo_documento }}
+</a>
+```
+Verificar que el array de documentos que llega desde el controlador incluye el campo `id`.
+
+### 5e. Verificar que las migraciones están en orden
+Ejecutar: `php artisan migrate:status`
+Si hay migraciones pendientes, ejecutar: `php artisan migrate`
+
+─────────────────────────────────────────────────────────────────────────────────
+## TAREA 6 — CALIDAD VISUAL Y UX
+
+### 6a. Sidebar limpio
+Después de eliminar los módulos, el sidebar operativo debe quedar:
+```
+INICIO
+  • Dashboard
+SOLICITUDES
+  • Solicitudes CREA
+CRÉDITOS
+  • Cartera de Créditos
+  • Desembolso
+  • Reestructuración
+  • Comprobación de Uso (nuevo)
+OPERACIÓN
+  • Pagos / Caja
+  • Cobranza
+REPORTES
+  • Reportes y Cartera
+  • Acreditados
+```
+
+### 6b. El portal ciudadano debe mostrar claramente:
+- Si no tiene solicitud: pantalla de bienvenida con botón "Solicitar crédito CREA"
+- Si tiene solicitud en Borrador: continuar wizard
+- Si tiene solicitud Enviada/En_Revisión: estado visual con pasos (Enviada → En Revisión → Aprobada)
+- Si Aprobada: botones de descarga de formatos + sección Mi Crédito
+- Si tiene crédito activo: tabla de amortización + próxima cuota + datos de pago + comprobación
+
+### 6c. PDFs — configuración DomPDF
+Verificar en config/dompdf.php que:
+```php
+'options' => [
+    'dpi' => 150,
+    'enable_php' => false,
+    'enable_remote' => true, // Para cargar imágenes desde disk local
+    'chroot' => public_path(), // Acceso a public/img/logos/
+    'font_cache' => storage_path('fonts/'),
+    'is_html5_parser_enabled' => true,
+    'is_remote_enabled' => true,
+]
+```
+Si no existe config/dompdf.php: `php artisan vendor:publish --provider="Barryvdh\DomPDF\ServiceProvider"`
+
+Para que las imágenes locales carguen en DomPDF, usar `public_path()` para construir la ruta:
+```blade
+<img src="{{ public_path('img/logos/escudo-yucatan.png') }}" class="header-logo">
+```
+
+─────────────────────────────────────────────────────────────────────────────────
+## INSTRUCCIONES DE EJECUCIÓN
+
+Orden recomendado:
+1. `php artisan migrate` (verificar migraciones existentes primero con migrate:status)
+2. `php artisan make:migration add_puntaje_to_analisis_creditos_table` (si no existe)
+3. `php artisan make:migration add_formatos_zip_ruta_to_solicitud_creditos_table` (si no existe)
+4. `php artisan make:migration create_comprobaciones_uso_table`
+5. `php artisan make:migration create_documentos_comprobacion_table`
+6. `php artisan migrate`
+7. Crear modelos: ComprobacionUso, DocumentoComprobacion
+8. Actualizar FormatosService con manejo de errores + llamada desde generarFormatos()
+9. Actualizar WizardSolicitudController::generarFormatos() para llamar FormatosService
+10. Refactorizar AnalisisCreditoController con tablas de puntaje
+11. Crear ComprobacionController (operativo) + ComprobacionPortalController (ciudadano)
+12. Actualizar AppSidebar.vue (quitar módulos, agregar Comprobación)
+13. Actualizar routes/web.php
+14. Actualizar PDFs: _header.blade.php con logos, verificar todos los formatos
+15. `npm run build` (o `npm run dev` para desarrollo)
+16. `php artisan view:clear && php artisan cache:clear && php artisan config:clear`
+
+## VERIFICACIÓN FINAL
+Probar este flujo completo manualmente:
+1. Registrarse como ciudadano → verificar CURP → completar wizard paso a paso
+2. Subir todos los documentos → hacer clic en "Enviar solicitud"
+3. Verificar que el ZIP se genera → descargar el ZIP → abrir los PDFs → verificar logos y datos
+4. Como operativo: ver solicitud → iniciar revisión → registrar análisis con puntaje
+5. Aprobar solicitud → registrar crédito → verificar tabla de amortización generada
+6. Como ciudadano: ver Mi Crédito → ver próxima cuota → ver datos bancarios de pago
+7. Como ciudadano: subir comprobantes de uso en el plazo de 45/60 días
+8. Como operativo: revisar y aprobar comprobación
+
+─────────────────────────────────────────────────────────────────────────────────
+## CONVENCIONES DEL PROYECTO (respetar siempre)
+- PHPDoc en todos los métodos públicos nuevos
+- FormRequest para validaciones complejas (no inline en el controlador)
+- Tipos TypeScript en el front (props tipados, no usar `any` salvo necesidad)
+- Tailwind CSS para estilos (no CSS inline en Vue salvo dompdf)
+- Inertia::render() siempre retorna el componente Vue correcto
+- Respuestas JSON del backend: siempre `{ ok: true, ... }` o `{ error: '...' }`
+- Transacciones DB::transaction() para operaciones que modifican múltiples tablas
+- Auth::id() para registrar quién hizo la acción en auditoría
+- Carbon con timezone 'America/Merida' para fechas

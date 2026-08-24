@@ -7,9 +7,10 @@ import {
     ArrowLeft, DollarSign, Scale, CheckCircle2,
     Calendar, AlertCircle, Timer, TrendingUp, Clock,
     XOctagon, Award, FolderOpen, RefreshCw, FileCheck,
-    Banknote, Receipt, RotateCcw, FileX
+    Banknote, Receipt, RotateCcw, FileX, MoreVertical
 } from 'lucide-vue-next';
 import { useForm } from '@inertiajs/vue3';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger, DropdownMenuItem, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 
 const props = defineProps({
     acreditado: Object,
@@ -47,6 +48,28 @@ const formatDate = (dateStr) => {
 };
 
 const imprimirExpediente = () => window.print();
+
+// --- AVATAR CON INICIALES (mismo estilo que Acreditados/Index) ---
+const avatarPalette = [
+    { bg: 'bg-red-100 dark:bg-red-900/30', text: 'text-red-700 dark:text-red-400' },
+    { bg: 'bg-amber-100 dark:bg-amber-900/30', text: 'text-amber-700 dark:text-amber-400' },
+    { bg: 'bg-emerald-100 dark:bg-emerald-900/30', text: 'text-emerald-700 dark:text-emerald-400' },
+    { bg: 'bg-blue-100 dark:bg-blue-900/30', text: 'text-blue-700 dark:text-blue-400' },
+    { bg: 'bg-purple-100 dark:bg-purple-900/30', text: 'text-purple-700 dark:text-purple-400' },
+    { bg: 'bg-teal-100 dark:bg-teal-900/30', text: 'text-teal-700 dark:text-teal-400' },
+];
+const iniciales = (nombre) => (nombre ?? '')
+    .trim().split(/\s+/).slice(0, 2).map(p => p[0]?.toUpperCase() ?? '').join('') || '—';
+const avatarColor = (nombre) => {
+    const idx = (nombre ?? '').split('').reduce((s, c) => s + c.charCodeAt(0), 0) % avatarPalette.length;
+    return avatarPalette[idx];
+};
+const estatusBadgeCls = (e) => {
+    if (e === 'Activo')    return 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400';
+    if (e === 'Moroso')    return 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400';
+    if (e === 'Liquidado') return 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400';
+    return 'bg-zinc-100 text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400';
+};
 
 // Condonación
 const modalCondonar = ref(false);
@@ -125,11 +148,11 @@ const desglosePago = computed(() => {
         <div class="max-w-[98%] mx-auto py-8 px-4 print:p-0">
 
             <!-- ENCABEZADO -->
-            <div class="mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4 print:hidden">
+            <div class="mb-8 flex flex-col lg:flex-row lg:items-center justify-between gap-4 print:hidden">
                 <div class="flex items-center gap-4">
                     <button
                         @click="() => router.visit(route('acreditados.index'))"
-                        class="p-3 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 transition-colors shadow-sm"
+                        class="p-3 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 transition-colors shadow-sm shrink-0"
                     >
                         <ArrowLeft :size="20" class="text-slate-600 dark:text-slate-300" />
                     </button>
@@ -139,100 +162,90 @@ const desglosePago = computed(() => {
                     </div>
                 </div>
 
-                <button
-                    @click="() => router.visit(route('acreditados.expediente', acreditado.id))"
-                    class="px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold text-xs uppercase flex items-center gap-2 transition-all shadow-sm"
-                >
-                    <FolderOpen :size="16" /> Expediente Digital
-                </button>
-                <button
-                    @click="() => router.visit(route('operaciones.index', acreditado.id))"
-                    class="px-6 py-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 rounded-xl font-bold text-xs uppercase flex items-center gap-2 hover:bg-slate-50 transition-all shadow-sm"
-                >
-                    Ver Movimientos
-                </button>
-                <button
-                    v-if="credito?.estatus !== 'Liquidado'"
-                    @click="() => router.visit(route('reportes.adeudo', credito.id))"
-                    class="px-6 py-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-400 rounded-xl font-bold text-xs uppercase flex items-center gap-2 hover:bg-amber-100 transition-all shadow-sm"
-                >
-                    Reporte Adeudo
-                </button>
-                <button
-                    v-if="credito?.estatus === 'Liquidado'"
-                    @click="() => router.visit(route('creditos.dictamen', credito.id))"
-                    class="px-6 py-3 bg-green-600 hover:bg-green-700 text-white rounded-xl font-bold text-xs uppercase flex items-center gap-2 transition-all shadow-sm"
-                >
-                    <Award :size="16" /> Dictamen
-                </button>
-                <button
-                    v-if="credito?.estatus !== 'Liquidado' && credito?.estatus !== 'Cancelado'"
-                    @click="modalCondonar = true"
-                    class="px-6 py-3 bg-red-100 dark:bg-red-900/30 border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 rounded-xl font-bold text-xs uppercase flex items-center gap-2 hover:bg-red-200 transition-all shadow-sm"
-                >
-                    <XOctagon :size="16" /> Condonar
-                </button>
-                <!-- Registrar Pago rápido -->
-                <button
-                    v-if="credito?.estatus !== 'Liquidado' && credito?.estatus !== 'Cancelado'"
-                    @click="() => router.visit(route('pagos.create', credito.id))"
-                    class="px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold text-xs uppercase flex items-center gap-2 transition-all shadow-sm"
-                >
-                    <Banknote :size="16" /> Registrar Pago
-                </button>
+                <!-- Acciones: primarias visibles + menú "Más acciones" -->
+                <div class="flex flex-wrap items-center gap-2">
+                    <button
+                        v-if="credito?.estatus !== 'Liquidado' && credito?.estatus !== 'Cancelado'"
+                        @click="() => router.visit(route('pagos.create', credito.id))"
+                        class="px-5 py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold text-xs uppercase flex items-center gap-2 transition-all shadow-sm active:scale-95"
+                    >
+                        <Banknote :size="16" /> Registrar Pago
+                    </button>
+                    <a
+                        :href="route('creditos.contrato.pdf', credito.id)"
+                        target="_blank"
+                        class="px-5 py-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 rounded-xl font-bold text-xs uppercase flex items-center gap-2 hover:bg-slate-50 transition-all shadow-sm"
+                    >
+                        <FileText :size="16" /> Contrato PDF
+                    </a>
 
-                <!-- Reestructurar crédito -->
-                <button
-                    v-if="credito?.estatus !== 'Liquidado' && credito?.estatus !== 'Cancelado'"
-                    @click="() => router.visit(route('creditos.reestructurar.create', credito.id))"
-                    class="px-6 py-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-400 rounded-xl font-bold text-xs uppercase flex items-center gap-2 hover:bg-blue-100 transition-all shadow-sm"
-                >
-                    <RotateCcw :size="16" /> Reestructurar
-                </button>
+                    <DropdownMenu>
+                        <DropdownMenuTrigger as-child>
+                            <button class="p-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-700 transition-all shadow-sm">
+                                <MoreVertical :size="18" class="text-slate-500 dark:text-slate-300" />
+                            </button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" class="w-64">
+                            <DropdownMenuItem as-child>
+                                <button @click="() => router.visit(route('acreditados.expediente', acreditado.id))" class="w-full">
+                                    <FolderOpen :size="15" class="text-indigo-600" /> Expediente Digital
+                                </button>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem as-child>
+                                <button @click="() => router.visit(route('operaciones.index', acreditado.id))" class="w-full">
+                                    <RefreshCw :size="15" class="text-slate-500" /> Ver Movimientos
+                                </button>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem v-if="credito?.estatus !== 'Liquidado'" as-child>
+                                <button @click="() => router.visit(route('reportes.adeudo', credito.id))" class="w-full">
+                                    <AlertCircle :size="15" class="text-amber-600" /> Reporte de Adeudo
+                                </button>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem v-if="credito?.estatus === 'Liquidado'" as-child>
+                                <button @click="() => router.visit(route('creditos.dictamen', credito.id))" class="w-full">
+                                    <Award :size="15" class="text-green-600" /> Dictamen
+                                </button>
+                            </DropdownMenuItem>
 
-                <!-- Condonación Formal -->
-                <button
-                    v-if="credito?.estatus !== 'Liquidado' && credito?.estatus !== 'Cancelado'"
-                    @click="() => router.visit(route('creditos.condonacion-formal.create', credito.id))"
-                    class="px-6 py-3 bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 text-purple-700 dark:text-purple-400 rounded-xl font-bold text-xs uppercase flex items-center gap-2 hover:bg-purple-100 transition-all shadow-sm"
-                >
-                    <FileX :size="16" /> Condonación Formal
-                </button>
+                            <DropdownMenuSeparator />
 
-                <!-- Contrato PDF -->
-                <a
-                    :href="route('creditos.contrato.pdf', credito.id)"
-                    target="_blank"
-                    class="px-6 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 rounded-xl font-bold text-xs uppercase flex items-center gap-2 hover:bg-slate-100 transition-all shadow-sm"
-                >
-                    <FileText :size="16" /> Contrato PDF
-                </a>
+                            <DropdownMenuItem as-child>
+                                <a :href="route('creditos.estado-cuenta.pdf', credito.id)" target="_blank" class="w-full">
+                                    <Receipt :size="15" class="text-slate-500" /> Estado de Cuenta PDF
+                                </a>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem v-if="credito?.estatus === 'Liquidado'" as-child>
+                                <a :href="route('creditos.constancia.pdf', credito.id)" target="_blank" class="w-full">
+                                    <FileCheck :size="15" class="text-emerald-600" /> Constancia de No Adeudo
+                                </a>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem as-child>
+                                <button @click="imprimirExpediente" class="w-full">
+                                    <Printer :size="15" class="text-slate-500" /> Imprimir
+                                </button>
+                            </DropdownMenuItem>
 
-                <!-- Estado de Cuenta PDF -->
-                <a
-                    :href="route('creditos.estado-cuenta.pdf', credito.id)"
-                    target="_blank"
-                    class="px-6 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 rounded-xl font-bold text-xs uppercase flex items-center gap-2 hover:bg-slate-100 transition-all shadow-sm"
-                >
-                    <Receipt :size="16" /> Estado de Cuenta
-                </a>
-
-                <!-- Constancia de No Adeudo (solo Liquidado) -->
-                <a
-                    v-if="credito?.estatus === 'Liquidado'"
-                    :href="route('creditos.constancia.pdf', credito.id)"
-                    target="_blank"
-                    class="px-6 py-3 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-400 rounded-xl font-bold text-xs uppercase flex items-center gap-2 hover:bg-emerald-100 transition-all shadow-sm"
-                >
-                    <FileCheck :size="16" /> Constancia
-                </a>
-
-                <button
-                    @click="imprimirExpediente"
-                    class="px-6 py-3 bg-slate-900 dark:bg-red-700 text-white rounded-xl font-bold text-xs uppercase flex items-center gap-2 hover:opacity-90 transition-all shadow-lg"
-                >
-                    <Printer :size="16" /> Imprimir
-                </button>
+                            <template v-if="credito?.estatus !== 'Liquidado' && credito?.estatus !== 'Cancelado'">
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem as-child>
+                                    <button @click="() => router.visit(route('creditos.reestructurar.create', credito.id))" class="w-full">
+                                        <RotateCcw :size="15" class="text-blue-600" /> Reestructurar Crédito
+                                    </button>
+                                </DropdownMenuItem>
+                                <DropdownMenuItem as-child>
+                                    <button @click="() => router.visit(route('creditos.condonacion-formal.create', credito.id))" class="w-full">
+                                        <FileX :size="15" class="text-purple-600" /> Condonación Formal
+                                    </button>
+                                </DropdownMenuItem>
+                                <DropdownMenuItem as-child>
+                                    <button @click="modalCondonar = true" class="w-full text-red-600 dark:text-red-400">
+                                        <XOctagon :size="15" /> Condonar
+                                    </button>
+                                </DropdownMenuItem>
+                            </template>
+                        </DropdownMenuContent>
+                    </DropdownMenu>
+                </div>
             </div>
 
             <!-- TARJETAS SUPERIORES -->
@@ -240,14 +253,20 @@ const desglosePago = computed(() => {
 
                 <!-- Info del acreditado -->
                 <div class="lg:col-span-3 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 p-6 shadow-sm flex flex-col md:flex-row gap-6">
-                    <div class="w-20 h-20 bg-slate-100 dark:bg-slate-800 rounded-2xl flex items-center justify-center text-slate-400 shrink-0">
-                        <User :size="40" />
+                    <div class="w-20 h-20 rounded-2xl flex items-center justify-center text-2xl font-black shrink-0"
+                        :class="avatarColor(acreditado.nombre_completo).bg + ' ' + avatarColor(acreditado.nombre_completo).text">
+                        {{ iniciales(acreditado.nombre_completo) }}
                     </div>
                     <div class="flex-1">
                         <div class="mb-4">
-                            <h2 class="text-2xl font-black text-slate-900 dark:text-white tracking-tight uppercase">
-                                {{ acreditado.nombre_completo }}
-                            </h2>
+                            <div class="flex flex-wrap items-center gap-3">
+                                <h2 class="text-2xl font-black text-slate-900 dark:text-white tracking-tight uppercase">
+                                    {{ acreditado.nombre_completo }}
+                                </h2>
+                                <span v-if="credito?.estatus" class="px-2.5 py-1 rounded-full text-[10px] font-bold uppercase" :class="estatusBadgeCls(credito.estatus)">
+                                    {{ credito.estatus }}
+                                </span>
+                            </div>
                             <p class="text-red-600 dark:text-red-400 font-bold text-xs flex items-center gap-2 mt-1 uppercase">
                                 <FileText :size="14" /> Contrato: {{ credito.clave_contrato }}
                             </p>

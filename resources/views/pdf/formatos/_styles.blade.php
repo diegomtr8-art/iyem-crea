@@ -4,15 +4,20 @@
     body { font-family: 'DejaVu Sans', Arial, sans-serif; font-size: 9.5px; color: #1a1a1a; background: #fff; }
     .page { padding: 22px 28px; }
 
-    /* Header */
-    .header { display: table; width: 100%; margin-bottom: 6px; }
-    .header-left { display: table-cell; vertical-align: top; width: 65%; }
-    .header-right { display: table-cell; vertical-align: top; text-align: right; }
+    /* Header — tabla de 3 columnas: escudo | nombre institucional | logo IYEM + doc-box */
+    .header-table { width: 100%; border-collapse: collapse; margin-bottom: 6px; }
+    .header-table td { border: none; padding: 0; vertical-align: middle; }
+    .header-col-izq { width: 60px; text-align: left; }
+    .header-col-der { width: 90px; text-align: right; }
+    .header-logo { width: 55px; height: auto; }
+    .header-center { text-align: center; }
     .iyem-nombre { font-size: 11px; font-weight: bold; color: #006847; text-transform: uppercase; letter-spacing: 0.5px; }
     .iyem-sub { font-size: 8px; color: #555; margin-top: 1px; }
     .iyem-prog { font-size: 8px; color: #006847; font-weight: bold; margin-top: 1px; }
+    .iyem-title-crea { font-size: 14px; font-weight: bold; color: #006847; letter-spacing: 1px; margin-top: 1px; }
+    .doc-box { text-align: right; background: #f5f5f5; border: 1px solid #ddd; padding: 4px 6px; border-radius: 3px; margin-top: 4px; }
     .doc-codigo { font-size: 8px; color: #888; }
-    .doc-titulo { font-size: 12px; font-weight: bold; color: #1a1a1a; margin-top: 2px; }
+    .doc-titulo { font-size: 10px; font-weight: bold; color: #1a1a1a; margin-top: 2px; }
     .doc-fecha { font-size: 8px; color: #666; margin-top: 2px; }
     .doc-folio { font-size: 8.5px; color: #006847; font-weight: bold; margin-top: 1px; }
     .header-divider { border-top: 2.5px solid #006847; margin: 6px 0 12px 0; }

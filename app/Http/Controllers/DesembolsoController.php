@@ -4,11 +4,14 @@ namespace App\Http\Controllers;
 
 use App\Models\AnuncioCiudadano;
 use App\Models\AuditoriaLog;
+use App\Models\ComprobacionUso;
 use App\Models\Credito;
 use App\Models\Desembolso;
+use App\Models\PresupuestoPrograma;
 use App\Models\SolicitudCredito;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -37,6 +40,8 @@ class DesembolsoController extends Controller
     public function store(Request $request, Credito $credito): RedirectResponse
     {
         abort_if($credito->desembolso, 422, 'Este crédito ya tiene un desembolso registrado.');
+
+        $this->verificarPresupuestoDisponible($credito);
 
         $data = $request->validate([
             'fecha_desembolso'   => 'required|date',
@@ -95,7 +100,52 @@ class DesembolsoController extends Controller
             ]);
         }
 
+        if ($solicitud) {
+            $diasLimite = str_contains(strtolower($credito->modalidad?->nombre ?? ''), 'sustentable') ? 60 : 45;
+
+            ComprobacionUso::create([
+                'credito_id'                => $credito->id,
+                'solicitud_id'              => $solicitud->id,
+                'acreditado_id'             => $credito->acreditado_id,
+                'fecha_desembolso'          => $desembolso->fecha_desembolso,
+                'fecha_limite_comprobacion' => \Carbon\Carbon::parse($desembolso->fecha_desembolso)->addDays($diasLimite),
+                'estatus'                   => 'Pendiente',
+            ]);
+        }
+
         return redirect()->route('acreditados.show', $credito->acreditado_id)
             ->with('success', 'Desembolso registrado correctamente.');
+    }
+
+    /**
+     * Bloquea el desembolso si el monto del crédito supera el presupuesto
+     * disponible de su modalidad para el ejercicio fiscal vigente.
+     */
+    private function verificarPresupuestoDisponible(Credito $credito): void
+    {
+        $anio = $credito->fecha_entrega?->year ?? now()->year;
+
+        $presupuesto = PresupuestoPrograma::where('modalidad_id', $credito->modalidad_id)
+            ->where('ejercicio_fiscal', $anio)
+            ->first();
+
+        if (!$presupuesto) return;
+
+        $ejercido = Credito::where('modalidad_id', $credito->modalidad_id)
+            ->where('estatus', '!=', 'Cancelado')
+            ->whereYear('fecha_entrega', $anio)
+            ->sum('monto_otorgado');
+
+        $disponible = (float) $presupuesto->monto_autorizado - (float) $ejercido;
+        $monto      = (float) $credito->monto_otorgado;
+
+        abort_if($monto > $disponible, 422,
+            'No se puede desembolsar: el monto del crédito ($' . number_format($monto, 2) .
+            ') supera el presupuesto disponible ($' . number_format($disponible, 2) . ') para esta modalidad.'
+        );
+
+        if (round($disponible - $monto, 2) <= 0.01) {
+            Log::warning("Presupuesto de la modalidad {$credito->modalidad_id} quedó en $0 tras el desembolso del crédito {$credito->clave_contrato} (ID {$credito->id}).");
+        }
     }
 }

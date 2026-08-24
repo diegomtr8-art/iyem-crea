@@ -258,13 +258,13 @@ const municipiosSinMapa = computed(() =>
             </div>
 
             <!-- ── FILA 1: Capital + Portafolio ─────────────────────────────── -->
-            <div class="grid grid-cols-12 gap-4 mb-4">
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-4 mb-4">
 
                 <!-- Capital hero -->
                 <div class="col-span-12 lg:col-span-5 bg-white dark:bg-zinc-900 p-7 rounded-2xl border border-zinc-100 dark:border-zinc-800">
                     <p class="text-[10px] font-bold text-zinc-400 uppercase tracking-widest mb-1">Capital Total Colocado</p>
                     <p class="text-5xl font-light tracking-tighter dark:text-white mb-5">{{ money(stats?.capital?.colocado) }}</p>
-                    <div class="grid grid-cols-3 gap-3">
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
                         <div>
                             <p class="text-[10px] text-zinc-400 uppercase font-bold">Recuperado</p>
                             <p class="text-base font-semibold text-emerald-600">{{ money(stats?.capital?.recuperado) }}</p>
@@ -346,7 +346,7 @@ const municipiosSinMapa = computed(() =>
             </div>
 
             <!-- ── FILA 3: Mapa + Género + Top Municipios ────────────────── -->
-            <div class="grid grid-cols-12 gap-4 mb-4">
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-4 mb-4">
 
                 <!-- Mapa de calor Yucatán -->
                 <div class="col-span-12 lg:col-span-7 bg-white dark:bg-zinc-900 p-6 rounded-2xl border border-zinc-100 dark:border-zinc-800">
@@ -476,7 +476,7 @@ const municipiosSinMapa = computed(() =>
             </div>
 
             <!-- ── FILA 4: Evolución mensual + Modalidades ──────────────── -->
-            <div class="grid grid-cols-12 gap-4 mb-4">
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-4 mb-4">
 
                 <!-- Evolución mensual -->
                 <div class="col-span-12 lg:col-span-7 bg-white dark:bg-zinc-900 p-6 rounded-2xl border border-zinc-100 dark:border-zinc-800">
@@ -486,7 +486,7 @@ const municipiosSinMapa = computed(() =>
                             {{ stats?.conteo?.pagos_mes }} pagos este mes
                         </span>
                     </div>
-                    <div class="h-52">
+                    <div class="h-48 sm:h-52 lg:h-56">
                         <Line :data="evolucionData" :options="lineOpts" />
                     </div>
                 </div>

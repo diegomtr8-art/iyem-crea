@@ -205,7 +205,7 @@ const exportarExcel = () => {
 
                                 <template v-else>
                                     <!-- Distribución del pago -->
-                                    <div class="grid grid-cols-3 gap-3 mb-4 mt-3">
+                                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4 mt-3">
                                         <div class="bg-white dark:bg-slate-900 rounded-2xl p-3 border border-orange-200 dark:border-orange-800 text-center">
                                             <p class="text-[10px] font-black text-orange-500 uppercase mb-1">Mora</p>
                                             <p class="font-black text-orange-600">{{ fmt(op.aplicado_mora) }}</p>

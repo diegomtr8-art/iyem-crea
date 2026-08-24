@@ -1,0 +1,330 @@
+# PROMPT: AUDITORÍA EXHAUSTIVA Y DEPLOY A PRODUCCIÓN — SISTEMA CREA
+# Para usar en: Claude Code (claude --dangerously-skip-permissions o sesión interactiva)
+# Proyecto: Sistema de Gestión del Programa CREA — IYEM Yucatán
+# Stack: Laravel 11 + Vue 3 + Inertia.js + TypeScript + Tailwind + MySQL
+
+---
+
+## CONTEXTO DEL PROYECTO
+
+Este es el sistema CREA (Créditos para el Emprendimiento y la Activación Económica) del
+Instituto Yucateco del Emprendimiento y la Mipyme (IYEM). Gestiona el ciclo completo de
+microcréditos: desde la solicitud ciudadana hasta la liquidación, incluyendo cobranza y
+procesos jurídicos.
+
+**Lee primero** el documento de Reglas de Operación oficial:
+  `public/formatos/Acuerdo IYEM 03-2025 Programa CREA` (PDF en esa carpeta)
+
+Este documento define las modalidades, montos, plazos, tasas, garantías y flujos legales
+que el sistema DEBE respetar. Úsalo como fuente de verdad para validar la lógica de negocio.
+
+---
+
+## FASE 1 — AUDITORÍA EXHAUSTIVA DEL PROYECTO
+
+Realiza un análisis completo del código fuente. El objetivo es identificar TODOS los
+problemas, bugs, inconsistencias y mejoras antes de salir a producción.
+
+### 1.1 LÓGICA DE NEGOCIO Y REGLAS DE OPERACIÓN
+
+Verifica que la implementación respete fielmente las Reglas de Operación:
+
+- Modalidades de crédito (Individual, Grupal, etc.): montos mínimos/máximos, plazos
+  permitidos y tasas según cada modalidad en `app/Models/ModalidadCrea.php` y
+  `app/Http/Controllers/CreditoController.php`
+- Tasa de interés ordinario y moratorio: confirmar que los cálculos en
+  `PagoController::store()` (cascada mora → interés ordinario → capital) y en
+  `UpdateMoratorio.php` correspondan exactamente a lo establecido en las RO
+- Período de gracia de 5 días para mora (cláusula 7a): verificar que la condición
+  `$dias > 5` en PagoController sea correcta según las RO (¿son 5 días hábiles o
+  naturales?)
+- Condonación de intereses futuros en liquidación anticipada: validar que el cálculo
+  sea correcto y esté respaldado por las RO
+- Desembolso: verificar que `DesembolsoController` registre correctamente el flujo
+  presupuestal en `PresupuestoPrograma`
+- Reestructuración: revisar `ReestructuracionController` y que recalcule bien la tabla
+  de amortización
+- Condonación formal: revisar `CondonacionFormalController` y su impacto en amortizaciones
+
+### 1.2 FLUJO COMPLETO DE PAGOS
+
+Este es el módulo más crítico. Audita:
+
+- `PagoController::store()`: revisar toda la lógica de la transacción DB, el método
+  `aplicarAbonoCapital()` (Reducir Cuota vs Reducir Plazo), el recálculo de cuotas y
+  el update del estatus del crédito (Activo/Moroso/Liquidado)
+- `PagoController::cancelar()`: verificar que la reversión de amortizaciones sea
+  matemáticamente exacta y que no deje inconsistencias en `saldo_insoluto`
+- `PagoObserver`: revisar qué lógica adicional dispara y si puede generar efectos
+  secundarios inesperados
+- Método `Pago::generarFolio()`: verificar que sea único y no tenga race conditions
+- Recibo PDF (`pdf.recibo-pago`): confirmar que muestre todos los datos correctamente
+- Verificar que el campo `cuotas_cubiertas` (JSON) se guarde y recupere íntegramente
+- Edge cases: pago de $0.00, pago mayor al saldo total, crédito ya liquidado,
+  cancelación de un pago de un crédito ya liquidado
+
+### 1.3 BACKEND — CONTROLLERS Y MODELS
+
+Revisa cada controller en `app/Http/Controllers/`:
+
+- **Validaciones**: todos los `Request::validate()` deben tener reglas completas y
+  mensajes de error en español
+- **Autorización**: verificar que los middlewares `auth`, `ciudadano`, `operativo` y
+  los gates/policies de Spatie Permission cubran todos los endpoints sensibles
+- **N+1 queries**: buscar `->load()` faltantes o eager loading incompleto en todos
+  los métodos que devuelven colecciones a Inertia
+- **Transacciones DB**: cualquier operación que modifique más de una tabla debe estar
+  dentro de `DB::transaction()`
+- **Manejo de errores**: verificar try/catch donde sea necesario, especialmente en
+  generación de PDFs y exports Excel
+- `CreditService.php`: auditar toda la lógica de generación de tabla de amortización
+- `RecordatoriosPago.php` y `UpdateMoratorio.php` (comandos Artisan): verificar que
+  funcionen correctamente y estén registrados en el Scheduler de Laravel
+- Observers (`CreditoObserver`, `PagoObserver`, `ExpedienteJuridicoObserver`):
+  revisar que no generen loops o efectos no deseados
+
+### 1.4 FRONTEND — PÁGINAS VUE E INERTIA
+
+Revisa TODAS las páginas en `resources/js/Pages/`:
+
+- **Botones sin acción o deshabilitados incorrectamente**: verificar que cada botón
+  tenga su handler y no quede bloqueado en estados inesperados
+- **Formularios**: confirmar que todos usan `useForm` de Inertia con manejo de
+  `errors`, `processing`, confirmaciones antes de acciones destructivas
+- **Páginas críticas a revisar con detalle**:
+  - `Pagos/Index.vue`: formulario de registro de pago, selección de cuotas, cálculo
+    de mora en tiempo real, validación del monto ingresado
+  - `Solicitudes/Show.vue` y `RegistrarCredito.vue`: flujo de aprobación y
+    conversión a crédito
+  - `Solicitudes/Analisis.vue`: formulario de análisis crediticio
+  - `Creditos/Desembolso.vue`: formulario de desembolso
+  - `Creditos/Reestructuracion.vue` y `CondonacionFormal.vue`
+  - `portal/Solicitud.vue`: flujo ciudadano completo (crear solicitud, subir docs,
+    enviar)
+  - `portal/MiCredito.vue`: visualización del estado de cuenta
+  - `Cobranza/Show.vue` y `Juridico/Show.vue`
+- **Consistencia visual**: revisar que todos los componentes ShadCN/ui se usen
+  correctamente, que no haya texto hardcodeado en inglés, que los mensajes de éxito
+  y error (vue-sonner / flash messages) funcionen en todas las páginas
+- **Responsividad**: verificar que el layout funcione en móvil (el portal ciudadano
+  especialmente debe ser mobile-friendly)
+- **Dashboard.vue**: verificar que todas las métricas y gráficas carguen bien y
+  tengan manejo de estado vacío
+
+### 1.5 BASE DE DATOS Y MIGRACIONES
+
+- Revisar que todas las migraciones estén en orden y no haya columnas faltantes o
+  con tipos incorrectos comparando contra los Models y sus `$fillable`/`$casts`
+- Verificar índices en columnas de búsqueda frecuente: `credito_id`, `acreditado_id`,
+  `estatus`, `fecha_vencimiento` en `amortizaciones` y `pagos`
+- Revisar `database/seeders/` si existen: que no se ejecuten en producción con datos
+  de prueba
+- Verificar que `database/database.sqlite` NO se use en producción (debe usar MySQL)
+
+### 1.6 SEGURIDAD
+
+- Variables sensibles en `.env`: verificar que `.env.example` no contenga valores
+  reales y que `.env` esté en `.gitignore`
+- CSRF: confirmar que todos los formularios Inertia tengan protección CSRF activa
+- Mass assignment: revisar `$fillable` vs `$guarded` en todos los Models
+- SQL Injection: confirmar uso de Query Builder / Eloquent en lugar de raw queries
+  sin bindeo
+- Permisos de archivos subidos: verificar que `DocumentoSolicitud` y otros uploads
+  se almacenen en `storage/` privado (no en `public/`) y se sirvan via signed URLs
+- Roles y permisos: auditar la configuración de Spatie Permission, que no haya rutas
+  operativas accesibles por ciudadanos y viceversa
+- Rate limiting en rutas de auth y de registro ciudadano
+
+### 1.7 RENDIMIENTO
+
+- Paginar todas las tablas grandes (acreditados, pagos, solicitudes, auditoría)
+- Verificar que los exports Excel y PDFs no carguen colecciones completas en memoria
+- Cache: identificar datos que se consultan frecuentemente y podrían cachearse
+  (modalidades CREA, configuración del programa)
+
+### 1.8 CALIDAD DE CÓDIGO
+
+- Buscar `dd()`, `dump()`, `var_dump()`, `console.log()` y cualquier código de debug
+  que deba eliminarse antes de producción
+- Verificar que `APP_DEBUG=false` y `APP_ENV=production` estén configurados para prod
+- Revisar los tests en `tests/` y ejecutar `php artisan test` para asegurar que pasen
+- Ejecutar `npm run build` y verificar que compile sin errores ni warnings críticos
+- Verificar que no haya imports no usados en Vue ni en PHP
+
+---
+
+## FASE 2 — CORRECCIONES
+
+Después del análisis, corrige TODOS los problemas encontrados, priorizando:
+
+1. **P0 — Crítico** (corregir primero): bugs en pagos/amortizaciones, vulnerabilidades
+   de seguridad, rutas sin autorización, errores que impidan el funcionamiento
+2. **P1 — Alto**: N+1 queries, botones rotos, formularios sin validación, errores en
+   PDFs y exports
+3. **P2 — Medio**: mejoras UX, mensajes de error mejorados, responsividad, consistencia
+   visual
+4. **P3 — Bajo**: optimizaciones de rendimiento, refactorizaciones menores
+
+Para cada corrección documenta brevemente qué se cambió y por qué.
+
+---
+
+## FASE 3 — PREPARACIÓN PARA PRODUCCIÓN
+
+### 3.1 Configuración de entorno
+
+Crea o revisa `.env.production` con:
+- `APP_ENV=production`
+- `APP_DEBUG=false`
+- `APP_URL=https://crea.iyemyucatan.com`
+- Configuración de base de datos MySQL (solicitar credenciales al usuario)
+- Configuración de mail (SMTP para notificaciones)
+- `SESSION_SECURE_COOKIE=true`
+- `SESSION_DOMAIN=crea.iyemyucatan.com`
+- Queue driver (database o redis según disponibilidad en Hostinger)
+
+### 3.2 Build del frontend
+
+```bash
+npm ci
+npm run build
+```
+
+Verificar que `public/build/` se genere correctamente con los assets versionados.
+
+### 3.3 Optimizaciones Laravel para producción
+
+```bash
+php artisan config:cache
+php artisan route:cache
+php artisan view:cache
+php artisan event:cache
+composer install --optimize-autoloader --no-dev
+```
+
+---
+
+## FASE 4 — DEPLOY A PRODUCCIÓN EN HOSTINGER
+
+### Datos del servidor
+
+- **Servidor actual (staging)**: https://darkorange-oryx-401326.hostingersite.com/
+- **Dominio destino**: https://crea.iyemyucatan.com/
+- **IP**: 195.35.38.222
+- **Puerto SSH**: 65002
+- **Usuario SSH**: u489236361
+- **Clave SSH pública**: ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIIr7aZHCEFqnuXN47npveb6t6YIntvejiQbQkSz+d0iI claude-code-deploy
+
+### 4.1 Verificaciones previas al deploy
+
+Antes de subir:
+- Confirmar que `npm run build` pasó sin errores
+- Confirmar que `php artisan test` pasa
+- Verificar que no existe `database/database.sqlite` en el repo (solo debe usarse MySQL en prod)
+- Confirmar que `.env` de producción tiene todas las variables necesarias
+
+### 4.2 Proceso de deploy via SSH
+
+Conectar al servidor:
+```bash
+ssh -p 65002 u489236361@195.35.38.222
+```
+
+Verificar la estructura de directorios en Hostinger y localizar el `public_html` del
+dominio `crea.iyemyucatan.com`. La estructura típica en Hostinger VPS es:
+`/home/u489236361/domains/crea.iyemyucatan.com/public_html`
+
+**Pasos en el servidor**:
+
+1. Hacer backup de la base de datos existente (si aplica):
+   ```bash
+   mysqldump -u [usuario] -p [base_de_datos] > backup_$(date +%Y%m%d_%H%M%S).sql
+   ```
+
+2. Subir el proyecto (desde local con rsync, excluyendo node_modules, vendor, .env):
+   ```bash
+   rsync -avz --progress \
+     --exclude='.env' \
+     --exclude='node_modules/' \
+     --exclude='vendor/' \
+     --exclude='storage/logs/*' \
+     --exclude='.git/' \
+     --exclude='database/database.sqlite' \
+     -e "ssh -p 65002" \
+     ./ u489236361@195.35.38.222:/home/u489236361/domains/crea.iyemyucatan.com/public_html/
+   ```
+
+3. En el servidor, instalar dependencias:
+   ```bash
+   cd /home/u489236361/domains/crea.iyemyucatan.com/public_html
+   composer install --optimize-autoloader --no-dev
+   ```
+
+4. Configurar `.env` de producción en el servidor (copiar y editar con las
+   credenciales correctas de MySQL)
+
+5. Permisos de storage:
+   ```bash
+   chmod -R 775 storage bootstrap/cache
+   chown -R www-data:www-data storage bootstrap/cache
+   ```
+
+6. Crear symlink de storage:
+   ```bash
+   php artisan storage:link
+   ```
+
+7. Ejecutar migraciones:
+   ```bash
+   php artisan migrate --force
+   ```
+
+8. Cachear configuración:
+   ```bash
+   php artisan config:cache
+   php artisan route:cache
+   php artisan view:cache
+   php artisan event:cache
+   ```
+
+9. Verificar que el `DocumentRoot` del virtualhost de `crea.iyemyucatan.com` en
+   Hostinger apunte a `.../public_html/public` (no a public_html directamente)
+
+10. Configurar el Scheduler de Laravel en Cron (en Hostinger Panel o via SSH):
+    ```
+    * * * * * cd /home/u489236361/domains/crea.iyemyucatan.com/public_html && php artisan schedule:run >> /dev/null 2>&1
+    ```
+
+### 4.3 Verificación post-deploy
+
+Después de subir, verificar en https://crea.iyemyucatan.com/:
+
+- [ ] La landing page carga correctamente
+- [ ] El login funciona para usuarios operativos y ciudadanos
+- [ ] El dashboard operativo muestra datos correctos
+- [ ] Se puede registrar un pago de prueba (en ambiente de staging primero)
+- [ ] Los PDFs (recibo, contrato, dictamen) se generan correctamente
+- [ ] Los exports Excel funcionan
+- [ ] El portal ciudadano carga y permite subir documentos
+- [ ] Las notificaciones por email llegan (si el SMTP está configurado)
+- [ ] No hay errores en `storage/logs/laravel.log`
+- [ ] La consola del navegador no muestra errores JavaScript
+- [ ] El Scheduler está corriendo (`php artisan schedule:list`)
+
+### 4.4 Configuración DNS
+
+Si el dominio `crea.iyemyucatan.com` aún no apunta al servidor:
+- Agregar registro A: `crea.iyemyucatan.com` → `195.35.38.222`
+- Configurar SSL/TLS (Let's Encrypt via Hostinger Panel o Certbot)
+- Verificar que fuerza HTTPS en `AppServiceProvider` o `.htaccess`
+
+---
+
+## NOTAS FINALES
+
+- Durante toda la auditoría, mantén un log de cambios en `CHANGELOG_AUDITORIA.md`
+  con formato: `[FECHA] [PRIORIDAD] [ARCHIVO] Descripción del cambio`
+- Si encuentras un bug crítico en pagos/amortizaciones que requiera migración de datos,
+  documéntalo claramente ANTES de ejecutarlo en producción
+- El sistema maneja dinero real de créditos gubernamentales: ser extremadamente
+  cuidadoso con cualquier cambio en PagoController, CreditService y amortizaciones

@@ -161,7 +161,7 @@ const submit = () => {
                     class="mt-0.5 rounded-md border-slate-300 dark:border-zinc-600 text-[#6B1938] focus:ring-[#6B1938]/30 dark:bg-zinc-800 transition-all shrink-0" />
                 <span class="text-xs text-slate-500 dark:text-zinc-400 leading-relaxed group-hover:text-slate-700 dark:group-hover:text-zinc-300 transition-colors">
                     He leído y acepto el
-                    <a href="/#aviso-privacidad" target="_blank"
+                    <a :href="route('aviso-privacidad')" target="_blank"
                         class="font-semibold text-[#6B1938] dark:text-[#f4a8c4] hover:underline">
                         Aviso de Privacidad
                     </a>

@@ -155,7 +155,7 @@ const totalCuotas   = computed(() => tabla.value.reduce((s, r) => s + r.cuota, 0
                     </span>
                 </div>
                 <div class="overflow-x-auto">
-                    <table class="w-full text-sm">
+                    <table class="w-full min-w-[500px] text-sm">
                         <thead class="bg-zinc-50 dark:bg-zinc-800/50">
                             <tr>
                                 <th class="px-4 py-3 text-[10px] font-bold text-zinc-400 uppercase text-center w-10">#</th>

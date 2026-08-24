@@ -132,10 +132,9 @@ const fmt = (n: number) => '$' + n.toLocaleString('es-MX', { minimumFractionDigi
                     </button>
                 </div>
                 <div v-else>
-                    <Link :href="route('juridico.show', credito.expediente_juridico.id)"
-                        class="inline-flex items-center gap-2 px-4 py-2 bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400 font-bold rounded-xl text-sm transition-all">
-                        <Gavel size="15" /> Ver Expediente Jurídico
-                    </Link>
+                    <span class="inline-flex items-center gap-2 px-4 py-2 bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400 font-bold rounded-xl text-sm">
+                        <Gavel size="15" /> En Jurídico — {{ credito.expediente_juridico?.estatus }}
+                    </span>
                 </div>
             </div>
 
@@ -180,7 +179,7 @@ const fmt = (n: number) => '$' + n.toLocaleString('es-MX', { minimumFractionDigi
                             </button>
                         </div>
                         <form @submit.prevent="submitGestion" class="p-5 space-y-4">
-                            <div class="grid grid-cols-2 gap-4">
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 <div>
                                     <label class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5">Tipo de Gestión</label>
                                     <select v-model="gestionForm.tipo_gestion" class="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-zinc-700 dark:bg-zinc-800 text-sm focus:ring-2 focus:ring-red-500/20 focus:border-red-500 transition-all">
@@ -205,7 +204,7 @@ const fmt = (n: number) => '$' + n.toLocaleString('es-MX', { minimumFractionDigi
                                     class="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-zinc-700 dark:bg-zinc-800 text-sm focus:ring-2 focus:ring-red-500/20 focus:border-red-500 transition-all resize-none"></textarea>
                             </div>
                             <div v-if="['Promesa_Pago','Acuerdo_Alcanzado'].includes(gestionForm.resultado)"
-                                class="grid grid-cols-2 gap-4">
+                                class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 <div>
                                     <label class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5">Fecha Compromiso de Pago</label>
                                     <input v-model="gestionForm.fecha_compromiso_pago" type="date"
@@ -239,7 +238,7 @@ const fmt = (n: number) => '$' + n.toLocaleString('es-MX', { minimumFractionDigi
                             </button>
                         </div>
                         <form @submit.prevent="submitJuridico" class="p-5 space-y-4">
-                            <div class="grid grid-cols-2 gap-4">
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 <div>
                                     <label class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5">Fecha de Envío a Jurídico</label>
                                     <input v-model="juridicoForm.fecha_envio_juridico" type="date"
@@ -251,7 +250,7 @@ const fmt = (n: number) => '$' + n.toLocaleString('es-MX', { minimumFractionDigi
                                         class="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-zinc-700 dark:bg-zinc-800 text-sm focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all" />
                                 </div>
                             </div>
-                            <div class="grid grid-cols-2 gap-4">
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 <div>
                                     <label class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5">Tribunal</label>
                                     <input v-model="juridicoForm.tribunal" type="text" placeholder="Ej. Tribunal Superior de Justicia de Yucatán"

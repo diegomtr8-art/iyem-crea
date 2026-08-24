@@ -1,11 +1,22 @@
 import '../css/app.css';
 
-import { createInertiaApp } from '@inertiajs/vue3';
+import { createInertiaApp, router } from '@inertiajs/vue3';
 import { resolvePageComponent } from 'laravel-vite-plugin/inertia-helpers';
 import type { DefineComponent } from 'vue';
 import { createApp, h } from 'vue';
 import { ZiggyVue } from '../../vendor/tightenco/ziggy';
 import { initializeTheme } from './composables/useAppearance';
+
+// Si la sesión/CSRF expiró (419), Inertia por defecto muestra la página de
+// error cruda "419 | PAGE EXPIRED". En vez de eso recargamos la página actual:
+// si la sesión sigue viva se refresca el token; si ya expiró, el middleware
+// `auth` manda al usuario a /login limpiamente.
+router.on('invalid', (event) => {
+    if (event.detail.response?.status === 419) {
+        event.preventDefault();
+        window.location.reload();
+    }
+});
 
 // Extend ImportMeta interface for Vite...
 declare module 'vite/client' {

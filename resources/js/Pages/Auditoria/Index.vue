@@ -231,7 +231,7 @@ const cambiosJson = computed(() => {
             <!-- Tabla -->
             <div class="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 overflow-hidden shadow-sm">
                 <div class="overflow-x-auto">
-                    <table class="w-full text-sm text-left">
+                    <table class="w-full min-w-[700px] text-sm text-left">
                         <thead>
                             <tr class="bg-slate-50 dark:bg-slate-800/60 text-slate-400 dark:text-slate-500 text-[10px] uppercase tracking-widest font-black border-b border-slate-100 dark:border-slate-800">
                                 <th class="px-5 py-4">Fecha / Hora</th>
@@ -378,7 +378,7 @@ const cambiosJson = computed(() => {
                     </div>
 
                     <!-- Datos generales -->
-                    <div class="grid grid-cols-2 gap-3 mb-5">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-5">
                         <div class="bg-slate-50 dark:bg-slate-800 rounded-2xl p-4">
                             <p class="text-[10px] font-black text-slate-400 uppercase mb-1">Usuario</p>
                             <p class="font-bold text-slate-800 dark:text-white text-sm">{{ modalLog.user_name ?? 'Sistema' }}</p>

@@ -191,13 +191,13 @@ const labelCls = 'block text-xs font-bold uppercase tracking-wider text-slate-40
                 </div>
 
                 <!-- Acciones -->
-                <div class="flex justify-end gap-4">
+                <div class="flex flex-col-reverse sm:flex-row justify-end gap-3 sm:gap-4">
                     <Link :href="route('acreditados.show', credito.acreditado_id)"
-                        class="px-5 py-3 rounded-xl bg-slate-100 dark:bg-zinc-800 text-slate-700 dark:text-zinc-300 font-bold text-sm hover:bg-slate-200 dark:hover:bg-zinc-700 transition-all">
+                        class="w-full sm:w-auto text-center px-5 py-3 rounded-xl bg-slate-100 dark:bg-zinc-800 text-slate-700 dark:text-zinc-300 font-bold text-sm hover:bg-slate-200 dark:hover:bg-zinc-700 transition-all">
                         Cancelar
                     </Link>
                     <button type="submit" :disabled="form.processing"
-                        class="inline-flex items-center gap-2 px-8 py-3 bg-red-700 hover:bg-red-800 text-white font-black rounded-xl text-sm transition-all shadow-lg shadow-red-900/20 disabled:opacity-60 active:scale-[0.98]">
+                        class="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-8 py-3 bg-red-700 hover:bg-red-800 text-white font-black rounded-xl text-sm transition-all shadow-lg shadow-red-900/20 disabled:opacity-60 active:scale-[0.98]">
                         <Banknote :size="16" />
                         {{ form.processing ? 'Registrando...' : 'Confirmar Desembolso' }}
                     </button>

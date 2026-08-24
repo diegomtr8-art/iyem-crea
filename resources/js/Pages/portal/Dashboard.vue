@@ -115,7 +115,7 @@ const today = new Date().toLocaleDateString('es-MX', { weekday: 'long', year: 'n
                 <p class="text-slate-500 dark:text-zinc-400 text-sm capitalize">{{ today }}</p>
             </div>
             <Link v-if="!solicitud" :href="route('portal.solicitud.index')"
-                class="inline-flex items-center gap-2 px-5 py-3 bg-[#6B1938] hover:bg-[#4A0E22] text-white font-bold rounded-2xl shadow-lg shadow-[#6B1938]/20 transition-all active:scale-[0.98] text-sm shrink-0">
+                class="w-full sm:w-auto flex sm:inline-flex items-center justify-center gap-2 px-5 py-3 bg-[#6B1938] hover:bg-[#4A0E22] text-white font-bold rounded-2xl shadow-lg shadow-[#6B1938]/20 transition-all active:scale-[0.98] text-sm shrink-0">
                 <Sparkles size="16" /> Solicitar mi Crédito
             </Link>
         </div>

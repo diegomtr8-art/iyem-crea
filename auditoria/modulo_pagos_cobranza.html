@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Módulo: Pagos y Cobranza — Auditoría CREA</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;font-family:'Segoe UI',system-ui,sans-serif;}
+body{background:#0f172a;color:#e2e8f0;}
+header{background:linear-gradient(135deg,#b45309,#92400e);padding:20px 24px;display:flex;align-items:center;gap:14px;}
+header h1{font-size:1.3rem;color:#fff;}
+header .badge{background:rgba(255,255,255,.15);color:#fff;padding:4px 10px;border-radius:20px;font-size:.75rem;margin-left:auto;}
+.container{max-width:1000px;margin:0 auto;padding:24px 16px;}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px;margin-bottom:24px;}
+.card{background:#1e293b;border-radius:12px;padding:18px;border-left:4px solid #f59e0b;}
+.card.warn{border-left-color:#fb923c;}
+.card.danger{border-left-color:#ef4444;}
+.card.info{border-left-color:#3b82f6;}
+.card.red{border-left-color:#dc2626;}
+.card h3{font-size:.95rem;margin-bottom:10px;color:#fff;}
+.card p,.card li{font-size:.83rem;color:#94a3b8;line-height:1.6;}
+.card ul{padding-left:16px;}
+.card li{margin-bottom:4px;}
+.tag{display:inline-block;padding:2px 8px;border-radius:10px;font-size:.7rem;font-weight:700;margin-right:4px;margin-bottom:4px;}
+.tag.ok{background:#1a0d00;color:#fcd34d;}
+.tag.warn{background:#451a03;color:#fb923c;}
+.tag.danger{background:#450a0a;color:#f87171;}
+.tag.info{background:#0c2a4a;color:#60a5fa;}
+table{width:100%;border-collapse:collapse;font-size:.8rem;}
+th{background:#1a0d00;color:#fcd34d;padding:8px 10px;text-align:left;}
+td{padding:7px 10px;border-bottom:1px solid #1e293b;color:#cbd5e1;}
+tr:hover td{background:#1e293b;}
+.status-ok::before{content:"✅ ";}
+.status-warn::before{content:"⚠️ ";}
+.status-danger::before{content:"🔴 ";}
+section{margin-bottom:28px;}
+section h2{font-size:1rem;font-weight:700;color:#fcd34d;border-bottom:1px solid #1e293b;padding-bottom:8px;margin-bottom:14px;}
+.cascade{display:flex;align-items:stretch;gap:0;margin:12px 0;border-radius:10px;overflow:hidden;}
+.cas-step{flex:1;padding:14px;font-size:.82rem;font-weight:700;text-align:center;}
+.cas-arrow{display:flex;align-items:center;background:#0f172a;padding:0 8px;color:#475569;font-size:1.4rem;}
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <h1>💰 Pagos y Cobranza</h1>
+    <p style="font-size:.82rem;color:#fde68a;margin-top:4px;">Registro de pagos, cascada mora→interés→capital, cobranza extrajudicial y jurídica</p>
+  </div>
+  <div class="badge">Módulo 4 / 6</div>
+</header>
+<div class="container">
+
+  <section>
+    <h2>Lógica de aplicación de pagos (cascada)</h2>
+    <div class="cascade">
+      <div class="cas-step" style="background:#7f1d1d;color:#fca5a5;">1. Interés Moratorio<br><small style="font-weight:400">Si >5 días de atraso<br>Tasa diaria = Tasa_mora / 360</small></div>
+      <div class="cas-arrow">→</div>
+      <div class="cas-step" style="background:#92400e;color:#fde68a;">2. Interés Ordinario<br><small style="font-weight:400">Pendiente del período</small></div>
+      <div class="cas-arrow">→</div>
+      <div class="cas-step" style="background:#065f46;color:#6ee7b7;">3. Capital<br><small style="font-weight:400">Saldo insoluto pendiente</small></div>
+    </div>
+    <p style="font-size:.82rem;color:#94a3b8;margin-top:8px;">📌 Regla Cláusula 7a: 5 días de gracia antes de generar mora. La mora se calcula sobre el saldo vencido (saldo_insoluto - capital_pagado) × tasa_diaria × días.</p>
+    <p style="font-size:.82rem;color:#94a3b8;margin-top:4px;">📌 Liquidación anticipada: condona automáticamente los intereses ordinarios futuros de cuotas aún no vencidas.</p>
+  </section>
+
+  <section>
+    <h2>Funcionalidades de pagos</h2>
+    <table>
+      <thead><tr><th>Función</th><th>Descripción</th><th>Estado</th></tr></thead>
+      <tbody>
+        <tr><td>Registro de pago</td><td>Monto, forma, referencia, fecha</td><td class="status-ok">Con folio REC-000001-2026</td></tr>
+        <tr><td>Formas de pago</td><td>Efectivo, Transferencia, Cheque, Tarjeta</td><td class="status-ok">Todas disponibles</td></tr>
+        <tr><td>Cuotas cubiertas</td><td>Array de IDs de cuotas pagadas (JSON)</td><td class="status-ok">Con desglose capital/interés/mora</td></tr>
+        <tr><td>Cancelación de pago</td><td>Con motivo + usuario que cancela</td><td class="status-ok">Revierte aplicación a cuotas</td></tr>
+        <tr><td>Recibo PDF</td><td>Folio, monto, desglose, cajero</td><td class="status-ok">recibo-pago.blade.php</td></tr>
+        <tr><td>Cuotas morosas en pantalla</td><td>Calcula mora al día en tiempo real</td><td class="status-ok">Vista previa antes de pagar</td></tr>
+        <tr><td>Pago parcial</td><td>Si no alcanza para cubrir toda la cuota</td><td class="status-ok">Aplica lo que alcanza</td></tr>
+        <tr><td>Pagos en línea (OXXO/CoDi/Tarjeta)</td><td>—</td><td class="status-danger">No existe — solo caja presencial</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section>
+    <h2>Módulo de Cobranza</h2>
+    <table>
+      <thead><tr><th>Función</th><th>Descripción</th><th>Estado</th></tr></thead>
+      <tbody>
+        <tr><td>Listado de créditos morosos</td><td>Filtro por rango de días (0-30, 31-60, 61-90, +90)</td><td class="status-ok">Con semáforo de colores</td></tr>
+        <tr><td>Detalle de mora por crédito</td><td>Cuotas vencidas, deuda total, último pago</td><td class="status-ok">Vista completa</td></tr>
+        <tr><td>Log de gestiones</td><td>Tipo: Llamada/Visita/Carta/Email + resultado</td><td class="status-ok">Con historial por crédito</td></tr>
+        <tr><td>Enviar a Jurídico</td><td>Crea ExpedienteJuridico vinculado al crédito</td><td class="status-ok">Funciona</td></tr>
+        <tr><td>Recordatorios automáticos</td><td>Cron job para notificar cuotas próximas</td><td class="status-danger">Solo endpoint manual, sin scheduling</td></tr>
+        <tr><td>Reporte de cobranza</td><td>Informe global de mora</td><td class="status-ok">Exportable</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section>
+    <h2>Módulo de Cobranza Jurídica</h2>
+    <table>
+      <thead><tr><th>Función</th><th>Estado</th></tr></thead>
+      <tbody>
+        <tr><td>Listado de expedientes jurídicos activos</td><td class="status-ok">Funciona</td></tr>
+        <tr><td>Detalle: seguimiento del proceso legal</td><td class="status-ok">Con notas y fechas</td></tr>
+        <tr><td>Actualizar estatus jurídico</td><td class="status-ok">Funciona</td></tr>
+        <tr><td>Integración con despacho externo</td><td class="status-danger">No existe</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <div class="grid">
+    <div class="card">
+      <h3>✅ Lo que ya funciona</h3>
+      <ul>
+        <li>Cascada correcta: mora → ordinario → capital</li>
+        <li>5 días de gracia automáticos</li>
+        <li>Mora calculada sobre saldo vencido real (no sobre cuota completa)</li>
+        <li>Liquidación anticipada con condonación de intereses futuros</li>
+        <li>Recibo PDF con folio único</li>
+        <li>Cancelación de pagos con auditoría</li>
+        <li>Semáforo verde/amarillo/naranja/rojo/negro</li>
+        <li>Log de gestiones de cobranza por crédito</li>
+        <li>Canal a jurídico con expediente</li>
+      </ul>
+    </div>
+    <div class="card danger">
+      <h3>🔴 Pendientes críticos</h3>
+      <ul>
+        <li><span class="tag danger">P0</span> Sin pagos en línea — toda la cobranza es presencial</li>
+        <li><span class="tag warn">P1</span> Sin alertas automáticas de cuotas próximas (cron no configurado, solo endpoint manual)</li>
+        <li><span class="tag warn">P1</span> Sin SMS o WhatsApp de recordatorio</li>
+        <li><span class="tag warn">P1</span> Sin reporte de mora por edades (cartera vencida 1-30, 31-60, etc.) exportable a Excel</li>
+        <li><span class="tag info">Mejora</span> Convenio CoDi / SPEI para pagos digitales</li>
+        <li><span class="tag info">Mejora</span> Integración con OXXO Pay para pago en tiendas</li>
+      </ul>
+    </div>
+  </div>
+</div>
+</body>
+</html>

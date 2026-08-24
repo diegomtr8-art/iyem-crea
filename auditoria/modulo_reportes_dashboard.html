@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Módulo: Reportes y Dashboard — Auditoría CREA</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;font-family:'Segoe UI',system-ui,sans-serif;}
+body{background:#0f172a;color:#e2e8f0;}
+header{background:linear-gradient(135deg,#0284c7,#0369a1);padding:20px 24px;display:flex;align-items:center;gap:14px;}
+header h1{font-size:1.3rem;color:#fff;}
+header .badge{background:rgba(255,255,255,.15);color:#fff;padding:4px 10px;border-radius:20px;font-size:.75rem;margin-left:auto;}
+.container{max-width:1000px;margin:0 auto;padding:24px 16px;}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px;margin-bottom:24px;}
+.grid3{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin-bottom:24px;}
+.card{background:#1e293b;border-radius:12px;padding:18px;border-left:4px solid #0ea5e9;}
+.card.warn{border-left-color:#f59e0b;}
+.card.danger{border-left-color:#ef4444;}
+.card.info{border-left-color:#3b82f6;}
+.card h3{font-size:.95rem;margin-bottom:10px;color:#fff;}
+.card p,.card li{font-size:.83rem;color:#94a3b8;line-height:1.6;}
+.card ul{padding-left:16px;}
+.card li{margin-bottom:4px;}
+.kpi-card{background:#0c1a2a;border:1px solid #0369a1;border-radius:10px;padding:14px;text-align:center;}
+.kpi-card .num{font-size:1.6rem;font-weight:700;color:#38bdf8;}
+.kpi-card .label{font-size:.75rem;color:#94a3b8;margin-top:4px;}
+.tag{display:inline-block;padding:2px 8px;border-radius:10px;font-size:.7rem;font-weight:700;margin-right:4px;margin-bottom:4px;}
+.tag.ok{background:#0c2a4a;color:#38bdf8;}
+.tag.warn{background:#451a03;color:#fb923c;}
+.tag.danger{background:#450a0a;color:#f87171;}
+.tag.info{background:#0c2a4a;color:#60a5fa;}
+table{width:100%;border-collapse:collapse;font-size:.8rem;}
+th{background:#0c1a2a;color:#38bdf8;padding:8px 10px;text-align:left;}
+td{padding:7px 10px;border-bottom:1px solid #1e293b;color:#cbd5e1;}
+tr:hover td{background:#1e293b;}
+.status-ok::before{content:"✅ ";}
+.status-warn::before{content:"⚠️ ";}
+.status-danger::before{content:"🔴 ";}
+section{margin-bottom:28px;}
+section h2{font-size:1rem;font-weight:700;color:#38bdf8;border-bottom:1px solid #1e293b;padding-bottom:8px;margin-bottom:14px;}
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <h1>📊 Reportes y Dashboard</h1>
+    <p style="font-size:.82rem;color:#bae6fd;margin-top:4px;">KPIs, cartera, pagos, beneficiarios, exportaciones Excel, auditoría, presupuesto</p>
+  </div>
+  <div class="badge">Módulo 5 / 6</div>
+</header>
+<div class="container">
+
+  <section>
+    <h2>KPIs del Dashboard operativo</h2>
+    <div class="grid3">
+      <div class="kpi-card"><div class="num">$</div><div class="label">Capital colocado total</div></div>
+      <div class="kpi-card"><div class="num">$</div><div class="label">Capital recuperado</div></div>
+      <div class="kpi-card"><div class="num">$</div><div class="label">Mora pagada</div></div>
+      <div class="kpi-card"><div class="num">N</div><div class="label">Créditos activos</div></div>
+      <div class="kpi-card"><div class="num">N</div><div class="label">Créditos morosos</div></div>
+      <div class="kpi-card"><div class="num">N</div><div class="label">Cuotas vencidas</div></div>
+      <div class="kpi-card"><div class="num">H/M</div><div class="label">Distribución por género</div></div>
+      <div class="kpi-card"><div class="num">🗺️</div><div class="label">Por municipio</div></div>
+      <div class="kpi-card"><div class="num">📈</div><div class="label">Colocación mensual</div></div>
+    </div>
+    <p style="font-size:.82rem;color:#94a3b8;">El dashboard permite filtrar por <strong>modalidad</strong> (Artesanal / Emprendedores / Sustentable) para ver todos los KPIs segmentados.</p>
+  </section>
+
+  <section>
+    <h2>Reportes disponibles</h2>
+    <table>
+      <thead><tr><th>Reporte</th><th>Ruta</th><th>Filtros</th><th>Exportación</th></tr></thead>
+      <tbody>
+        <tr><td>Cartera de créditos</td><td>/reportes/cartera</td><td>Estatus, modalidad, sexo, municipio</td><td class="status-ok">Excel (.xlsx)</td></tr>
+        <tr><td>Movimientos de pagos</td><td>/reportes/pagos</td><td>Fecha, modalidad, cajero</td><td class="status-ok">Excel (.xlsx)</td></tr>
+        <tr><td>Movimientos por acreditado</td><td>/exportar/movimientos/{id}</td><td>—</td><td class="status-ok">Excel</td></tr>
+        <tr><td>Adeudo individual</td><td>/reportes/adeudo/{credito}</td><td>—</td><td class="status-warn">Solo vista</td></tr>
+        <tr><td>Beneficiarios</td><td>/reportes/beneficiarios</td><td>Modalidad, sexo, municipio</td><td class="status-ok">Excel</td></tr>
+        <tr><td>Informe de cobranza</td><td>/reportes/informe-cobranza</td><td>Rango de días mora</td><td class="status-warn">Solo vista (sin Excel)</td></tr>
+        <tr><td>Presupuesto autorizado vs ejercido</td><td>/presupuesto</td><td>Por modalidad, año fiscal</td><td class="status-warn">Solo vista</td></tr>
+        <tr><td>Auditoría de cambios</td><td>/auditoria</td><td>Por entidad, acción, usuario</td><td class="status-danger">Sin exportación</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section>
+    <h2>Módulo de Presupuesto</h2>
+    <div class="grid">
+      <div class="card">
+        <h3>📋 ¿Qué hace?</h3>
+        <ul>
+          <li>Registra el monto autorizado por modalidad para el ejercicio fiscal</li>
+          <li>Calcula en tiempo real cuánto se ha ejercido (suma de créditos otorgados)</li>
+          <li>Muestra el monto disponible restante</li>
+          <li>Porcentaje de uso visual por modalidad</li>
+        </ul>
+      </div>
+      <div class="card warn">
+        <h3>⚠️ Limitaciones</h3>
+        <ul>
+          <li><span class="tag warn">P1</span> Sin alerta automática al llegar al 80% o 100% del presupuesto</li>
+          <li><span class="tag warn">P1</span> No bloquea el registro de créditos cuando se agota el presupuesto</li>
+          <li><span class="tag warn">P1</span> Sin histórico de presupuestos de años anteriores accesible</li>
+          <li><span class="tag info">Mejora</span> Gráfica de progreso visual por modalidad</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Auditoría del sistema</h2>
+    <table>
+      <thead><tr><th>Campo auditado</th><th>Entidades</th><th>Estado</th></tr></thead>
+      <tbody>
+        <tr><td>AuditoriaLog: entidad + acción + usuario + descripción</td><td>Credito, Desembolso, Pago, Condonación, Reestructuración</td><td class="status-ok">Implementado con AuditoriaLog::registrar()</td></tr>
+        <tr><td>SolicitudEstatusHistorial: quién cambió el estatus y cuándo</td><td>SolicitudCredito</td><td class="status-ok">Con usuario + fecha + nota</td></tr>
+        <tr><td>Log de cancelación de pagos</td><td>Pago</td><td class="status-ok">Registra motivo, usuario y fecha</td></tr>
+        <tr><td>Cambios en datos de acreditados</td><td>Acreditado</td><td class="status-danger">Sin auditoría de cambios de datos</td></tr>
+        <tr><td>Login / accesos fallidos</td><td>User</td><td class="status-danger">No implementado</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section>
+    <h2>Simulador (público)</h2>
+    <div class="grid">
+      <div class="card">
+        <h3>🧮 ¿Qué hace?</h3>
+        <p>Permite a cualquier visitante simular una tabla de amortización ingresando monto, plazo y modalidad, antes de registrarse en el sistema.</p>
+      </div>
+      <div class="card info">
+        <h3>Estado</h3>
+        <ul>
+          <li class="status-ok">Funciona y es público</li>
+          <li class="status-warn">No valida contra el presupuesto disponible real</li>
+          <li class="status-warn">No guarda las simulaciones para analítica</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <div class="grid">
+    <div class="card">
+      <h3>✅ Fortalezas</h3>
+      <ul>
+        <li>Dashboard con KPIs filtrable por modalidad en tiempo real</li>
+        <li>Cartera con capital recuperado, pendiente, vencido, por vencer y devengado</li>
+        <li>Exportación Excel de cartera y pagos</li>
+        <li>Auditoría de cambios críticos (pagos, condonaciones, desembolsos)</li>
+        <li>Presupuesto por modalidad con avance en tiempo real</li>
+        <li>Simulador público disponible sin registro</li>
+      </ul>
+    </div>
+    <div class="card warn">
+      <h3>⚠️ Pendientes</h3>
+      <ul>
+        <li><span class="tag warn">P1</span> Informe de cobranza sin exportar a Excel</li>
+        <li><span class="tag warn">P1</span> Auditoría no cubre cambios en datos de acreditados</li>
+        <li><span class="tag warn">P1</span> Sin alertas de presupuesto al 80%/100%</li>
+        <li><span class="tag danger">P0</span> Sin bloqueo al superar el presupuesto autorizado</li>
+        <li><span class="tag info">Mejora</span> Dashboard ejecutivo con gráficas (Chart.js ya disponible)</li>
+        <li><span class="tag info">Mejora</span> Reporte de impacto social (mayahablantes, discapacidad, género)</li>
+        <li><span class="tag info">Mejora</span> Exportación a PDF de reportes de cartera</li>
+      </ul>
+    </div>
+  </div>
+</div>
+</body>
+</html>

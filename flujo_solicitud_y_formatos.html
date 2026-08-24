@@ -1,0 +1,1089 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>CREA — Flujo de Solicitud y Formatos Generados</title>
+<style>
+:root{
+  --crea-green:#006847;
+  --crea-green-dark:#004d35;
+  --crea-gold:#e8a020;
+  --bar-blue:#2056a8;
+  --bar-blue-dark:#163d7d;
+  --bar-maroon:#8b1538;
+  --bar-maroon-dark:#6e0f2a;
+  --ink:#1d2530;
+  --muted:#5b6470;
+  --line:#9aa3ad;
+  --bg:#eef1f4;
+}
+*{box-sizing:border-box;}
+body{
+  margin:0;
+  font-family:'Segoe UI',Arial,Helvetica,sans-serif;
+  background:var(--bg);
+  color:var(--ink);
+}
+.topbar{
+  background:linear-gradient(120deg,var(--crea-green),var(--crea-green-dark));
+  color:#fff;
+  padding:28px 6vw 34px;
+  position:relative;
+  overflow:hidden;
+}
+.topbar::after{
+  content:"";
+  position:absolute; right:-60px; top:-60px;
+  width:260px;height:260px;border-radius:50%;
+  background:rgba(255,255,255,.08);
+}
+.topbar h1{margin:0 0 6px;font-size:26px;letter-spacing:.3px;}
+.topbar p{margin:0;opacity:.9;font-size:14px;max-width:720px;}
+.brand{display:flex;align-items:center;gap:10px;margin-bottom:14px;}
+.brand .logo{width:36px;height:36px;flex:none;}
+.brand b{font-size:18px;letter-spacing:1px;}
+nav.toc{
+  display:flex; gap:10px; flex-wrap:wrap;
+  padding:14px 6vw; background:#fff; border-bottom:1px solid #dde2e7;
+  position:sticky; top:0; z-index:50;
+}
+nav.toc a{
+  text-decoration:none; color:var(--crea-green-dark); font-size:13px; font-weight:600;
+  padding:8px 14px; border-radius:20px; background:#f1f6f3; border:1px solid #d9e6df;
+  transition:.15s;
+}
+nav.toc a:hover{background:var(--crea-green); color:#fff; border-color:var(--crea-green);}
+main{padding:40px 6vw 80px; max-width:1280px; margin:0 auto;}
+section{margin-bottom:64px;}
+section > h2{
+  font-size:20px; color:var(--crea-green-dark); margin:0 0 6px;
+  display:flex; align-items:center; gap:10px;
+}
+section > h2 .num{
+  display:inline-flex; align-items:center; justify-content:center;
+  width:28px;height:28px;border-radius:50%;
+  background:var(--crea-gold); color:#fff; font-size:14px; font-weight:700;
+}
+section > p.lead{color:var(--muted); font-size:14px; margin:0 0 26px; max-width:880px;}
+
+/* ---------- FLOW STEPS ---------- */
+.flow{display:flex; flex-direction:column; gap:14px;}
+.step{
+  display:grid; grid-template-columns:64px 1fr; gap:16px;
+  background:#fff; border:1px solid #e1e6ea; border-radius:14px; padding:18px 20px;
+  box-shadow:0 1px 3px rgba(20,30,40,.04);
+}
+.step .badge{
+  width:44px;height:44px;border-radius:50%;
+  background:var(--crea-green); color:#fff; font-weight:700; font-size:16px;
+  display:flex;align-items:center;justify-content:center;
+}
+.step.alt .badge{background:var(--crea-gold);}
+.step.success .badge{background:#1a8f4c;}
+.step h3{margin:2px 0 6px; font-size:15.5px; color:var(--ink);}
+.step p{margin:0 0 8px; font-size:13.3px; color:var(--muted); line-height:1.55;}
+.step .mock{
+  margin-top:8px; border:1px dashed #cfd6dc; border-radius:10px; padding:14px 16px;
+  background:#fafcfb;
+}
+.pill{
+  display:inline-block; font-size:11px; font-weight:700; padding:3px 10px; border-radius:20px;
+  background:#eef6f1; color:var(--crea-green-dark); margin-right:6px; margin-bottom:6px;
+}
+.pill.gold{background:#fdf3e3;color:#8a5d10;}
+.pill.gray{background:#eef0f2;color:#566270;}
+.pill.red{background:#fdeceb;color:#a23b32;}
+
+/* mock UI bits */
+.ui-card{background:#fff;border:1px solid #e3e8ec;border-radius:10px;padding:14px;}
+.ui-input{
+  border:1px solid #c9d2da; border-radius:8px; padding:9px 12px; font-size:13px;
+  background:#fff; color:#33404b; display:block; margin:6px 0 0;
+}
+.ui-input.fake-value{color:#1d2530; font-weight:600;}
+.ui-btn{
+  display:inline-block; padding:9px 18px; border-radius:8px; font-size:13px; font-weight:700;
+  background:var(--crea-green); color:#fff; border:none; cursor:default;
+}
+.ui-btn.outline{background:#fff;color:var(--crea-green);border:1.5px solid var(--crea-green);}
+.ui-btn.gold{background:var(--crea-gold);color:#fff;}
+.option-card{
+  border:1.5px solid #dfe5e9; border-radius:10px; padding:12px 14px; min-width:150px;
+  display:inline-block; margin:4px 6px 4px 0; font-size:12.5px; vertical-align:top;
+}
+.option-card.selected{border-color:var(--crea-green); background:#f4faf6;}
+.option-card b{display:block;font-size:13px;margin-bottom:3px;color:var(--ink);}
+.option-card span{color:var(--muted);}
+.check-row{display:flex;align-items:center;gap:8px;font-size:12.8px;margin:5px 0;color:#33404b;}
+.check-box{
+  width:16px;height:16px;border-radius:4px;border:1.5px solid #b7c0c8;
+  display:inline-flex;align-items:center;justify-content:center;font-size:11px;color:#fff;flex:none;
+}
+.check-box.on{background:var(--crea-green);border-color:var(--crea-green);}
+.progress-track{height:8px;border-radius:6px;background:#e7ebee;overflow:hidden;margin:10px 0;}
+.progress-fill{height:100%;background:linear-gradient(90deg,var(--crea-green),var(--crea-gold));}
+.notif-dot{
+  display:inline-flex; align-items:center; justify-content:center;
+  width:18px;height:18px;border-radius:50%;background:#d23b3b;color:#fff;font-size:10px;font-weight:700;
+}
+.banner{
+  border-radius:10px; padding:14px 16px; font-size:13px; display:flex; gap:10px; align-items:flex-start;
+}
+.banner.info{background:#eef5ff;border:1px solid #cfe0f7;color:#1c4d8a;}
+.banner.success{background:#eaf7ee;border:1px solid #bfe5cb;color:#1a6b39;}
+.banner.warn{background:#fff6e8;border:1px solid #f3dca8;color:#8a5d10;}
+.map-box{
+  border-radius:10px; overflow:hidden; border:1px solid #dde2e7; height:160px;
+  background:repeating-linear-gradient(45deg,#e9eef1,#e9eef1 10px,#e2e8ec 10px,#e2e8ec 20px);
+  display:flex; align-items:center; justify-content:center; color:#8b97a3; font-size:12px;
+}
+
+/* ---------- PDF TEMPLATE REPLICAS ---------- */
+.doc-wrap{overflow-x:auto; padding-bottom:6px;}
+.doc-page{
+  width:860px; background:#fff; border:1px solid #c9cfd5; margin:0 auto 26px;
+  box-shadow:0 3px 10px rgba(20,30,40,.08); font-family:Arial,Helvetica,sans-serif; color:#16202b;
+}
+.doc-head{
+  display:flex; align-items:center; justify-content:space-between;
+  padding:10px 14px; border-bottom:2px solid var(--bar-blue);
+}
+.doc-page.maroon .doc-head{border-bottom-color:var(--bar-maroon);}
+.doc-head .l{display:flex;align-items:center;gap:10px;}
+.doc-head .l .seal{width:34px;height:34px;border-radius:50%;background:#0c3b66;display:flex;align-items:center;justify-content:center;color:#fff;font-size:9px;font-weight:700;text-align:center;flex:none;}
+.doc-head .l .inst b{display:block;font-size:11px;color:#0c2d4d;}
+.doc-head .l .inst span{display:block;font-size:9px;color:#5b6470;}
+.doc-head .r{display:flex;align-items:center;gap:8px;}
+.doc-head .r .badge2{background:var(--crea-green);color:#fff;border-radius:6px;padding:5px 10px;font-size:9px;font-weight:700;}
+.doc-foot-strip{font-size:8px;text-align:right;padding:4px 14px;color:#7c858d;}
+.doc-program{background:#f4f6f8;font-size:9.5px;text-align:center;padding:4px;color:#3a4450;border-bottom:1px solid #dfe3e7;}
+.doc-title{
+  text-align:center; font-size:13px; font-weight:700; letter-spacing:.4px; padding:8px;
+  color:#16202b; border-bottom:1px solid #dfe3e7;
+}
+.modalidad-bar{
+  display:flex; border-bottom:1px solid #c9cfd5; background:#f7f9fb;
+}
+.modalidad-bar .m-label{
+  padding:8px 12px; font-size:10.5px; font-weight:700; color:#16202b; flex:none; border-right:1px solid #c9cfd5;
+  display:flex; align-items:center;
+}
+.modalidad-bar .m-opt{flex:1; display:flex; align-items:center; gap:6px; padding:8px 10px; font-size:10.5px; border-right:1px solid #c9cfd5;}
+.modalidad-bar .m-opt:last-child{border-right:none;}
+.m-chk{width:13px;height:13px;border:1.4px solid #6b7480;border-radius:2px;display:inline-flex;align-items:center;justify-content:center;font-size:9px;color:#fff;flex:none;}
+.m-chk.on{background:var(--bar-blue);border-color:var(--bar-blue);}
+.doc-page.maroon .m-chk.on{background:var(--bar-maroon);border-color:var(--bar-maroon);}
+
+.bar{
+  background:var(--bar-blue); color:#fff; font-size:10.5px; font-weight:700;
+  padding:6px 12px; letter-spacing:.3px;
+}
+.doc-page.maroon .bar{background:var(--bar-maroon);}
+
+.grid{border-left:1px solid #c9cfd5; border-top:1px solid #c9cfd5;}
+.frow{display:flex; flex-wrap:wrap;}
+.fcell{
+  border-right:1px solid #c9cfd5; border-bottom:1px solid #c9cfd5; padding:5px 8px;
+  flex:1 1 0; min-width:0;
+}
+.fcell .lbl{display:block;font-size:8px;color:#6b7480;line-height:1.2;margin-bottom:3px;}
+.fcell .val{display:block;font-size:10.6px;color:#16202b;font-weight:600;min-height:12px;}
+.fcell.center{display:flex;align-items:center;justify-content:center;}
+.w-15{flex:0 0 15%;} .w-20{flex:0 0 20%;} .w-25{flex:0 0 25%;}
+.w-30{flex:0 0 30%;} .w-33{flex:0 0 33.33%;} .w-35{flex:0 0 35%;}
+.w-40{flex:0 0 40%;} .w-45{flex:0 0 45%;} .w-50{flex:0 0 50%;}
+.w-60{flex:0 0 60%;} .w-65{flex:0 0 65%;} .w-70{flex:0 0 70%;}
+.w-75{flex:0 0 75%;} .w-80{flex:0 0 80%;} .w-100{flex:0 0 100%;}
+.opt-inline{display:flex;align-items:center;gap:5px;font-size:9.5px;margin-right:10px;}
+.opt-inline .m-chk{width:11px;height:11px;}
+.bigtext .val{min-height:38px;font-weight:400;font-size:10.2px;line-height:1.4;}
+.bigtext.tall .val{min-height:58px;}
+
+table.doc-table{width:100%;border-collapse:collapse;font-size:9.8px;}
+table.doc-table th{
+  background:#eef1f5; color:#16202b; font-size:9px; text-transform:uppercase; letter-spacing:.2px;
+  padding:6px 8px; border:1px solid #c9cfd5; text-align:left;
+}
+table.doc-table td{border:1px solid #c9cfd5; padding:6px 8px; color:#16202b;}
+.amount{font-weight:700; color:#0c5c33;}
+.doc-page.maroon table.doc-table th{background:#f4e8ec;}
+
+.declare{font-size:8.6px; color:#4a5460; line-height:1.5; padding:10px 14px; border-bottom:1px solid #dfe3e7;}
+.sign-row{display:flex;}
+.sign-row .fcell{padding:14px 10px 8px;}
+.priv-note{font-size:7.3px; color:#8b939c; padding:8px 14px 14px; line-height:1.5;}
+.totals-row .fcell .val{color:#0c5c33;}
+.plazo-row{display:flex;border-top:1px solid #c9cfd5;}
+.plazo-opt{display:flex;align-items:center;gap:5px;padding:8px 10px;font-size:9.5px;border-right:1px solid #c9cfd5;}
+
+.doc-caption{
+  text-align:center; font-size:12px; font-weight:700; color:var(--crea-green-dark);
+  margin:0 0 10px;
+}
+.doc-meta{
+  text-align:center; font-size:11.5px; color:var(--muted); margin:-4px 0 18px;
+}
+.zip-list{
+  background:#fff; border:1px solid #e1e6ea; border-radius:12px; padding:16px 18px; margin-bottom:30px;
+}
+.zip-list h4{margin:0 0 10px;font-size:13.5px;color:var(--ink);}
+.zip-list ul{margin:0;padding-left:0;list-style:none;}
+.zip-list li{
+  display:flex; align-items:center; gap:10px; font-size:12.8px; padding:7px 0; border-bottom:1px dashed #e3e8ec;
+}
+.zip-list li:last-child{border-bottom:none;}
+.zip-list .ic{width:22px;height:22px;border-radius:5px;background:#fdeceb;color:#a23b32;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;flex:none;}
+.zip-list small{color:var(--muted);display:block;}
+
+.legend{display:flex;gap:18px;flex-wrap:wrap;font-size:12px;color:var(--muted);margin-bottom:18px;}
+.legend span{display:inline-flex;align-items:center;gap:6px;}
+.legend i{width:12px;height:12px;border-radius:3px;display:inline-block;}
+footer.page-footer{
+  text-align:center; padding:30px 0 50px; color:#8b97a3; font-size:12px;
+}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="brand">
+    <svg class="logo" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="20" cy="20" r="19" fill="#ffffff" opacity="0.12"/>
+      <path d="M20 33c-6-3-9-9-9-15 0 0 6 1 9 6 3-5 9-6 9-6 0 6-3 12-9 15Z" fill="#ffffff"/>
+      <path d="M20 18V8" stroke="#e8a020" stroke-width="2.4" stroke-linecap="round"/>
+      <path d="M14 12l6-4 6 4" stroke="#e8a020" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+    </svg>
+    <b>CREA · Portal del Ciudadano</b>
+  </div>
+  <h1>Flujo completo de solicitud, revisión, aprobación y generación de formatos</h1>
+  <p>Referencia visual para implementación en Claude Code. Muestra cada pantalla del proceso y el resultado final: los 5 formatos oficiales del IYEM llenados automáticamente con los datos capturados en la solicitud.</p>
+</div>
+
+<nav class="toc">
+  <a href="#flujo">1. Flujo paso a paso</a>
+  <a href="#mapeo">2. Mapeo de datos → formatos</a>
+  <a href="#f02">3. F-PR-OCC-02 (Persona Física)</a>
+  <a href="#f03">4. F-PR-OCC-03 (Persona Moral)</a>
+  <a href="#f04">5. F-PR-OCC-04 (Ficha Técnica)</a>
+  <a href="#f05">6. F-PR-OCC-05 (Ingresos y Egresos)</a>
+  <a href="#f07">7. F-PR-OCC-07 (Bienes Aval)</a>
+</nav>
+
+<main>
+
+<!-- ===================== FLUJO ===================== -->
+<section id="flujo">
+  <h2><span class="num">1</span> Flujo completo — del primer clic a la aprobación</h2>
+  <p class="lead">Cada tarjeta representa una pantalla real del portal. Las secciones con borde punteado son mockups de la UI esperada. El formulario es de una sola página con secciones (sin wizard/stepper).</p>
+
+  <div class="flow">
+
+    <div class="step">
+      <div class="badge">0</div>
+      <div>
+        <h3>Verificación por CURP</h3>
+        <p>Antes de iniciar, el ciudadano captura su CURP. El sistema valida que no exista ya un crédito activo ni una solicitud en proceso con esa misma CURP (un crédito activo por persona).</p>
+        <div class="mock ui-card" style="max-width:420px;">
+          <label style="font-size:12px;font-weight:600;">CURP</label>
+          <input class="ui-input fake-value" value="PECM900512MYNRRN08" readonly>
+          <div style="margin-top:10px;"><span class="ui-btn">Verificar y continuar</span></div>
+          <div class="banner success" style="margin-top:12px;">✓ CURP verificada. No existen créditos activos asociados. Puedes continuar.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="step alt">
+      <div class="badge">1</div>
+      <div>
+        <h3>Modalidad, tipo de persona y garantía</h3>
+        <p>Tarjetas grandes y visuales. La selección determina qué formatos y secciones se mostrarán después.</p>
+        <div class="mock">
+          <div class="option-card"><b>CREA Artesanal</b><span>$5,000–$25,000 · 0% · Solo Persona Física</span></div>
+          <div class="option-card selected"><b>CREA Emprendedores</b><span>$25,000–$150,000 · 7% · Física o Moral</span></div>
+          <div class="option-card"><b>CREA Sustentable</b><span>$50,000–$500,000 · 5% · 3 meses de prórroga</span></div>
+          <br>
+          <div class="option-card selected"><b>Persona Física</b><span>Solicitud a tu nombre</span></div>
+          <div class="option-card"><b>Persona Moral</b><span>A nombre de una empresa</span></div>
+          <br>
+          <div class="option-card selected"><b>Aval</b><span>Garantía personal</span></div>
+          <div class="option-card"><b>Garantía prendaria</b><span>Bien mueble</span></div>
+          <div class="option-card"><b>Garantía hipotecaria</b><span>Solo Sustentable</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="badge">2</div>
+      <div>
+        <h3>Formulario único por secciones (sin wizard)</h3>
+        <p>Una sola página con scroll, secciones colapsables: Solicitante, Negocio, ¿Emprendimiento u operación?, Destino del Crédito, Ficha Técnica, Ingresos y Egresos, Aval, Documentos.</p>
+        <div class="mock ui-card">
+          <div class="check-row"><span class="check-box on">✓</span> Información del Solicitante</div>
+          <div class="check-row"><span class="check-box on">✓</span> Información del Negocio</div>
+          <div class="check-row"><span class="check-box on">✓</span> ¿Es emprendimiento o negocio en operación?</div>
+          <div class="check-row"><span class="check-box on">✓</span> Destino del crédito (conceptos editables, montos con comas)</div>
+          <div class="check-row"><span class="check-box">&nbsp;</span> Ficha Técnica del negocio</div>
+          <div class="check-row"><span class="check-box">&nbsp;</span> Ingresos y Egresos</div>
+          <div class="check-row"><span class="check-box">&nbsp;</span> Datos del Aval</div>
+          <div class="check-row"><span class="check-box">&nbsp;</span> Documentos requeridos</div>
+          <div class="progress-track"><div class="progress-fill" style="width:42%;"></div></div>
+          <span class="pill">42% completado</span>
+          <div style="margin-top:10px;">
+            <span class="ui-btn outline">Guardar borrador</span>
+            <span class="ui-btn" style="opacity:.5;">Enviar solicitud</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="step alt">
+      <div class="badge">3</div>
+      <div>
+        <h3>Destino del crédito — conceptos editables</h3>
+        <p>Tabla libre: el ciudadano escribe qué necesita y cuánto cuesta. El total se calcula solo y debe coincidir con el importe a solicitar.</p>
+        <div class="mock ui-card">
+          <table class="doc-table" style="font-size:12px;">
+            <tr><th>Concepto</th><th>Importe cotizado</th></tr>
+            <tr><td>Máquina de coser industrial</td><td class="amount">$18,500.00</td></tr>
+            <tr><td>Tela e insumos para 3 meses</td><td class="amount">$9,500.00</td></tr>
+            <tr><td>Vitrina exhibidora</td><td class="amount">$4,000.00</td></tr>
+          </table>
+          <p style="font-size:12.5px;margin:10px 0 0;">Importe total del proyecto: <b>$32,000.00</b> &nbsp;·&nbsp; Importe a solicitar: <b>$32,000.00</b> <span class="pill" style="background:#eaf7ee;color:#1a6b39;">Coincide ✓</span></p>
+        </div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="badge">4</div>
+      <div>
+        <h3>Documentos requeridos</h3>
+        <p>Checklist según modalidad + tipo de persona + garantía elegida. Incluye el documento de propiedad/posesión del negocio.</p>
+        <div class="mock ui-card">
+          <div class="check-row"><span class="check-box on">✓</span> Identificación oficial (frente y reverso)</div>
+          <div class="check-row"><span class="check-box on">✓</span> CURP</div>
+          <div class="check-row"><span class="check-box on">✓</span> Comprobante de domicilio</div>
+          <div class="check-row"><span class="check-box on">✓</span> Documento que acredite propiedad o posesión del negocio</div>
+          <div class="check-row"><span class="check-box">&nbsp;</span> Identificación del aval</div>
+          <div class="check-row"><span class="check-box">&nbsp;</span> Cotizaciones del destino del crédito (mínimo 2)</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="badge">5</div>
+      <div>
+        <h3>Envío — pantalla "En revisión"</h3>
+        <p>Al enviar, NO se genera el ZIP todavía. Solo se notifica que el equipo de CREA está revisando.</p>
+        <div class="mock">
+          <div class="banner info">
+            <div>
+              <b>Tu solicitud fue enviada correctamente.</b><br>
+              El equipo de CREA está revisando tu información. Te notificaremos cuando haya una actualización. Puedes consultar el estado de tu solicitud en cualquier momento desde este portal.
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="badge">6</div>
+      <div>
+        <h3>Panel operativo aprueba la solicitud</h3>
+        <p>El analista/comité de CREA cambia el estatus a <b>Aprobada</b>. Este cambio dispara automáticamente la generación de los PDFs y la notificación al ciudadano. (Pantalla del panel operativo, fuera del alcance visual de este mock — solo se documenta el disparador.)</p>
+      </div>
+    </div>
+
+    <div class="step success">
+      <div class="badge">7</div>
+      <div>
+        <h3>Pantalla de aprobación + descarga del ZIP</h3>
+        <p>El ciudadano ve el mensaje de felicitación, descarga sus formatos llenados y la ubicación del IYEM para entregarlos firmados.</p>
+        <div class="mock">
+          <div class="banner success">
+            <div>
+              <b>¡Felicidades! Tu solicitud va a pasar a Comité.</b><br>
+              Descarga tus formatos, fírmalos y entrégalos en las oficinas del Instituto Yucateco de Emprendedores (IYEM).
+            </div>
+          </div>
+          <div style="margin-top:12px;"><span class="ui-btn gold">⭳ Descargar formatos (ZIP)</span> <span class="ui-btn outline">Ir a mi expediente</span></div>
+          <div style="margin-top:14px;display:flex;gap:14px;flex-wrap:wrap;">
+            <div class="map-box" style="flex:1;min-width:220px;">[ mapa Google Maps · ubicación IYEM ]</div>
+            <div class="ui-card" style="flex:1;min-width:220px;font-size:12.5px;">
+              <b>Instituto Yucateco de Emprendedores</b><br>
+              Calle 20 A No. 284-B, Col. Xcumpich, Mérida, Yucatán<br>
+              Lunes a viernes, 9:00–15:00 hrs
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="badge">🔔</div>
+      <div>
+        <h3>Notificaciones (en todo momento)</h3>
+        <p>La campanita del header refleja cada cambio de estatus, con conteo de no leídas y panel desplegable.</p>
+        <div class="mock ui-card" style="max-width:380px;">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">🔔 <span class="notif-dot">3</span></div>
+          <div style="font-size:12.5px;border-bottom:1px dashed #e3e8ec;padding:8px 0;"><b>Solicitud aprobada</b><br><span style="color:var(--muted);">hace 2 horas</span></div>
+          <div style="font-size:12.5px;border-bottom:1px dashed #e3e8ec;padding:8px 0;"><b>En revisión por el equipo CREA</b><br><span style="color:var(--muted);">hace 3 días</span></div>
+          <div style="font-size:12.5px;padding:8px 0;"><b>Solicitud recibida</b><br><span style="color:var(--muted);">hace 5 días</span></div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ===================== MAPEO ===================== -->
+<section id="mapeo">
+  <h2><span class="num">2</span> Mapeo: dato capturado → formato oficial generado</h2>
+  <p class="lead">Esta tabla es la fuente de verdad para Claude Code: indica en qué formato(s) PDF debe imprimirse cada grupo de datos del formulario.</p>
+  <div class="zip-list">
+    <table class="doc-table" style="font-size:12.5px;">
+      <tr><th style="width:26%;">Sección del formulario</th><th style="width:30%;">Campos clave</th><th>Va en el PDF</th></tr>
+      <tr><td>Modalidad + tipo de persona + garantía</td><td>modalidad, tipo_persona, tipo_garantia</td><td>Determina cuál Solicitud (02/03), si se incluye 06/07, y casillas de modalidad marcadas en todos los formatos</td></tr>
+      <tr><td>Datos del solicitante / representante legal</td><td>nombre, fecha_nacimiento, domicilio, contacto, estado civil...</td><td>F-PR-OCC-02 ó 03 — sección "Información del Solicitante / Representante Legal"</td></tr>
+      <tr><td>Referencias personales</td><td>referencia_nombre, referencia_telefono, referencia_cp</td><td>F-PR-OCC-02/03 — "Información de Referencias Personales"</td></tr>
+      <tr><td>Datos del negocio / persona moral</td><td>nombre_comercial, rfc, domicilio negocio, régimen, empleos...</td><td>F-PR-OCC-02 ("Información del Negocio") ó F-PR-OCC-03 ("Información de la Persona Moral")</td></tr>
+      <tr><td>Créditos/apoyos de gobierno previos</td><td>tabla repetible</td><td>F-PR-OCC-02/03 — pág. 2</td></tr>
+      <tr><td>Destino del crédito (conceptos + plazo + importes)</td><td>conceptos[], plazo_meses, importe_total, importe_a_solicitar</td><td>F-PR-OCC-02/03 — pág. 2</td></tr>
+      <tr><td>Aval / garantía prendaria / hipotecaria</td><td>según tipo_garantia</td><td>F-PR-OCC-02/03 — pág. 2 (resumen) + F-PR-OCC-06/07 completo si es Aval</td></tr>
+      <tr><td>Ficha técnica del negocio</td><td>antecedentes, proveedores[], productos, clientes[], deudas[]</td><td>F-PR-OCC-04 (todas las modalidades)</td></tr>
+      <tr><td>¿Emprendimiento u operación? + Ingresos/Egresos</td><td>es_emprendimiento, periodos, montos</td><td>F-PR-OCC-05 — 1 copia (proyección) o 2 copias (histórico + proyección)</td></tr>
+      <tr><td>Datos patrimoniales del aval</td><td>bienes[], deudas[], referencias[]</td><td>F-PR-OCC-06 (Artesanal) ó F-PR-OCC-07 (Emprendedores/Sustentable) — solo si tipo_garantia = aval</td></tr>
+    </table>
+  </div>
+
+  <div class="zip-list">
+    <h4>Contenido del ZIP entregado al aprobarse la solicitud (ejemplo: Emprendedores · Persona Física · Aval)</h4>
+    <ul>
+      <li><span class="ic">PDF</span><div>F-PR-OCC-02_Solicitud_Persona_Fisica.pdf <small>Datos del solicitante, negocio, destino del crédito</small></div></li>
+      <li><span class="ic">PDF</span><div>F-PR-OCC-04_Ficha_Tecnica.pdf <small>Antecedentes, proveedores, clientes, productos</small></div></li>
+      <li><span class="ic">PDF</span><div>F-PR-OCC-05_Ingresos_Egresos_Proyeccion.pdf <small>Próximos 6 meses (negocio nuevo) o también histórico si ya operaba</small></div></li>
+      <li><span class="ic">PDF</span><div>F-PR-OCC-07_Declaracion_Bienes_Aval.pdf <small>Solo porque se eligió Aval como garantía</small></div></li>
+    </ul>
+  </div>
+</section>
+
+<div class="legend">
+  <span><i style="background:var(--bar-blue);"></i> Barras de sección — formatos de Solicitud / Ficha / Ingresos (azul institucional, igual al original)</span>
+  <span><i style="background:var(--bar-maroon);"></i> Barras de sección — Declaración de Bienes del Aval (vino, igual al original)</span>
+  <span><i style="background:var(--crea-green);"></i> Datos de ejemplo ya capturados en el formulario (relleno automático)</span>
+</div>
+
+<!-- ===================== F-PR-OCC-02 ===================== -->
+<section id="f02">
+  <h2><span class="num">3</span> F-PR-OCC-02 — Solicitud de Crédito Persona Física</h2>
+  <p class="lead">Se genera cuando <b>tipo_persona = Física</b> y la modalidad es Emprendedores o Sustentable. (Para Artesanal se usa F-PR-OCC-01, mismo layout sin la fila de Aval/Garantías complejas — ver nota al final.)</p>
+  <p class="doc-caption">Vista previa — Página 1 de 2</p>
+
+  <div class="doc-wrap">
+  <div class="doc-page">
+    <div class="doc-head">
+      <div class="l">
+        <div class="seal">IYEM</div>
+        <div class="inst"><b>INSTITUTO YUCATECO DE EMPRENDEDORES</b><span>Dirección de Innovación y Competitividad Empresarial</span></div>
+      </div>
+      <div class="r"><span class="badge2">CRÉDITOS IYEM</span></div>
+    </div>
+    <div class="doc-program">Programa de Crédito para el Renacimiento de Emprendedores y Artesanos · Solicitud de Crédito Persona Física</div>
+    <div class="doc-title">SOLICITUD DE CRÉDITO PERSONA FÍSICA</div>
+
+    <div class="modalidad-bar">
+      <div class="m-label">MODALIDAD:</div>
+      <div class="m-opt"><span class="m-chk on">✓</span> CREA Emprendedores</div>
+      <div class="m-opt"><span class="m-chk">&nbsp;</span> CREA Sustentable</div>
+    </div>
+
+    <div class="bar">INFORMACIÓN DEL SOLICITANTE</div>
+    <div class="grid">
+      <div class="frow">
+        <div class="fcell w-75"><span class="lbl">Nombre del Solicitante (Nombre(s), Apellido Paterno, Apellido Materno)</span><span class="val">María Concepción Pérez Couoh</span></div>
+        <div class="fcell w-25"><span class="lbl">Fecha de nacimiento</span><span class="val">12/05/1990</span></div>
+      </div>
+      <div class="frow">
+        <div class="fcell w-50"><span class="lbl">Dirección (Calle, núm. de domicilio y cruzamientos)</span><span class="val">Calle 45 No. 512 x 60 y 62</span></div>
+        <div class="fcell w-30"><span class="lbl">Colonia</span><span class="val">Centro</span></div>
+        <div class="fcell w-20"><span class="lbl">C.P.</span><span class="val">97000</span></div>
+      </div>
+      <div class="frow">
+        <div class="fcell w-20"><span class="lbl">Folio electrónico</span><span class="val">—</span></div>
+        <div class="fcell w-20 center">
+          <span class="opt-inline"><span class="m-chk on">✓</span> Propio</span>
+          <span class="opt-inline"><span class="m-chk">&nbsp;</span> Rentado</span>
+        </div>
+        <div class="fcell w-20"><span class="lbl">Renta Mensual</span><span class="val">N/A</span></div>
+        <div class="fcell w-20"><span class="lbl">No. Teléfono celular</span><span class="val">999 123 4567</span></div>
+        <div class="fcell w-20"><span class="lbl">No. Teléfono fijo</span><span class="val">999 234 5678</span></div>
+      </div>
+      <div class="frow">
+        <div class="fcell w-20"><span class="lbl">Municipio de residencia</span><span class="val">Mérida</span></div>
+        <div class="fcell w-20"><span class="lbl">Lugar de nacimiento</span><span class="val">Mérida, Yucatán</span></div>
+        <div class="fcell w-10"><span class="lbl">Edad</span><span class="val">36</span></div>
+        <div class="fcell w-15 center"><span class="lbl" style="text-align:center;width:100%;">Maya Hablante</span><span class="opt-inline"><span class="m-chk">&nbsp;</span>Si <span class="m-chk on">✓</span>No</span></div>
+        <div class="fcell w-15 center"><span class="lbl" style="text-align:center;width:100%;">Sexo</span><span class="opt-inline"><span class="m-chk">&nbsp;</span>H <span class="m-chk on">✓</span>M</span></div>
+        <div class="fcell w-20"><span class="lbl">Discapacidad</span><span class="opt-inline"><span class="m-chk">&nbsp;</span>Si <span class="m-chk on">✓</span>No</span></div>
+      </div>
+      <div class="frow">
+        <div class="fcell w-40"><span class="lbl">Correo electrónico</span><span class="val">maria.perez@gmail.com</span></div>
+        <div class="fcell w-30"><span class="lbl">Empleado de la Administración Pública</span><span class="opt-inline"><span class="m-chk">&nbsp;</span>Si <span class="m-chk on">✓</span>No</span></div>
+        <div class="fcell w-30"><span class="lbl">Dependencia (Si aplica)</span><span class="val">—</span></div>
+      </div>
+      <div class="frow">
+        <div class="fcell w-25"><span class="lbl">Puesto (Si aplica)</span><span class="val">—</span></div>
+        <div class="fcell w-35"><span class="lbl">Domicilio Laboral</span><span class="val">—</span></div>
+        <div class="fcell w-20 center"><span class="lbl" style="text-align:center;width:100%;">Estado Civil</span><span class="opt-inline"><span class="m-chk on">✓</span>Casado <span class="m-chk">&nbsp;</span>Soltero</span></div>
+        <div class="fcell w-20"><span class="lbl">Régimen Matrimonial</span><span class="val">Sociedad Conyugal</span></div>
+      </div>
+      <div class="frow">
+        <div class="fcell w-40"><span class="lbl">Nombre del Cónyuge (Si aplica)</span><span class="val">Jorge Alberto Canul Tun</span></div>
+        <div class="fcell w-30"><span class="lbl">No. Teléfono celular</span><span class="val">999 345 6789</span></div>
+        <div class="fcell w-30"><span class="lbl">Antigüedad laboral</span><span class="val">5 años</span></div>
+      </div>
+      <div class="frow">
+        <div class="fcell w-100"><span class="lbl">Domicilio laboral del cónyuge</span><span class="val">Calle 60 x 35, Centro, Mérida</span></div>
+      </div>
+    </div>
+
+    <div class="bar">INFORMACIÓN DE REFERENCIAS PERSONALES</div>
+    <div class="grid">
+      <div class="frow">
+        <div class="fcell w-60"><span class="lbl">Nombre de la referencia del solicitante (No familiar)</span><span class="val">Rosa Elena Dzul May</span></div>
+        <div class="fcell w-25"><span class="lbl">No. Telefónico</span><span class="val">999 456 7890</span></div>
+        <div class="fcell w-15"><span class="lbl">C.P.</span><span class="val">97115</span></div>
+      </div>
+    </div>
+
+    <div class="bar">INFORMACIÓN DEL NEGOCIO</div>
+    <div class="grid">
+      <div class="frow">
+        <div class="fcell w-60"><span class="lbl">Nombre Comercial</span><span class="val">Costura &amp; Diseño María Pérez</span></div>
+        <div class="fcell w-40"><span class="lbl">RFC (Con homoclave)</span><span class="val">PECM900512AB1</span></div>
+      </div>
+      <div class="frow">
+        <div class="fcell w-50"><span class="lbl">Dirección (Calle, núm. de domicilio y cruzamientos)</span><span class="val">Calle 45 No. 512 x 60 y 62</span></div>
+        <div class="fcell w-30"><span class="lbl">Colonia</span><span class="val">Centro</span></div>
+        <div class="fcell w-20"><span class="lbl">C.P.</span><span class="val">97000</span></div>
+      </div>
+      <div class="frow">
+        <div class="fcell w-20"><span class="lbl">Municipio</span><span class="val">Mérida</span></div>
+        <div class="fcell w-20"><span class="lbl">No. Teléfono celular</span><span class="val">999 123 4567</span></div>
+        <div class="fcell w-20"><span class="lbl">No. Teléfono fijo</span><span class="val">999 234 5678</span></div>
+        <div class="fcell w-20"><span class="lbl">Folio electrónico</span><span class="val">—</span></div>
+        <div class="fcell w-20 center">
+          <span class="opt-inline"><span class="m-chk on">✓</span> Propio</span>
+          <span class="opt-inline"><span class="m-chk">&nbsp;</span> Rentado</span>
+        </div>
+      </div>
+      <div class="frow">
+        <div class="fcell w-50"><span class="lbl">Dirección de correo electrónico</span><span class="val">costuramaria.negocio@gmail.com</span></div>
+        <div class="fcell w-25"><span class="lbl">Fecha de constitución</span><span class="val">03/2019</span></div>
+        <div class="fcell w-25"><span class="lbl">No. de Socios</span><span class="val">1</span></div>
+      </div>
+      <div class="frow">
+        <div class="fcell w-100"><span class="lbl">Actividad</span><span class="val">Confección y venta de ropa típica yucateca por encargo</span></div>
+      </div>
+      <div class="frow">
+        <div class="fcell w-25"><span class="lbl">Empleos actuales</span><span class="val">1</span></div>
+        <div class="fcell w-25"><span class="lbl">Empleos a generar</span><span class="val">2</span></div>
+        <div class="fcell w-50"><span class="lbl">En caso de aplicar (adjuntar documento)</span><span class="val">—</span></div>
+      </div>
+      <div class="frow">
+        <div class="fcell w-50"><span class="lbl">Registro Patronal ante el IMSS</span><span class="val">N/A</span></div>
+        <div class="fcell w-50"><span class="lbl">Registro ante la Secretaría de Salud (si aplica/adjuntar documento)</span><span class="opt-inline"><span class="m-chk">&nbsp;</span>Si <span class="m-chk on">✓</span>No</span></div>
+      </div>
+      <div class="frow">
+        <div class="fcell w-100"><span class="lbl">¿Cuenta con algún otro tipo de registro para su operación?</span><span class="opt-inline"><span class="m-chk">&nbsp;</span>Si <span class="m-chk on">✓</span>No</span></div>
+      </div>
+    </div>
+    <div class="doc-foot-strip">F-PR-OCC-02 R00 · Página 1 de 2</div>
+  </div>
+  </div>
+
+  <p class="doc-caption" style="margin-top:0;">Vista previa — Página 2 de 2</p>
+  <div class="doc-wrap">
+  <div class="doc-page">
+    <div class="doc-head">
+      <div class="l">
+        <div class="seal">IYEM</div>
+        <div class="inst"><b>INSTITUTO YUCATECO DE EMPRENDEDORES</b><span>Dirección de Innovación y Competitividad Empresarial</span></div>
+      </div>
+      <div class="r"><span class="badge2">CRÉDITOS IYEM</span></div>
+    </div>
+
+    <div class="bar">CRÉDITOS Y/O APOYOS DE GOBIERNO (municipal, estatal y/o federal)</div>
+    <table class="doc-table">
+      <tr><th>Dependencia</th><th>Destino del recurso</th><th style="width:160px;">Monto entregado</th></tr>
+      <tr><td colspan="3" style="color:#8b939c;font-style:italic;">No aplica — sin apoyos previos</td></tr>
+    </table>
+
+    <div class="bar">DESTINO DEL CRÉDITO (DETALLE Y ESPECIFIQUE MONTOS EN $)</div>
+    <table class="doc-table">
+      <tr><th>Concepto</th><th style="width:160px;">Importe cotizado</th></tr>
+      <tr><td>Máquina de coser industrial</td><td class="amount">$18,500.00</td></tr>
+      <tr><td>Tela e insumos para 3 meses de producción</td><td class="amount">$9,500.00</td></tr>
+      <tr><td>Vitrina exhibidora para el local</td><td class="amount">$4,000.00</td></tr>
+    </table>
+    <div class="plazo-row">
+      <div class="plazo-opt"><span class="m-chk">&nbsp;</span>12 M</div>
+      <div class="plazo-opt"><span class="m-chk on">✓</span>18 M</div>
+      <div class="plazo-opt"><span class="m-chk">&nbsp;</span>24 M</div>
+      <div class="fcell w-30" style="border-top:none;"><span class="lbl">Importe total del proyecto</span><span class="val amount">$32,000.00</span></div>
+      <div class="fcell w-30" style="border-top:none;border-right:none;"><span class="lbl">Importe a solicitar</span><span class="val amount">$32,000.00</span></div>
+    </div>
+
+    <div class="bar">AVAL (Si aplica)</div>
+    <div class="grid">
+      <div class="frow">
+        <div class="fcell w-60"><span class="lbl">Nombre (Nombre(s), Apellido Paterno, Apellido Materno)</span><span class="val">Felipe Antonio Couoh Balam</span></div>
+        <div class="fcell w-25"><span class="lbl">No. Teléfono celular</span><span class="val">999 567 8901</span></div>
+        <div class="fcell w-15"><span class="lbl">C.P.</span><span class="val">97133</span></div>
+      </div>
+    </div>
+
+    <div class="bar">GARANTÍA PRENDARIA, BIEN MUEBLE DEL SOLICITANTE (Si aplica)</div>
+    <table class="doc-table">
+      <tr><th>Descripción</th><th style="width:130px;">Fecha de Fac.</th><th style="width:140px;">Valor factura</th></tr>
+      <tr><td colspan="3" style="color:#8b939c;font-style:italic;">No aplica — se eligió Aval como garantía</td></tr>
+    </table>
+
+    <div class="bar">GARANTÍA HIPOTECARIA, BIEN INMUEBLE DEL SOLICITANTE (Si aplica, únicamente para la modalidad de CREA Sustentable)</div>
+    <table class="doc-table">
+      <tr><th>Descripción</th><th style="width:160px;">Valor</th></tr>
+      <tr><td colspan="2" style="color:#8b939c;font-style:italic;">No aplica para esta modalidad</td></tr>
+    </table>
+
+    <div class="declare">En caso de que algún campo no aplique dejar en blanco. Bajo formal protesta de decir verdad, manifiesto que toda la información proporcionada mediante el presente formato y el resto de la documentación exhibida es auténtica y comprobable. Del mismo modo, otorgo mi autorización para que personal designado por el IYEM pueda acudir a cualquiera de los establecimientos de mi negocio para corroborar la veracidad de los datos proporcionados.</div>
+    <div class="grid sign-row">
+      <div class="fcell w-50"><span class="lbl">Fecha de Solicitud</span><span class="val">22/06/2026</span></div>
+      <div class="fcell w-50"><span class="lbl">Nombre y Firma del Solicitante</span><span class="val" style="color:#8b939c;font-weight:400;">(firma autógrafa al entregar impreso)</span></div>
+    </div>
+    <div class="priv-note">El Aviso de Privacidad Integral relativo al Programa de Crédito para el Renacimiento de Emprendedores y Artesanos lo podrá consultar a detalle en el sitio web https://iyem.yucatan.gob.mx</div>
+    <div class="doc-foot-strip">F-PR-OCC-02 R00 · Página 2 de 2</div>
+  </div>
+  </div>
+  <div class="doc-meta">Nota: F-PR-OCC-01 (modalidad Artesanal) reutiliza este mismo layout, sin las filas de Apoyos de Gobierno/Garantías complejas y con plazos 6M/12M/18M en vez de 12/18/24.</div>
+</section>
+
+<!-- ===================== F-PR-OCC-03 ===================== -->
+<section id="f03">
+  <h2><span class="num">4</span> F-PR-OCC-03 — Solicitud de Crédito Persona Moral</h2>
+  <p class="lead">Se genera cuando <b>tipo_persona = Moral</b>. Mismo layout que F-PR-OCC-02, cambiando "Solicitante" por "Representante Legal" y la sección de negocio por datos de la persona moral.</p>
+  <p class="doc-caption">Vista previa — Página 1 de 2</p>
+
+  <div class="doc-wrap">
+  <div class="doc-page">
+    <div class="doc-head">
+      <div class="l">
+        <div class="seal">IYEM</div>
+        <div class="inst"><b>INSTITUTO YUCATECO DE EMPRENDEDORES</b><span>Dirección de Innovación y Competitividad Empresarial</span></div>
+      </div>
+      <div class="r"><span class="badge2">CRÉDITOS IYEM</span></div>
+    </div>
+    <div class="doc-program">Programa de Crédito para el Renacimiento de Emprendedores y Artesanos · Solicitud de Crédito Persona Moral</div>
+    <div class="doc-title">SOLICITUD DE CRÉDITO PERSONA MORAL</div>
+
+    <div class="modalidad-bar">
+      <div class="m-label">MODALIDAD:</div>
+      <div class="m-opt"><span class="m-chk">&nbsp;</span> CREA Emprendedores</div>
+      <div class="m-opt"><span class="m-chk on">✓</span> CREA Sustentable</div>
+    </div>
+
+    <div class="bar">INFORMACIÓN DEL REPRESENTANTE LEGAL</div>
+    <div class="grid">
+      <div class="frow">
+        <div class="fcell w-75"><span class="lbl">Nombre del Representante Legal (Nombre(s), Apellido Paterno, Apellido Materno)</span><span class="val">Carlos Eduardo Ek Chan</span></div>
+        <div class="fcell w-25"><span class="lbl">Fecha de nacimiento</span><span class="val">08/02/1985</span></div>
+      </div>
+      <div class="frow">
+        <div class="fcell w-50"><span class="lbl">Dirección (Calle, núm. de domicilio y cruzamientos)</span><span class="val">Calle 22 No. 198 x 17 y 19</span></div>
+        <div class="fcell w-30"><span class="lbl">Colonia</span><span class="val">Itzimná</span></div>
+        <div class="fcell w-20"><span class="lbl">C.P.</span><span class="val">97100</span></div>
+      </div>
+      <div class="frow">
+        <div class="fcell w-20"><span class="lbl">Municipio de residencia</span><span class="val">Mérida</span></div>
+        <div class="fcell w-20"><span class="lbl">Lugar de nacimiento</span><span class="val">Valladolid, Yucatán</span></div>
+        <div class="fcell w-10"><span class="lbl">Edad</span><span class="val">41</span></div>
+        <div class="fcell w-15 center"><span class="opt-inline"><span class="m-chk">&nbsp;</span>Sí <span class="m-chk on">✓</span>No</span></div>
+        <div class="fcell w-15 center"><span class="opt-inline"><span class="m-chk on">✓</span>H <span class="m-chk">&nbsp;</span>M</span></div>
+        <div class="fcell w-20"><span class="opt-inline"><span class="m-chk">&nbsp;</span>Si <span class="m-chk on">✓</span>No</span></div>
+      </div>
+      <div class="frow">
+        <div class="fcell w-100"><span class="lbl">Correo electrónico</span><span class="val">carlos.ek@sustenta-yuc.com</span></div>
+      </div>
+    </div>
+
+    <div class="bar">INFORMACIÓN DE REFERENCIAS PERSONALES</div>
+    <div class="grid">
+      <div class="frow">
+        <div class="fcell w-60"><span class="lbl">Nombre de la referencia del Representante Legal (No familiar)</span><span class="val">Ana Luisa Pat Cocom</span></div>
+        <div class="fcell w-25"><span class="lbl">No. Telefónico</span><span class="val">999 678 9012</span></div>
+        <div class="fcell w-15"><span class="lbl">C.P.</span><span class="val">97100</span></div>
+      </div>
+    </div>
+
+    <div class="bar">INFORMACIÓN DE LA PERSONA MORAL</div>
+    <div class="grid">
+      <div class="frow">
+        <div class="fcell w-60"><span class="lbl">Razón Social</span><span class="val">Sustenta Yucatán Reciclados S.A. de C.V.</span></div>
+        <div class="fcell w-40"><span class="lbl">RFC (Con homoclave)</span><span class="val">SYR190301AB7</span></div>
+      </div>
+      <div class="frow">
+        <div class="fcell w-50"><span class="lbl">Dirección (Calle, núm. de domicilio y cruzamientos)</span><span class="val">Calle 22 No. 198 x 17 y 19</span></div>
+        <div class="fcell w-30"><span class="lbl">Colonia</span><span class="val">Itzimná</span></div>
+        <div class="fcell w-20"><span class="lbl">C.P.</span><span class="val">97100</span></div>
+      </div>
+      <div class="frow">
+        <div class="fcell w-20"><span class="lbl">Municipio</span><span class="val">Mérida</span></div>
+        <div class="fcell w-20"><span class="lbl">No. Teléfono celular</span><span class="val">999 789 0123</span></div>
+        <div class="fcell w-20"><span class="lbl">Folio electrónico</span><span class="val">—</span></div>
+        <div class="fcell w-20 center"><span class="opt-inline"><span class="m-chk on">✓</span>Propio <span class="m-chk">&nbsp;</span>Rentado</span></div>
+        <div class="fcell w-20"><span class="lbl">Renta mensual</span><span class="val">N/A</span></div>
+      </div>
+      <div class="frow">
+        <div class="fcell w-50"><span class="lbl">Dirección de correo electrónico</span><span class="val">contacto@sustenta-yuc.com</span></div>
+        <div class="fcell w-25"><span class="lbl">Fecha de constitución</span><span class="val">01/2019</span></div>
+        <div class="fcell w-25"><span class="lbl">No. de Socios</span><span class="val">3</span></div>
+      </div>
+      <div class="frow">
+        <div class="fcell w-25"><span class="lbl">Capital social</span><span class="val amount">$150,000.00</span></div>
+        <div class="fcell w-25"><span class="lbl">Duración de la sociedad</span><span class="val">Indefinida</span></div>
+        <div class="fcell w-50"><span class="lbl">¿Algún socio, acreedor, accionista, consejero o administrador ostenta cargo en la Administración Pública?</span><span class="opt-inline"><span class="m-chk">&nbsp;</span>Si <span class="m-chk on">✓</span>No</span></div>
+      </div>
+      <div class="frow">
+        <div class="fcell w-100"><span class="lbl">Actividad de la Persona Moral</span><span class="val">Recolección, acopio y procesamiento de materiales reciclables para venta a industria</span></div>
+      </div>
+      <div class="frow">
+        <div class="fcell w-25"><span class="lbl">Empleos actuales</span><span class="val">6</span></div>
+        <div class="fcell w-25"><span class="lbl">Empleos a generar</span><span class="val">4</span></div>
+        <div class="fcell w-50"><span class="lbl">Registro Patronal ante el IMSS</span><span class="val">Y12345678901</span></div>
+      </div>
+    </div>
+    <div class="doc-foot-strip">F-PR-OCC-03 R00 · Página 1 de 2</div>
+  </div>
+  </div>
+
+  <p class="doc-caption" style="margin-top:0;">Vista previa — Página 2 de 2 (idéntica estructura a F-PR-OCC-02: Apoyos de Gobierno, Destino del Crédito, Aval y Garantías)</p>
+</section>
+
+<!-- ===================== F-PR-OCC-04 ===================== -->
+<section id="f04">
+  <h2><span class="num">5</span> F-PR-OCC-04 — Ficha Técnica</h2>
+  <p class="lead">Se genera para las 3 modalidades. Contiene el detalle operativo del negocio: proveedores, clientes, productos y deudas.</p>
+  <p class="doc-caption">Vista previa — Página 1 de 2</p>
+
+  <div class="doc-wrap">
+  <div class="doc-page">
+    <div class="doc-head">
+      <div class="l">
+        <div class="seal">IYEM</div>
+        <div class="inst"><b>INSTITUTO YUCATECO DE EMPRENDEDORES</b><span>Dirección de Innovación y Competitividad Empresarial</span></div>
+      </div>
+      <div class="r"><span class="badge2">CRÉDITOS IYEM</span></div>
+    </div>
+    <div class="doc-program">Programa de Crédito para el Renacimiento de Emprendedores y Artesanos · Ficha Técnica</div>
+    <div class="doc-title">FICHA TÉCNICA</div>
+
+    <div class="modalidad-bar">
+      <div class="m-label">MODALIDAD:</div>
+      <div class="m-opt"><span class="m-chk">&nbsp;</span> CREA Artesanal</div>
+      <div class="m-opt"><span class="m-chk on">✓</span> CREA Emprendedores</div>
+      <div class="m-opt"><span class="m-chk">&nbsp;</span> CREA Sustentable</div>
+    </div>
+
+    <div class="bar">ANTECEDENTES</div>
+    <div class="grid">
+      <div class="frow">
+        <div class="fcell w-75"><span class="lbl">Nombre del Solicitante (Nombre(s), Apellido Paterno, Apellido Materno)</span><span class="val">María Concepción Pérez Couoh</span></div>
+        <div class="fcell w-25"><span class="lbl">No. Teléfono celular</span><span class="val">999 123 4567</span></div>
+      </div>
+      <div class="frow">
+        <div class="fcell w-33"><span class="lbl">No. Teléfono fijo</span><span class="val">999 234 5678</span></div>
+        <div class="fcell w-33"><span class="lbl">Correo electrónico</span><span class="val">maria.perez@gmail.com</span></div>
+        <div class="fcell w-33"><span class="lbl">Municipio de residencia</span><span class="val">Mérida</span></div>
+      </div>
+      <div class="frow">
+        <div class="fcell w-50"><span class="lbl">Nombre comercial</span><span class="val">Costura &amp; Diseño María Pérez</span></div>
+        <div class="fcell w-50"><span class="lbl">Municipio de la empresa</span><span class="val">Mérida</span></div>
+      </div>
+      <div class="frow">
+        <div class="fcell w-50"><span class="lbl">RFC (Con homoclave)</span><span class="val">PECM900512AB1</span></div>
+        <div class="fcell w-50"><span class="lbl">Fecha de inicio del negocio</span><span class="val">03/2019</span></div>
+      </div>
+      <div class="frow">
+        <div class="fcell w-50"><span class="lbl">Actividad o Giro específico</span><span class="val">Confección y venta de ropa típica yucateca</span></div>
+        <div class="fcell w-50"><span class="lbl">Régimen Fiscal</span><span class="val">626 — Régimen Simplificado de Confianza (RESICO)</span></div>
+      </div>
+      <div class="frow">
+        <div class="fcell w-50"><span class="lbl">Propiedad Intelectual / Solicitud de Patente</span><span class="val">No aplica</span></div>
+        <div class="fcell w-50"><span class="lbl">Monto de ventas mensual aproximado</span><span class="val amount">$22,000.00</span></div>
+      </div>
+      <div class="frow bigtext">
+        <div class="fcell w-100"><span class="lbl">Descripción del negocio (cómo surgió la idea, por qué, años de funcionamiento, etc.)</span><span class="val">El negocio surgió en 2019 como respuesta a la demanda local de ropa típica yucateca para eventos. Comenzó como taller en casa y hoy distribuye a 3 boutiques de Mérida.</span></div>
+      </div>
+      <div class="frow bigtext">
+        <div class="fcell w-100"><span class="lbl">Breve descripción del proceso de operación</span><span class="val">Compra de tela e insumos, corte, confección, bordado a mano, control de calidad y entrega a clientes/boutiques bajo pedido o por encargo directo.</span></div>
+      </div>
+      <div class="frow">
+        <div class="fcell w-100"><span class="lbl">Mobiliario y/o maquinaria que utilizan</span><span class="val">2 máquinas de coser domésticas, 1 mesa de corte, bastidores de bordado</span></div>
+      </div>
+    </div>
+
+    <div class="bar">RECURSOS HUMANOS (Funciones de los Empleados)</div>
+    <div class="grid">
+      <div class="frow"><div class="fcell w-100"><span class="val">1 ayudante de costura: corte y ensamblado de piezas bajo supervisión directa.</span></div></div>
+    </div>
+
+    <div class="bar">PRINCIPALES PROVEEDORES</div>
+    <table class="doc-table">
+      <tr><th>Nombre</th><th>Antigüedad</th><th>Insumo o Producto</th><th>Monto de compras mensual</th><th>Políticas de compra</th></tr>
+      <tr><td>Telas del Mayab S.A.</td><td>4 años</td><td>Telas e hilos</td><td class="amount">$5,500.00</td><td>Contado</td></tr>
+      <tr><td>Distribuidora Yucateca</td><td>2 años</td><td>Botones, broches</td><td class="amount">$900.00</td><td>Crédito: 15 días</td></tr>
+      <tr><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td></tr>
+    </table>
+    <div class="doc-foot-strip">F-PR-OCC-04 R00 · Página 1 de 2</div>
+  </div>
+  </div>
+
+  <p class="doc-caption" style="margin-top:0;">Vista previa — Página 2 de 2</p>
+  <div class="doc-wrap">
+  <div class="doc-page">
+    <div class="doc-head">
+      <div class="l">
+        <div class="seal">IYEM</div>
+        <div class="inst"><b>INSTITUTO YUCATECO DE EMPRENDEDORES</b><span>Dirección de Innovación y Competitividad Empresarial</span></div>
+      </div>
+      <div class="r"><span class="badge2">CRÉDITOS IYEM</span></div>
+    </div>
+
+    <div class="bar">PRODUCTOS (FABRICACIÓN Y VENTA) Y SERVICIOS</div>
+    <div class="grid"><div class="frow"><div class="fcell w-100"><span class="val">Hipiles bordados a mano, vestidos típicos, guayaberas por encargo. Venta directa y por encargo.</span></div></div></div>
+
+    <div class="bar">DISTRIBUCIÓN (Sectores: Estado(s), Municipio(s), Comisaría(s) o Colonia(s))</div>
+    <div class="grid"><div class="frow"><div class="fcell w-100"><span class="val">Mérida (Centro, Itzimná, Norte) y eventos en Valladolid e Izamal por temporada</span></div></div></div>
+
+    <div class="bar">PRINCIPALES CLIENTES</div>
+    <table class="doc-table">
+      <tr><th>Nombre</th><th>Antigüedad</th><th>Insumo o Producto</th><th>Monto de ventas mensual</th><th>Políticas de compra</th></tr>
+      <tr><td>Boutique Xkape</td><td>3 años</td><td>Hipiles bordados</td><td class="amount">$8,000.00</td><td>Contado</td></tr>
+      <tr><td>Clientes particulares</td><td>5 años</td><td>Vestidos por encargo</td><td class="amount">$14,000.00</td><td>Contado</td></tr>
+      <tr><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td></tr>
+    </table>
+
+    <div class="bar">DETALLES DE DEUDAS DEL NEGOCIO</div>
+    <table class="doc-table">
+      <tr><th>Nombre</th><th>Monto</th><th>Vencimiento</th><th>Garantía</th></tr>
+      <tr><td colspan="4" style="color:#8b939c;font-style:italic;">Sin deudas registradas</td></tr>
+    </table>
+
+    <div class="bar">DESTINO DEL CRÉDITO SOLICITADO (Incluyendo Monto)</div>
+    <div class="grid"><div class="frow"><div class="fcell w-100"><span class="val">$32,000.00 para máquina de coser industrial, insumos de producción y vitrina exhibidora, con el fin de aumentar capacidad de producción y ventas en local físico.</span></div></div></div>
+
+    <div class="bar">ANEXOS (Opcional)</div>
+    <div class="grid">
+      <div class="frow"><div class="fcell w-100"><span class="opt-inline"><span class="m-chk on">✓</span> Logotipo del proyecto, negocio o empresa.</span></div></div>
+      <div class="frow"><div class="fcell w-100"><span class="opt-inline"><span class="m-chk on">✓</span> Imágenes fotográficas del(los) producto(s) o servicio(s).</span></div></div>
+      <div class="frow"><div class="fcell w-100"><span class="opt-inline"><span class="m-chk on">✓</span> Imágenes fotográficas de las instalaciones donde opera el negocio.</span></div></div>
+    </div>
+
+    <div class="declare">En caso de que algún campo no aplique dejar en blanco. Bajo formal protesta de decir verdad, manifiesto que toda la información proporcionada es auténtica y comprobable, y autorizo la verificación correspondiente por parte del IYEM.</div>
+    <div class="grid sign-row">
+      <div class="fcell w-50"><span class="lbl">Fecha de Solicitud</span><span class="val">22/06/2026</span></div>
+      <div class="fcell w-50"><span class="lbl">Nombre y Firma del Solicitante</span><span class="val" style="color:#8b939c;font-weight:400;">(firma autógrafa al entregar impreso)</span></div>
+    </div>
+    <div class="doc-foot-strip">F-PR-OCC-04 R00 · Página 2 de 2</div>
+  </div>
+  </div>
+</section>
+
+<!-- ===================== F-PR-OCC-05 ===================== -->
+<section id="f05">
+  <h2><span class="num">6</span> F-PR-OCC-05 — Estado de Ingresos y Egresos</h2>
+  <p class="lead">Se genera 1 vez (solo proyección) si el negocio es <b>emprendimiento nuevo</b>, o 2 veces (histórico + proyección) si es <b>negocio en operación</b>. Ejemplo: negocio en operación → esta es la copia de <b>proyección a 6 meses</b>.</p>
+
+  <div class="doc-wrap">
+  <div class="doc-page">
+    <div class="doc-head">
+      <div class="l">
+        <div class="seal">IYEM</div>
+        <div class="inst"><b>INSTITUTO YUCATECO DE EMPRENDEDORES</b><span>Dirección de Innovación y Competitividad Empresarial</span></div>
+      </div>
+      <div class="r"><span class="badge2">CRÉDITOS IYEM</span></div>
+    </div>
+    <div class="doc-title">ESTADO DE INGRESOS Y EGRESOS <span style="font-weight:400;font-size:11px;color:#5b6470;">· Proyección</span></div>
+
+    <div class="grid">
+      <div class="frow">
+        <div class="fcell w-50"><span class="lbl">Del (día / mes / año)</span><span class="val">01 / 07 / 2026</span></div>
+        <div class="fcell w-50"><span class="lbl">Al (día / mes / año)</span><span class="val">31 / 12 / 2026</span></div>
+      </div>
+    </div>
+
+    <table class="doc-table">
+      <tr><th style="width:65%;">Concepto</th><th>Monto en pesos mexicanos (MXN)</th></tr>
+      <tr><td>Ventas / Servicios</td><td class="amount">$26,500.00</td></tr>
+      <tr><td>Costo Producto</td><td class="amount">$9,000.00</td></tr>
+      <tr><td><b>Utilidad Bruta</b></td><td class="amount"><b>$17,500.00</b></td></tr>
+      <tr><td colspan="2" style="background:#eef1f5;font-weight:700;">GASTOS DE OPERACIÓN</td></tr>
+      <tr><td>Energía Eléctrica</td><td class="amount">$650.00</td></tr>
+      <tr><td>Agua</td><td class="amount">$150.00</td></tr>
+      <tr><td>Teléfono</td><td class="amount">$400.00</td></tr>
+      <tr><td>Gas</td><td class="amount">$300.00</td></tr>
+      <tr><td>Mano de Obra Solicitante</td><td class="amount">$6,000.00</td></tr>
+      <tr><td>Nómina de Empleado(s)</td><td class="amount">$4,500.00</td></tr>
+      <tr><td>Renta del Local del Negocio</td><td class="amount">$0.00</td></tr>
+      <tr><td>Otros Gastos</td><td class="amount">$500.00</td></tr>
+      <tr><td><b>Total de Gastos</b></td><td class="amount"><b>$12,500.00</b></td></tr>
+      <tr><td><b>Utilidad antes de Impuestos</b></td><td class="amount"><b>$5,000.00</b></td></tr>
+      <tr><td>Impuestos</td><td class="amount">$750.00</td></tr>
+      <tr><td><b>Utilidad Neta</b></td><td class="amount"><b>$4,250.00</b></td></tr>
+    </table>
+
+    <div class="declare">En caso de que algún campo no aplique dejar en blanco. Bajo formal protesta de decir verdad, manifiesto que la información proporcionada es auténtica y comprobable.</div>
+    <div class="grid sign-row">
+      <div class="fcell w-50"><span class="lbl">Fecha de Solicitud</span><span class="val">22/06/2026</span></div>
+      <div class="fcell w-50"><span class="lbl">Nombre y Firma del Solicitante</span><span class="val" style="color:#8b939c;font-weight:400;">(firma autógrafa al entregar impreso)</span></div>
+    </div>
+    <div class="doc-foot-strip">F-PR-OCC-05 R00 · Página 1 de 1</div>
+  </div>
+  </div>
+  <div class="doc-meta">Si el negocio ya operaba, se genera una segunda copia idéntica etiquetada "· Histórico" con el período de los 6 meses anteriores a la fecha de solicitud.</div>
+</section>
+
+<!-- ===================== F-PR-OCC-07 ===================== -->
+<section id="f07">
+  <h2><span class="num">7</span> F-PR-OCC-07 — Declaración de Bienes Patrimoniales Aval</h2>
+  <p class="lead">Se genera <b>solo si el tipo de garantía elegido es Aval</b>. Para modalidad Artesanal se usa F-PR-OCC-06 (mismo layout, sin la fila de modalidad Emprendedores/Sustentable). Nótese la franja vino/maroon en lugar de azul.</p>
+  <p class="doc-caption">Vista previa — Página 1 de 2</p>
+
+  <div class="doc-wrap">
+  <div class="doc-page maroon">
+    <div class="doc-head">
+      <div class="l">
+        <div class="seal" style="background:#6e0f2a;">IYEM</div>
+        <div class="inst"><b>INSTITUTO YUCATECO DE EMPRENDEDORES</b><span>Dirección de Innovación y Competitividad Empresarial</span></div>
+      </div>
+      <div class="r"><span class="badge2">CRÉDITOS IYEM</span></div>
+    </div>
+    <div class="doc-program">Programa para el Renacimiento de Emprendedores y Artesanos · Declaración de Bienes Patrimoniales Aval</div>
+    <div class="doc-title">DECLARACIÓN DE BIENES PATRIMONIALES AVAL</div>
+
+    <div class="modalidad-bar">
+      <div class="m-label">MODALIDAD:</div>
+      <div class="m-opt"><span class="m-chk on">✓</span> CREA Emprendedores</div>
+      <div class="m-opt"><span class="m-chk">&nbsp;</span> CREA Sustentable</div>
+    </div>
+
+    <div class="bar">INFORMACIÓN DEL AVAL</div>
+    <div class="grid">
+      <div class="frow">
+        <div class="fcell w-80"><span class="lbl">Nombre del Aval (Nombre(s), Apellido Paterno, Apellido Materno)</span><span class="val">Felipe Antonio Couoh Balam</span></div>
+        <div class="fcell w-20 center"><span class="opt-inline"><span class="m-chk on">✓</span>H <span class="m-chk">&nbsp;</span>M</span></div>
+      </div>
+      <div class="frow"><div class="fcell w-100"><span class="lbl">Correo electrónico</span><span class="val">felipe.couoh@gmail.com</span></div></div>
+      <div class="frow">
+        <div class="fcell w-34"><span class="lbl">RFC (Con homoclave)</span><span class="val">COBF870815CD3</span></div>
+        <div class="fcell w-33"><span class="lbl">No. Teléfono fijo</span><span class="val">999 678 1234</span></div>
+        <div class="fcell w-33"><span class="lbl">No. Teléfono celular</span><span class="val">999 567 8901</span></div>
+      </div>
+      <div class="frow">
+        <div class="fcell w-15"><span class="lbl">Edad</span><span class="val">38</span></div>
+        <div class="fcell w-25"><span class="lbl">Fecha de nacimiento (dd/mm/aa)</span><span class="val">15/08/87</span></div>
+        <div class="fcell w-30"><span class="lbl">Municipio de nacimiento</span><span class="val">Tekax</span></div>
+        <div class="fcell w-30"><span class="lbl">Municipio de residencia</span><span class="val">Mérida</span></div>
+      </div>
+      <div class="frow">
+        <div class="fcell w-50"><span class="lbl">Domicilio (Calle, núm. de domicilio, cruzamientos)</span><span class="val">Calle 31 No. 220 x 26 y 28</span></div>
+        <div class="fcell w-30"><span class="lbl">Colonia</span><span class="val">García Ginerés</span></div>
+        <div class="fcell w-20"><span class="lbl">C.P.</span><span class="val">97070</span></div>
+      </div>
+      <div class="frow">
+        <div class="fcell w-20"><span class="lbl">Folio electrónico</span><span class="val">—</span></div>
+        <div class="fcell w-15 center"><span class="opt-inline"><span class="m-chk on">✓</span>Propio <span class="m-chk">&nbsp;</span>Rentado</span></div>
+        <div class="fcell w-15"><span class="lbl">Renta Mensual</span><span class="val">N/A</span></div>
+        <div class="fcell w-25"><span class="lbl">Lugar laboral</span><span class="val">Hospital Regional O'Horán</span></div>
+        <div class="fcell w-25"><span class="lbl">Antigüedad laboral</span><span class="val">12 años</span></div>
+      </div>
+      <div class="frow">
+        <div class="fcell w-30"><span class="lbl">Ocupación</span><span class="val">Enfermero</span></div>
+        <div class="fcell w-30"><span class="lbl">Fecha de inicio de actividades laborales</span><span class="val">02/2014</span></div>
+        <div class="fcell w-40"><span class="lbl">Dependientes económicos</span><span class="val">Menores de edad: 2 &nbsp;·&nbsp; Adultos: 0</span></div>
+      </div>
+      <div class="frow">
+        <div class="fcell w-30 center"><span class="opt-inline"><span class="m-chk on">✓</span>Casado <span class="m-chk">&nbsp;</span>Soltero</span></div>
+        <div class="fcell w-70"><span class="lbl">Régimen Matrimonial (Si aplica)</span><span class="opt-inline"><span class="m-chk">&nbsp;</span>Separación de Bienes <span class="m-chk on">✓</span>Sociedad Conyugal</span></div>
+      </div>
+    </div>
+
+    <div class="bar">INFORMACIÓN DEL CÓNYUGE (Si Aplica)</div>
+    <div class="grid">
+      <div class="frow">
+        <div class="fcell w-60"><span class="lbl">Nombre del Cónyuge (Nombre(s), Apellido Paterno, Apellido Materno)</span><span class="val">Lucía Beatriz Chable Uc</span></div>
+        <div class="fcell w-40"><span class="lbl">Ocupación</span><span class="val">Comerciante</span></div>
+      </div>
+      <div class="frow">
+        <div class="fcell w-40"><span class="lbl">No. Telefónico</span><span class="val">999 789 4561</span></div>
+        <div class="fcell w-30"><span class="lbl">Lugar laboral</span><span class="val">Mercado Lucas de Gálvez</span></div>
+        <div class="fcell w-30"><span class="lbl">Antigüedad laboral</span><span class="val">8 años</span></div>
+      </div>
+      <div class="frow"><div class="fcell w-100"><span class="lbl">Domicilio laboral</span><span class="val">Calle 56 x 65 y 67, Centro, Mérida</span></div></div>
+    </div>
+
+    <div class="bar">BIENES Y DERECHOS</div>
+    <table class="doc-table">
+      <tr><th>Propiedades Inmobiliarias (tipo de inmueble, ubicación, metros; incluir bienes libres de gravamen)</th><th style="width:160px;">Importe valor estimado</th></tr>
+      <tr><td>Casa habitación, Col. García Ginerés, 180 m², libre de gravamen</td><td class="amount">$1,450,000.00</td></tr>
+      <tr><th>Otros bienes: identificación y descripción del(los) vehículo(s)</th><th>Importe valor estimado</th></tr>
+      <tr><td>Vehículo Nissan Versa 2021</td><td class="amount">$210,000.00</td></tr>
+      <tr><td style="text-align:right;font-weight:700;">Importe total de bienes y derechos</td><td class="amount" style="font-weight:700;">$1,660,000.00</td></tr>
+    </table>
+    <div class="doc-foot-strip">F-PR-OCC-07 R00 · Página 1 de 2</div>
+  </div>
+  </div>
+
+  <p class="doc-caption" style="margin-top:0;">Vista previa — Página 2 de 2</p>
+  <div class="doc-wrap">
+  <div class="doc-page maroon">
+    <div class="doc-head">
+      <div class="l">
+        <div class="seal" style="background:#6e0f2a;">IYEM</div>
+        <div class="inst"><b>INSTITUTO YUCATECO DE EMPRENDEDORES</b><span>Dirección de Innovación y Competitividad Empresarial</span></div>
+      </div>
+      <div class="r"><span class="badge2">CRÉDITOS IYEM</span></div>
+    </div>
+
+    <div class="bar">DEUDAS Y OBLIGACIONES</div>
+    <table class="doc-table">
+      <tr><th>Hipotecas y créditos bancarios (banco, plazo, vencimiento, garantías, etc.)</th><th style="width:160px;">Importe valor estimado</th></tr>
+      <tr><td>Sin hipotecas vigentes</td><td class="amount">$0.00</td></tr>
+      <tr><th>Otras deudas (entidad, acreedor, vencimiento, garantías, etc.)</th><th>Importe valor estimado</th></tr>
+      <tr><td>Tarjeta de crédito BBVA, saldo actual</td><td class="amount">$8,200.00</td></tr>
+      <tr><td style="text-align:right;font-weight:700;">Importe total de deudas y obligaciones</td><td class="amount" style="font-weight:700;">$8,200.00</td></tr>
+    </table>
+
+    <div class="bar">REFERENCIAS PERSONALES (No familiares)</div>
+    <div class="grid">
+      <div class="frow">
+        <div class="fcell w-70"><span class="lbl">Nombre (Nombre(s), Apellido Paterno, Apellido Materno)</span><span class="val">Marco Antonio Tuyub Pech</span></div>
+        <div class="fcell w-30"><span class="lbl">No. Telefónico</span><span class="val">999 890 1234</span></div>
+      </div>
+    </div>
+
+    <div class="declare">En caso de que algún campo no aplique dejar en blanco. Bajo formal protesta de decir verdad, manifiesto que toda la información proporcionada es auténtica y comprobable, y acepto ser aval solidario de la solicitud de crédito referida.</div>
+    <div class="grid sign-row">
+      <div class="fcell w-50"><span class="lbl">Fecha de Solicitud</span><span class="val">22/06/2026</span></div>
+      <div class="fcell w-25"><span class="lbl">Nombre y Firma — Aval Solidario</span><span class="val" style="color:#8b939c;font-weight:400;">(firma autógrafa)</span></div>
+      <div class="fcell w-25"><span class="lbl">Nombre y Firma — Solicitante</span><span class="val" style="color:#8b939c;font-weight:400;">(firma autógrafa)</span></div>
+    </div>
+    <div class="doc-foot-strip">F-PR-OCC-07 R00 · Página 2 de 2</div>
+  </div>
+  </div>
+</section>
+
+</main>
+
+<footer class="page-footer">CREA · IYEM — Documento de referencia visual para implementación. No usar como formato oficial entregable.</footer>
+
+</body>
+</html>

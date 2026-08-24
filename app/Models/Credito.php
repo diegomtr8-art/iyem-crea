@@ -87,10 +87,19 @@ class Credito extends Model
             ->orderByDesc('created_at');
     }
 
+    /**
+     * Tasa moratoria efectiva. Artesanal (0% ordinaria) nunca genera mora,
+     * sin importar los días de atraso.
+     */
+    public function tasaMoratoriaEfectiva(): float
+    {
+        return (float) $this->tasa_interes_ordinario > 0 ? (float) $this->tasa_interes_moratorio : 0.0;
+    }
+
     public function diasMora(): int
     {
         $cuotaVencida = $this->amortizaciones()
-            ->whereNotIn('estado', ['Pagado', 'Condonado', 'Reestructurada'])
+            ->whereNotIn('estado', ['Pagado', 'Condonado', 'Reestructurada', 'Gracia'])
             ->where('fecha_vencimiento', '<', now())
             ->orderBy('fecha_vencimiento')
             ->first();

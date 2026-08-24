@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Portal;
 
 use App\Http\Controllers\Controller;
+use App\Models\ComprobacionUso;
 use App\Models\Credito;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -25,7 +26,62 @@ class MiCreditoController extends Controller
             'pagos' => fn($q) => $q->where('cancelado', false)->orderByDesc('fecha_pago'),
         ])->findOrFail($solicitud->credito_id);
 
+        $hoy = now()->toDateString();
+        $proxima = $credito->amortizaciones
+            ->whereNotIn('estado', ['Pagado', 'Condonado', 'Reestructurada', 'Gracia'])
+            ->sortBy('fecha_vencimiento')
+            ->first();
+
+        $diasMora = 0;
+        $mora = 0.0;
+        if ($proxima && $proxima->fecha_vencimiento < $hoy) {
+            $diasMora = now()->diffInDays($proxima->fecha_vencimiento);
+            if ($diasMora > 5) {
+                $tasaDiaria = ($credito->tasaMoratoriaEfectiva() / 100) / 360;
+                $mora = round((float) $proxima->saldo_insoluto * $tasaDiaria * $diasMora, 2);
+            }
+        }
+
+        $proximaCuota = $proxima ? [
+            'numero'            => $proxima->numero_cuota,
+            'fecha_vencimiento' => $proxima->fecha_vencimiento,
+            'capital'           => round((float) $proxima->capital_esperado - (float) $proxima->capital_pagado, 2),
+            'interes'           => round((float) $proxima->interes_ordinario_esperado - (float) $proxima->interes_ordinario_pagado, 2),
+            'mora'              => $mora,
+            'total'             => round(
+                ((float) $proxima->capital_esperado - (float) $proxima->capital_pagado)
+                + ((float) $proxima->interes_ordinario_esperado - (float) $proxima->interes_ordinario_pagado)
+                + $mora,
+                2
+            ),
+            'dias_mora' => $diasMora,
+            'vencida'   => $proxima->fecha_vencimiento < $hoy,
+        ] : null;
+
+        $comprobacion = ComprobacionUso::with('documentos')
+            ->where('credito_id', $credito->id)
+            ->latest()
+            ->first();
+
         return Inertia::render('portal/MiCredito', [
+            'comprobacion' => $comprobacion ? [
+                'id'                       => $comprobacion->id,
+                'estatus'                  => $comprobacion->estatus,
+                'fecha_desembolso'         => $comprobacion->fecha_desembolso->format('d/m/Y'),
+                'fecha_limite'             => $comprobacion->fecha_limite_comprobacion->format('d/m/Y'),
+                'dias_restantes'           => $comprobacion->diasRestantes(),
+                'semaforo'                 => $comprobacion->semaforo(),
+                'documentos'               => $comprobacion->documentos->map(fn ($d) => [
+                    'id'              => $d->id,
+                    'tipo'            => $d->tipo,
+                    'descripcion'     => $d->descripcion,
+                    'monto'           => $d->monto,
+                    'proveedor'       => $d->proveedor,
+                    'nombre_original' => $d->nombre_original,
+                    'url'             => $d->url,
+                ]),
+                'observaciones_operativo'  => $comprobacion->observaciones_operativo,
+            ] : null,
             'credito' => [
                 'id'                    => $credito->id,
                 'clave_contrato'        => $credito->clave_contrato,
@@ -58,6 +114,19 @@ class MiCreditoController extends Controller
                     'monto_recibido'=> $p->monto_recibido,
                     'forma_pago'    => $p->forma_pago,
                 ]),
+                'proxima_cuota' => $proximaCuota,
+            ],
+            'datos_pago' => [
+                'cie_bbva'      => '001776533',
+                'cie_descripcion' => 'SERVICIOS',
+                'clabe'         => '012914002017765339',
+                'banco'         => 'BBVA Bancomer',
+                'beneficiario'  => 'Instituto Yucateco de Emprendedores',
+                'rfc'           => 'IIC991117V18',
+                'concepto'      => 'Número de contrato: ' . ($credito->clave_contrato ?? '—'),
+                'caja_horario'  => 'Lunes a Viernes, 9:00 a 14:00 hrs.',
+                'correo'        => 'crea@iyemyucatan.com',
+                'whatsapp'      => '9992342693',
             ],
         ]);
     }

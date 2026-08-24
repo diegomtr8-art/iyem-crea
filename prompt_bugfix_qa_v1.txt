@@ -1,0 +1,514 @@
+# PROMPT BUGFIX QA v1 — PORTAL CIUDADANO CREA
+# Basado en reportes de 3 servicios sociales (19/agosto/2026)
+# 25 bugs: 6 críticos · 5 altos · 11 medios · 3 bajos
+# ─────────────────────────────────────────────────────────────────────────────
+
+## CONTEXTO
+Sistema CREA del IYEM. Stack: Laravel 11, Vue 3, Inertia.js, TypeScript, Tailwind CSS.
+Los bugs a continuación fueron encontrados por QA manual probando el flujo completo del
+portal ciudadano: landing, registro, login, wizard de solicitud y carga de documentos.
+
+Orden de ejecución: críticos primero (en ese orden), luego altos, luego medios, luego bajos.
+
+═══════════════════════════════════════════════════════════════════
+## CRÍTICO 1 — Subida de archivos no funciona (BLOCKER)
+═══════════════════════════════════════════════════════════════════
+
+Al hacer clic en "Subir" en la sección de documentos del wizard, aparece animación de
+carga pero regresa al estado inicial. Ningún archivo se guarda. Bloquea el envío.
+
+Diagnosticar y corregir en este orden:
+
+1. Revisar `storage/logs/laravel.log` para el error exacto del endpoint de subida.
+
+2. En `app/Http/Controllers/Portal/DocumentoSolicitudController.php` (o donde se maneje
+   la subida), verificar que:
+   - El método `store()` tiene `$request->validate(['archivo' => 'required|file|max:10240'])`
+   - Se usa `$request->file('archivo')->store('documentos', 'local')` correctamente
+   - La respuesta JSON es `{ ok: true, documento: { id, tipo, url, nombre } }`
+
+3. Verificar permisos del filesystem:
+   ```bash
+   php artisan storage:link
+   chmod -R 775 storage/app/documentos
+   ```
+
+4. En `config/filesystems.php` confirmar que el disk `local` apunta a `storage/app`.
+
+5. En el Vue (WizardCredito.vue o el componente de documentos), verificar que el `fetch`/`axios`
+   de subida envía correctamente:
+   ```typescript
+   const fd = new FormData();
+   fd.append('archivo', file);
+   fd.append('tipo_documento', tipo);
+   fd.append('solicitud_id', solicitudId);
+   // Header CSRF:
+   axios.post(route('portal.documentos.subir'), fd, {
+     headers: { 'Content-Type': 'multipart/form-data' }
+   })
+   ```
+
+6. Verificar en `routes/web.php` que la ruta existe y tiene el middleware correcto:
+   ```php
+   Route::post('documentos/subir', [DocumentoSolicitudController::class, 'store'])
+       ->name('portal.documentos.subir')
+       ->middleware(['auth', 'ciudadano']);
+   ```
+
+7. En `php.ini` (o en `.htaccess` / `nginx.conf`):
+   ```
+   upload_max_filesize = 10M
+   post_max_size = 12M
+   ```
+
+═══════════════════════════════════════════════════════════════════
+## CRÍTICO 2 — PDFs del ZIP salen corruptos
+═══════════════════════════════════════════════════════════════════
+
+El ZIP descarga correctamente pero los PDFs dentro (excepto el primero) no se pueden abrir.
+
+Corregir en `app/Services/FormatosService.php`:
+
+1. El problema es que DomPDF comparte el mismo buffer entre generaciones. Asegurarse de
+   instanciar DomPDF separado para cada PDF:
+   ```php
+   foreach ($formatos as $nombre => $vista) {
+       $pdf = Pdf::loadView($vista, $datos);
+       $pdf->setOption('defaultFont', 'DejaVu Sans');
+       $contenido = $pdf->output(); // NO usar stream() ni download()
+       $zip->addFromString($nombre . '.pdf', $contenido);
+       unset($pdf); // liberar memoria
+   }
+   ```
+
+2. Asegurarse de que `ob_get_clean()` o `ob_clean()` NO se llame entre generaciones si
+   se usa output buffering compartido.
+
+3. El ZipArchive debe cerrarse DESPUÉS de agregar todos los archivos:
+   ```php
+   $zip = new ZipArchive();
+   $zip->open($rutaZip, ZipArchive::CREATE | ZipArchive::OVERWRITE);
+   // ... agregar todos los archivos ...
+   $zip->close(); // solo al final, una sola vez
+   ```
+
+4. Probar individualmente en tinker:
+   ```php
+   php artisan tinker
+   >>> $s = App\Models\SolicitudCredito::find(1);
+   >>> App\Services\FormatosService::generarZip($s);
+   ```
+
+═══════════════════════════════════════════════════════════════════
+## CRÍTICO 3 — Error 500 en recuperación de contraseña + throttle sin mensaje
+═══════════════════════════════════════════════════════════════════
+
+Al hacer clic en "Enviar enlace de recuperación", el servidor devuelve HTTP 500.
+El segundo intento dice "Por favor espera" sin indicar cuánto tiempo.
+
+1. Configurar el mailer en `.env`:
+   ```
+   MAIL_MAILER=smtp
+   MAIL_HOST=smtp.mailtrap.io   # O el servidor real
+   MAIL_PORT=2525
+   MAIL_USERNAME=tu_usuario
+   MAIL_PASSWORD=tu_password
+   MAIL_FROM_ADDRESS=no-reply@iyemyucatan.com
+   MAIL_FROM_NAME="IYEM — Programa CREA"
+   ```
+   Para pruebas locales usar `MAIL_MAILER=log` — el link llegará a `storage/logs/laravel.log`.
+
+2. En `app/Http/Controllers/Auth/PasswordResetLinkController.php` envolver en try/catch:
+   ```php
+   try {
+       $status = Password::sendResetLink($request->only('email'));
+   } catch (\Exception $e) {
+       Log::error('Password reset error: ' . $e->getMessage());
+       return back()->withErrors(['email' => 'No se pudo enviar el correo. Intenta de nuevo.']);
+   }
+   ```
+
+3. Mejorar el mensaje del throttle en `resources/lang/es/passwords.php`:
+   ```php
+   'throttled' => 'Por favor espera 60 segundos antes de solicitar otro enlace.',
+   ```
+   Si no existe el archivo de idioma: `php artisan lang:publish` y luego editar el archivo es.
+
+4. Verificar que la tabla `password_reset_tokens` existe: `php artisan migrate:status`.
+
+═══════════════════════════════════════════════════════════════════
+## CRÍTICO 4 — Correo de verificación no está activo
+═══════════════════════════════════════════════════════════════════
+
+Los usuarios pueden entrar al portal sin verificar su correo.
+
+1. En `app/Models/User.php` implementar la interfaz:
+   ```php
+   class User extends Authenticatable implements MustVerifyEmail
+   {
+       use HasApiTokens, HasFactory, Notifiable;
+       // ...
+   }
+   ```
+
+2. En `routes/web.php` agregar el middleware de verificación a las rutas del portal:
+   ```php
+   Route::middleware(['auth', 'verified'])->group(function () {
+       Route::get('/mi-portal/dashboard', ...);
+       // resto de rutas del portal
+   });
+   ```
+
+3. Asegurarse de que la ruta de verificación existe (ya la crea `Auth::routes(['verify' => true])`
+   o en Breeze/Jetstream se activa con la opción correspondiente).
+
+4. Para pruebas: con `MAIL_MAILER=log`, el link de verificación aparece en `storage/logs/laravel.log`.
+
+═══════════════════════════════════════════════════════════════════
+## CRÍTICO 5 — Sin validación de rango de monto por modalidad
+═══════════════════════════════════════════════════════════════════
+
+Un Artesanal puede poner $1 o $1,000,000. No hay validación del rango oficial:
+- Artesanal: $5,000 – $25,000
+- Emprendedores: $25,000 – $150,000
+- Sustentable: $25,000 – $500,000
+
+1. En `app/Http/Controllers/Portal/WizardSolicitudController.php`, paso 5:
+   ```php
+   $modalidad = ModalidadCrea::findOrFail($request->modalidad_id);
+   $request->validate([
+       'monto_solicitado' => [
+           'required', 'numeric',
+           "min:{$modalidad->monto_minimo}",
+           "max:{$modalidad->monto_maximo}",
+       ],
+       // ...
+   ], [
+       'monto_solicitado.min' => "El monto mínimo para {$modalidad->nombre} es " . number_format($modalidad->monto_minimo, 0, '.', ',') . " MXN.",
+       'monto_solicitado.max' => "El monto máximo para {$modalidad->nombre} es " . number_format($modalidad->monto_maximo, 0, '.', ',') . " MXN.",
+   ]);
+   ```
+
+2. En el Vue (WizardCredito.vue, paso 5), mostrar el rango bajo el campo:
+   ```vue
+   <p class="text-xs text-slate-500 mt-1">
+     Rango permitido: {{ fmt(modalidadSeleccionada.monto_minimo) }} –
+     {{ fmt(modalidadSeleccionada.monto_maximo) }}
+   </p>
+   ```
+   Y validar en cliente antes de llamar al servidor:
+   ```typescript
+   if (form.monto_solicitado < modalidad.monto_minimo ||
+       form.monto_solicitado > modalidad.monto_maximo) {
+     errores.monto_solicitado = `Debe ser entre ${fmt(min)} y ${fmt(max)}`;
+     return;
+   }
+   ```
+
+3. TAMBIÉN corregir la lógica errónea entre importe cotizado y monto:
+   Las validaciones son INDEPENDIENTES:
+   - (A) monto_solicitado ≤ suma de la tabla de destino (importe total del proyecto)
+   - (B) monto_solicitado dentro del rango de la modalidad
+   Ambas son independientes. Si (B) falla, no debe mostrar error de (A) ni viceversa.
+
+═══════════════════════════════════════════════════════════════════
+## CRÍTICO 6 — PDFs sin logos oficiales de IYEM / Gobierno de Yucatán
+═══════════════════════════════════════════════════════════════════
+
+(Ya cubierto en prompt_v3_flujo_completo.txt — TAREA 1)
+Asegurarse de que `_header.blade.php` tiene el header con 3 columnas (escudo | IYEM | código)
+y que `public/img/logos/` contiene las imágenes. Ver instrucciones detalladas en el prompt v3.
+
+═══════════════════════════════════════════════════════════════════
+## ALTA 1 — "¿Olvidaste tu contraseña?" lleva al dashboard si hay sesión activa
+═══════════════════════════════════════════════════════════════════
+
+Cuando el usuario ya está logueado y navega hacia atrás hasta el login, el botón
+"¿Olvidaste tu contraseña?" redirige al dashboard en lugar de la pantalla de recuperación.
+
+En `routes/web.php`, verificar que las rutas de auth tienen el middleware `guest`:
+```php
+Route::middleware('guest')->group(function () {
+    Route::get('password/reset', [PasswordResetLinkController::class, 'create'])
+        ->name('password.request');
+    // ... otras rutas de auth
+});
+```
+El middleware `guest` redirige a `/dashboard` si hay sesión, pero el problema es que el botón
+en la página de login lleva a `password.request` y el middleware `guest` detecta la sesión y
+redirige. La solución es: si el usuario está autenticado y llega a estas páginas, redirigir
+explícitamente al dashboard con un mensaje claro, NO al formulario de recuperación.
+
+═══════════════════════════════════════════════════════════════════
+## ALTA 2 — Campos obligatorios no muestran error al estar vacíos
+═══════════════════════════════════════════════════════════════════
+
+Al avanzar pasos con campos vacíos, no hay feedback visual en el campo específico.
+
+En `resources/js/Pages/portal/WizardCredito.vue`, crear un sistema de validación por paso:
+
+```typescript
+// En el composable o dentro del componente:
+const errores = ref<Record<string, string>>({});
+
+function validarPaso(paso: number): boolean {
+  errores.value = {};
+  const camposRequeridos = getCamposPorPaso(paso);
+
+  for (const campo of camposRequeridos) {
+    const valor = getNestedValue(form, campo.key);
+    if (!valor || String(valor).trim() === '') {
+      errores.value[campo.key] = campo.label + ' es obligatorio';
+    }
+  }
+
+  if (Object.keys(errores.value).length > 0) {
+    // Scroll al primer error
+    const primerError = document.querySelector('[data-error]');
+    primerError?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    return false;
+  }
+  return true;
+}
+
+function siguiente() {
+  if (!validarPaso(pasoActual.value)) return;
+  // continuar...
+}
+```
+
+En cada input del wizard agregar:
+```vue
+<input ... :class="errores['campo'] ? 'border-red-500' : 'border-slate-300'" />
+<p v-if="errores['campo']" class="text-red-500 text-xs mt-1">{{ errores['campo'] }}</p>
+```
+
+═══════════════════════════════════════════════════════════════════
+## ALTA 3 — Aviso de privacidad no muestra contenido
+═══════════════════════════════════════════════════════════════════
+
+El link de aviso de privacidad en el registro tiene ruta correcta pero página en blanco.
+
+1. Crear `resources/views/legal/aviso-privacidad.blade.php` con el contenido oficial del IYEM.
+
+2. Crear el controlador o usar closure en `routes/web.php`:
+   ```php
+   Route::get('/aviso-privacidad', function () {
+       return view('legal.aviso-privacidad');
+   })->name('aviso-privacidad');
+   ```
+   Sin middleware de autenticación (acceso público).
+
+3. En el formulario de registro, el link debe abrir en nueva pestaña:
+   ```vue
+   <a :href="route('aviso-privacidad')" target="_blank" class="text-[#6B1938] underline">
+     Aviso de Privacidad
+   </a>
+   ```
+
+═══════════════════════════════════════════════════════════════════
+## ALTA 4 — Datos de contacto del aval no son obligatorios
+═══════════════════════════════════════════════════════════════════
+
+Teléfono y correo del aval no tienen asterisco (*) y se pueden omitir.
+
+En `app/Http/Controllers/Portal/WizardSolicitudController.php`, paso 8 (aval):
+```php
+if ($request->tipo_garantia === 'aval') {
+    $request->validate([
+        'aval.nombre_completo'    => 'required|string|max:150',
+        'aval.curp'               => ['required', 'regex:/^[A-Z]{4}\d{6}[HM][A-Z]{5}[A-Z\d]\d$/'],
+        'aval.telefono_celular'   => 'required|digits:10',
+        'aval.correo'             => 'required|email:rfc',
+        'aval.fecha_nacimiento'   => 'required|date|before:' . now()->subYears(18)->format('Y-m-d'),
+        // ...
+    ]);
+}
+```
+
+En el Vue del paso 8, marcar con asterisco y validar antes de avanzar.
+
+═══════════════════════════════════════════════════════════════════
+## MEDIOS — Aplicar todos estos cambios juntos
+═══════════════════════════════════════════════════════════════════
+
+### M1: Plazos Artesanal erróneos (landing + calculadora)
+- En `resources/js/Pages/Welcome.vue`: buscar "24 meses" en el bloque de Artesanal y
+  cambiar a "6, 12 o 18 meses".
+- En el componente calculadora: el select de plazos para Artesanal debe tener `[6, 12, 18]`.
+- En la DB: `UPDATE modalidades SET plazos_permitidos = '[6,12,18]' WHERE nombre LIKE '%Artesanal%'`
+
+### M2: Fecha de nacimiento — validar mayoría de edad
+En WizardCredito.vue, paso 2:
+```vue
+<input type="date" v-model="form.fecha_nacimiento"
+  :max="fechaMax18"
+  :class="errores.fecha_nacimiento ? 'border-red-500' : ''" />
+```
+```typescript
+const fechaMax18 = computed(() => {
+  const d = new Date();
+  d.setFullYear(d.getFullYear() - 18);
+  return d.toISOString().split('T')[0];
+});
+```
+Mismo para el aval: `fechaMax18` también.
+En el controlador: `'fecha_nacimiento' => 'required|date|before:' . now()->subYears(18)->format('Y-m-d')`
+
+### M3: Mensajes de error legibles (sin claves técnicas)
+En todos los FormRequest del wizard, agregar:
+```php
+public function attributes(): array {
+    return [
+        'datos.direccion'           => 'dirección',
+        'datos.codigo_postal'       => 'código postal',
+        'datos.telefono_celular'    => 'teléfono celular',
+        'datos_negocio.descripcion' => 'descripción del negocio',
+        // ... todos los campos anidados
+    ];
+}
+public function messages(): array {
+    return [
+        '*.required' => 'El campo :attribute es obligatorio.',
+        '*.min'      => 'El campo :attribute debe tener al menos :min caracteres.',
+    ];
+}
+```
+
+### M4: Teléfono solo números, máximo 10 dígitos
+En cualquier input de teléfono en el wizard (solicitante + aval):
+```vue
+<input type="tel" maxlength="10"
+  @input="e => { form.telefono_celular = e.target.value.replace(/\D/g,'').slice(0,10) }"
+  :value="form.telefono_celular" />
+```
+En el controlador: `'telefono_celular' => 'required|digits:10'`
+
+### M5: CURP — solo mayúsculas, sin Ñ
+```vue
+<input type="text" maxlength="18"
+  @input="e => { form.curp = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,18) }"
+  :value="form.curp" />
+```
+Regex de validación CURP completo:
+`/^[A-Z]{4}\d{6}[HM](AS|BC|BS|CC|CS|CH|DF|DG|GT|GR|HG|JC|MC|MN|MS|NT|NL|OC|PL|QT|QR|SP|SL|SR|TC|TS|TL|VZ|YN|ZS|NE)[B-DF-HJ-NP-TV-Z]{3}[A-Z\d]\d$/`
+
+### M6: Email con validación de dominio real
+En el formulario de registro (`resources/js/Pages/auth/Register.vue`):
+```vue
+<input type="email" ... />
+```
+En el controlador de registro:
+```php
+'email' => 'required|string|email:rfc,dns|max:255|unique:users',
+```
+Nota: `dns` puede tardar un poco más. En caso de lentitud, usar solo `email:rfc`.
+
+### M7: Fechas futuras bloqueadas en campos de pasado
+En todos los inputs de fecha de nacimiento, inicio de negocio, ingresos históricos:
+```vue
+<input type="date" :max="hoy" ... />
+```
+```typescript
+const hoy = new Date().toISOString().split('T')[0];
+```
+EXCEPCIÓN: Los campos de proyección de ingresos/egresos SÍ pueden tener fechas futuras.
+
+### M8: Proyección IE — autocompletar fecha fin a 6 meses
+```typescript
+watch(() => form.proyeccion_fecha_inicio, (val) => {
+  if (val) {
+    const fin = new Date(val);
+    fin.setMonth(fin.getMonth() + 6);
+    form.proyeccion_fecha_fin = fin.toISOString().split('T')[0];
+  }
+});
+```
+
+### M9: Ficha técnica abierta por defecto
+En WizardCredito.vue, paso 6, cambiar el estado inicial del acordeón:
+```typescript
+const fichaTecnicaAbierta = ref(true); // era false
+```
+
+### M10: Máximos de caracteres en campos
+Agregar `maxlength` en Vue y `max:N` en controlador:
+| Campo | Max |
+|---|---|
+| nombre_completo | 150 |
+| curp | 18 |
+| rfc | 13 |
+| telefono_celular | 10 |
+| codigo_postal | 5 |
+| direccion | 200 |
+| descripcion_negocio | 1000 |
+| observaciones | 500 |
+
+### M11: Borrador permite campos obligatorios vacíos
+Diferenciar validación borrador vs envío en `WizardSolicitudController`:
+```php
+// Al guardar borrador (PATCH /wizard/paso/{n}/borrador):
+// Solo validar tipos/formatos, no 'required'
+
+// Al enviar (POST /wizard/generar-formatos):
+// Validación completa con todos los 'required'
+```
+Agregar nota visual encima del formulario:
+```vue
+<div class="bg-blue-50 border border-blue-200 rounded-xl p-3 text-xs text-blue-700 mb-4">
+  Puedes guardar borrador con campos incompletos. Deberás completarlos todos antes de enviar.
+</div>
+```
+
+═══════════════════════════════════════════════════════════════════
+## BAJOS
+═══════════════════════════════════════════════════════════════════
+
+### B1: Logo incompleto en auth pages
+En `resources/js/layouts/auth/AuthCardLayout.vue` (o el layout de auth que se use),
+verificar el contenedor del logo:
+```vue
+<div class="flex items-center justify-center py-8">
+  <AppLogo class="h-10 w-auto" />
+</div>
+```
+Asegurarse de que el SVG de AppLogo tiene `viewBox="0 0 32 32"` y no hay `overflow:hidden`
+que lo recorte. Probar en modo oscuro también.
+
+### B2: Orden de modalidades
+```sql
+UPDATE modalidades SET orden = 1 WHERE nombre LIKE '%Artesanal%';
+UPDATE modalidades SET orden = 2 WHERE nombre LIKE '%Emprendedores%';
+UPDATE modalidades SET orden = 3 WHERE nombre LIKE '%Sustentable%';
+```
+En el controlador que carga las modalidades:
+```php
+ModalidadCrea::orderBy('orden')->get()
+```
+
+### B3: CURP — mejora del regex (no API RENAPO por ahora)
+Mejorar la validación de formato en el controlador:
+```php
+'curp' => ['required', 'size:18', 'regex:/^[A-Z]{4}\d{6}[HM](AS|BC|BS|CC|CS|CH|DF|DG|GT|GR|HG|JC|MC|MN|MS|NT|NL|OC|PL|QT|QR|SP|SL|SR|TC|TS|TL|VZ|YN|ZS|NE)[B-DF-HJ-NP-TV-Z]{3}[A-Z\d]\d$/'],
+```
+
+═══════════════════════════════════════════════════════════════════
+## VERIFICACIÓN FINAL
+═══════════════════════════════════════════════════════════════════
+
+Después de todos los cambios, ejecutar:
+```bash
+php artisan config:clear && php artisan cache:clear && php artisan view:clear
+npm run build
+php artisan migrate (si hubo cambios de DB)
+```
+
+Prueba regresiva del flujo completo:
+1. [ ] Registrar cuenta nueva → verificar que pide verificación de email
+2. [ ] Recuperar contraseña → el link llega a storage/logs/laravel.log (modo log)
+3. [ ] Completar wizard Artesanal → subir al menos 3 documentos → verificar que se guardan
+4. [ ] Enviar solicitud → verificar ZIP → abrir cada PDF → logos visibles
+5. [ ] Intentar monto fuera de rango → verificar que el error es claro y amigable
+6. [ ] Intentar menor de edad en fecha de nacimiento → verificar que el campo no lo permite
+7. [ ] Ingresar CURP con Ñ o minúsculas → verificar autoconversión a mayúsculas
+8. [ ] Ingresar email inválido (sin dominio) → verificar error de validación

@@ -19,11 +19,11 @@ class ReestructuracionController extends Controller
         $credito->load(['acreditado', 'modalidad', 'amortizaciones', 'reestructuraciones.autorizadoPor']);
 
         $saldoPendiente = $credito->amortizaciones
-            ->whereNotIn('estado', ['Pagado', 'Condonado', 'Reestructurada'])
+            ->whereNotIn('estado', ['Pagado', 'Condonado', 'Reestructurada', 'Gracia'])
             ->sum('pago_restante');
 
         $moraAcumulada = $credito->amortizaciones
-            ->whereNotIn('estado', ['Pagado', 'Condonado', 'Reestructurada'])
+            ->whereNotIn('estado', ['Pagado', 'Condonado', 'Reestructurada', 'Gracia'])
             ->sum('moratorio_acumulado');
 
         return Inertia::render('Creditos/Reestructuracion', [
@@ -64,7 +64,7 @@ class ReestructuracionController extends Controller
         ]);
 
         $saldoPendiente = $credito->amortizaciones()
-            ->whereNotIn('estado', ['Pagado', 'Condonado', 'Reestructurada'])
+            ->whereNotIn('estado', ['Pagado', 'Condonado', 'Reestructurada', 'Gracia'])
             ->sum('pago_restante');
 
         return DB::transaction(function () use ($credito, $data, $saldoPendiente) {
@@ -85,7 +85,7 @@ class ReestructuracionController extends Controller
 
             // Marcar cuotas pendientes como Reestructurada (preserva auditoría)
             $credito->amortizaciones()
-                ->whereNotIn('estado', ['Pagado', 'Condonado', 'Reestructurada'])
+                ->whereNotIn('estado', ['Pagado', 'Condonado', 'Reestructurada', 'Gracia'])
                 ->update(['estado' => 'Reestructurada', 'pago_restante' => 0]);
 
             $monto       = $saldoPendiente - ($data['mora_condonada'] ?? 0) - ($data['interes_condonado'] ?? 0);

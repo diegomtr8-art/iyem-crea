@@ -28,11 +28,13 @@ class UserController extends Controller
             'role' => 'required|string|exists:roles,name',
         ]);
 
-        // 1. Crear el usuario
+        // 1. Crear el usuario (cuentas operativas creadas por un admin: se dan
+        // por verificadas, ya que no pasan por el flujo de auto-registro).
         $user = User::create([
             'name' => $request->name,
             'email' => $request->email,
             'password' => Hash::make($request->password),
+            'email_verified_at' => now(),
         ]);
 
         // 2. Asignarle el rol de Spatie

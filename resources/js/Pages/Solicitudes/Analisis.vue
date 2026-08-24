@@ -20,6 +20,9 @@ const props = defineProps<{
         giro_comercial?: string;
         estatus: string;
     };
+    categorias_puntaje: Record<string, number>;
+    subcriterios: Array<{ clave: string; categoria: string; label: string; max: number }>;
+    puntaje_minimo: number;
     analisis_existente: {
         id: number;
         ingresos_mensuales: number;
@@ -36,12 +39,25 @@ const props = defineProps<{
         referencias_verificadas: boolean;
         antiguedad_negocio_meses: number;
         score_cualitativo: number;
+        puntaje_normativa?: number;
+        puntaje_tecnica?: number;
+        puntaje_financiera?: number;
+        puntaje_impacto_ambiental?: number;
+        puntaje_total?: number;
+        puntaje_detalle?: Record<string, number> | null;
         observaciones_analisis?: string;
         recomendacion: string;
         monto_recomendado?: number;
         motivo_rechazo?: string;
     } | null;
 }>();
+
+const etiquetasCategoria: Record<string, string> = {
+    normativa: 'Normativa',
+    tecnica: 'Técnica',
+    financiera: 'Financiera',
+    impacto_ambiental: 'Impacto Ambiental',
+};
 
 const form = useForm({
     ingresos_mensuales:       props.analisis_existente?.ingresos_mensuales ?? '',
@@ -55,6 +71,10 @@ const form = useForm({
     documentos_completos:     props.analisis_existente?.documentos_completos ?? false,
     referencias_verificadas:  props.analisis_existente?.referencias_verificadas ?? false,
     antiguedad_negocio_meses: props.analisis_existente?.antiguedad_negocio_meses ?? '',
+    puntaje_detalle: props.subcriterios.reduce((acc: Record<string, any>, s) => {
+        acc[s.clave] = props.analisis_existente?.puntaje_detalle?.[s.clave] ?? '';
+        return acc;
+    }, {} as Record<string, any>),
     observaciones_analisis:   props.analisis_existente?.observaciones_analisis ?? '',
     recomendacion:            props.analisis_existente?.recomendacion ?? '',
     monto_recomendado:        props.analisis_existente?.monto_recomendado ?? props.solicitud.monto_solicitado ?? '',
@@ -84,6 +104,22 @@ const checklistScore = computed(() => {
     ];
     return items.filter(Boolean).length;
 });
+
+const subcriteriosPorCategoria = computed(() => {
+    const grupos: Record<string, typeof props.subcriterios> = {};
+    for (const s of props.subcriterios) {
+        (grupos[s.categoria] ??= []).push(s);
+    }
+    return grupos;
+});
+
+const subtotalCategoria = (categoria: string) =>
+    (subcriteriosPorCategoria.value[categoria] ?? []).reduce((s, sc) => s + (Number(form.puntaje_detalle[sc.clave]) || 0), 0);
+
+const puntajeTotal = computed(() =>
+    props.subcriterios.reduce((s, sc) => s + (Number(form.puntaje_detalle[sc.clave]) || 0), 0)
+);
+const puntajeApto = computed(() => puntajeTotal.value >= props.puntaje_minimo);
 
 const submit = () =>
     form.post(route('solicitudes.analisis.store', props.solicitud.id));
@@ -196,6 +232,39 @@ const recomendacionConfig: Record<string, { bg: string; text: string; icon: any;
                     </div>
                 </div>
 
+                <!-- Puntaje oficial por modalidad -->
+                <div v-if="subcriterios.length" class="bg-white dark:bg-zinc-900 rounded-2xl border border-slate-100 dark:border-zinc-800 overflow-hidden shadow-sm">
+                    <div class="px-5 py-4 border-b border-slate-100 dark:border-zinc-800 flex items-center gap-3">
+                        <div class="w-9 h-9 rounded-xl bg-red-50 dark:bg-red-900/20 flex items-center justify-center text-red-700">
+                            <ClipboardList :size="18" />
+                        </div>
+                        <h2 class="font-black text-slate-900 dark:text-white">Puntaje Oficial — {{ solicitud.modalidad }}</h2>
+                        <div class="ml-auto">
+                            <span :class="['text-xs font-black px-3 py-1.5 rounded-full', puntajeApto ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400']">
+                                {{ puntajeApto ? '✅ APTO para Comité' : '❌ NO APTO' }} — {{ puntajeTotal }}/100{{ !puntajeApto ? ` (mínimo requerido: ${puntaje_minimo})` : '' }}
+                            </span>
+                        </div>
+                    </div>
+                    <div class="p-5 space-y-5">
+                        <div v-for="(items, cat) in subcriteriosPorCategoria" :key="cat" class="rounded-xl border border-slate-100 dark:border-zinc-800 overflow-hidden">
+                            <div class="bg-slate-50 dark:bg-zinc-800 px-4 py-2.5 flex items-center justify-between">
+                                <span class="text-xs font-black uppercase tracking-wider text-slate-600 dark:text-zinc-300">{{ etiquetasCategoria[cat] ?? cat }}</span>
+                                <span class="text-xs font-bold text-slate-500 dark:text-zinc-400">{{ subtotalCategoria(cat) }} / {{ categorias_puntaje[cat] }} pts</span>
+                            </div>
+                            <div class="divide-y divide-slate-100 dark:divide-zinc-800">
+                                <div v-for="sc in items" :key="sc.clave" class="flex items-center gap-4 px-4 py-2.5">
+                                    <span class="flex-1 text-sm text-slate-700 dark:text-zinc-300">{{ sc.label }}</span>
+                                    <span class="text-[10px] text-slate-400 w-16 text-right">máx. {{ sc.max }}</span>
+                                    <input v-model="form.puntaje_detalle[sc.clave]" type="number" min="0" :max="sc.max" :class="[inputCls, '!w-20 sm:!w-24 !h-11 !py-0 text-center']" />
+                                </div>
+                            </div>
+                            <p v-if="(form.errors as any)[`puntaje_detalle.${items[0]?.clave}`]" class="text-red-600 text-xs px-4 py-1.5">
+                                Verifica que cada subcriterio esté dentro de su máximo permitido.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Checklist de elegibilidad -->
                 <div class="bg-white dark:bg-zinc-900 rounded-2xl border border-slate-100 dark:border-zinc-800 overflow-hidden shadow-sm">
                     <div class="px-5 py-4 border-b border-slate-100 dark:border-zinc-800 flex items-center gap-3">
@@ -285,13 +354,13 @@ const recomendacionConfig: Record<string, { bg: string; text: string; icon: any;
                 </div>
 
                 <!-- Acciones -->
-                <div class="flex justify-end gap-4">
+                <div class="flex flex-col-reverse sm:flex-row justify-end gap-3 sm:gap-4">
                     <Link :href="route('solicitudes.show', solicitud.id)"
-                        class="px-5 py-3 rounded-xl bg-slate-100 dark:bg-zinc-800 text-slate-700 dark:text-zinc-300 font-bold text-sm hover:bg-slate-200 dark:hover:bg-zinc-700 transition-all">
+                        class="w-full sm:w-auto text-center px-5 py-3 rounded-xl bg-slate-100 dark:bg-zinc-800 text-slate-700 dark:text-zinc-300 font-bold text-sm hover:bg-slate-200 dark:hover:bg-zinc-700 transition-all">
                         Cancelar
                     </Link>
                     <button type="submit" :disabled="form.processing || !form.recomendacion"
-                        class="inline-flex items-center gap-2 px-8 py-3 bg-red-700 hover:bg-red-800 text-white font-black rounded-xl text-sm transition-all shadow-lg shadow-red-900/20 disabled:opacity-60 active:scale-[0.98]">
+                        class="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-8 py-3 bg-red-700 hover:bg-red-800 text-white font-black rounded-xl text-sm transition-all shadow-lg shadow-red-900/20 disabled:opacity-60 active:scale-[0.98]">
                         <ClipboardList :size="16" />
                         {{ form.processing ? 'Guardando...' : (analisis_existente ? 'Actualizar Análisis' : 'Guardar Análisis') }}
                     </button>

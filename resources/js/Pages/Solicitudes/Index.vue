@@ -124,19 +124,63 @@ const kpiCards = [
                     <input v-model="buscar" type="text" placeholder="Buscar por nombre, CURP o municipio..."
                         class="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 dark:border-zinc-700 dark:bg-zinc-800 text-sm focus:ring-2 focus:ring-red-500/20 focus:border-red-500 transition-all" />
                 </div>
-                <div class="relative">
+                <div class="relative w-full sm:w-auto">
                     <Filter size="16" class="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
                     <select v-model="estatusFiltro"
-                        class="pl-10 pr-8 py-2.5 rounded-xl border border-slate-200 dark:border-zinc-700 dark:bg-zinc-800 text-sm focus:ring-2 focus:ring-red-500/20 focus:border-red-500 transition-all appearance-none">
+                        class="w-full sm:w-auto pl-10 pr-8 py-2.5 rounded-xl border border-slate-200 dark:border-zinc-700 dark:bg-zinc-800 text-sm focus:ring-2 focus:ring-red-500/20 focus:border-red-500 transition-all appearance-none">
                         <option v-for="op in estatusOpciones" :key="op.value" :value="op.value">{{ op.label }}</option>
                     </select>
                 </div>
             </div>
 
-            <!-- Tabla -->
-            <div class="bg-white dark:bg-zinc-900 rounded-2xl border border-slate-100 dark:border-zinc-800 overflow-hidden shadow-sm">
+            <!-- Vacío -->
+            <div v-if="solicitudes.data.length === 0" class="bg-white dark:bg-zinc-900 rounded-2xl border border-slate-100 dark:border-zinc-800 py-16 text-center text-slate-400 dark:text-zinc-600 text-sm shadow-sm">
+                No hay solicitudes con los filtros seleccionados.
+            </div>
+
+            <!-- Cards (mobile) -->
+            <div v-if="solicitudes.data.length > 0" class="sm:hidden space-y-3">
+                <div v-for="s in solicitudes.data" :key="s.id"
+                    class="bg-white dark:bg-zinc-900 rounded-2xl border border-slate-100 dark:border-zinc-800 p-4 shadow-sm">
+                    <div class="flex items-start justify-between gap-2 mb-2">
+                        <div class="min-w-0">
+                            <p class="font-bold text-sm text-slate-900 dark:text-white truncate">{{ s.nombre_completo || 'Sin nombre' }}</p>
+                            <p class="text-xs text-slate-400 dark:text-zinc-500 truncate">{{ s.user_email }}</p>
+                        </div>
+                        <div :class="['shrink-0 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold', estatusEstilo[s.estatus]?.bg, estatusEstilo[s.estatus]?.text]">
+                            <component :is="estatusEstilo[s.estatus]?.icon" size="11" />
+                            {{ s.estatus.replace('_', ' ') }}
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-2 text-xs text-slate-500 dark:text-zinc-400">
+                        <div><span class="font-medium text-slate-400 dark:text-zinc-500">CURP:</span> <span class="font-mono">{{ s.curp || '—' }}</span></div>
+                        <div><span class="font-medium text-slate-400 dark:text-zinc-500">Municipio:</span> {{ s.municipio || '—' }}</div>
+                        <div><span class="font-medium text-slate-400 dark:text-zinc-500">Modalidad:</span> {{ s.modalidad || '—' }}</div>
+                        <div><span class="font-medium text-slate-400 dark:text-zinc-500">Actualizado:</span> {{ s.updated_at }}</div>
+                    </div>
+                    <div class="mt-3 flex flex-wrap gap-2">
+                        <Link :href="route('solicitudes.show', s.id)"
+                            class="flex-1 inline-flex items-center justify-center gap-1.5 py-2.5 bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400 rounded-xl text-xs font-bold">
+                            <Eye size="13" /> Revisar
+                        </Link>
+                        <Link v-if="s.estatus === 'Aprobada' && !s.credito_id"
+                            :href="route('solicitudes.registrar-credito', s.id)"
+                            class="flex-1 inline-flex items-center justify-center gap-1.5 py-2.5 bg-green-600 text-white rounded-xl text-xs font-bold shadow-sm">
+                            <CreditCard size="13" /> Registrar
+                        </Link>
+                        <Link v-else-if="s.estatus === 'Aprobada' && s.credito_id"
+                            :href="route('operaciones.index', s.acreditado_id)"
+                            class="flex-1 inline-flex items-center justify-center gap-1.5 py-2.5 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400 rounded-xl text-xs font-bold">
+                            <CreditCard size="13" /> Ver crédito
+                        </Link>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tabla (sm+) -->
+            <div v-if="solicitudes.data.length > 0" class="hidden sm:block bg-white dark:bg-zinc-900 rounded-2xl border border-slate-100 dark:border-zinc-800 overflow-hidden shadow-sm">
                 <div class="overflow-x-auto">
-                    <table class="w-full text-sm text-left">
+                    <table class="w-full min-w-[640px] text-sm text-left">
                         <thead>
                             <tr class="bg-slate-50 dark:bg-zinc-800 text-slate-400 dark:text-zinc-500 text-[11px] uppercase tracking-widest font-bold">
                                 <th class="px-5 py-4">Solicitante</th>
@@ -149,11 +193,6 @@ const kpiCards = [
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-slate-50 dark:divide-zinc-800">
-                            <tr v-if="solicitudes.data.length === 0">
-                                <td colspan="7" class="px-5 py-16 text-center text-slate-400 dark:text-zinc-600">
-                                    No hay solicitudes con los filtros seleccionados.
-                                </td>
-                            </tr>
                             <tr v-for="s in solicitudes.data" :key="s.id"
                                 class="hover:bg-slate-50/80 dark:hover:bg-zinc-800/50 transition-colors">
                                 <td class="px-5 py-4">
@@ -194,20 +233,20 @@ const kpiCards = [
                         </tbody>
                     </table>
                 </div>
+            </div>
 
-                <!-- Paginación -->
-                <div v-if="solicitudes.meta?.last_page > 1" class="border-t border-slate-100 dark:border-zinc-800 px-5 py-4 flex items-center justify-between">
-                    <p class="text-xs text-slate-400">
-                        Mostrando {{ solicitudes.meta.from }}–{{ solicitudes.meta.to }} de {{ solicitudes.meta.total }}
-                    </p>
-                    <div class="flex gap-1">
-                        <Link v-for="link in solicitudes.links" :key="link.label"
-                            :href="link.url ?? '#'"
-                            :class="['px-3 py-1.5 rounded-lg text-xs font-bold transition-colors',
-                                link.active ? 'bg-red-700 text-white' : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-zinc-800',
-                                !link.url ? 'opacity-40 pointer-events-none' : '']"
-                            v-html="link.label" />
-                    </div>
+            <!-- Paginación -->
+            <div v-if="solicitudes.meta?.last_page > 1" class="bg-white dark:bg-zinc-900 rounded-2xl border border-slate-100 dark:border-zinc-800 px-5 py-4 flex flex-wrap items-center justify-between gap-2 shadow-sm">
+                <p class="text-xs text-slate-400">
+                    Mostrando {{ solicitudes.meta.from }}–{{ solicitudes.meta.to }} de {{ solicitudes.meta.total }}
+                </p>
+                <div class="flex flex-wrap gap-1">
+                    <Link v-for="link in solicitudes.links" :key="link.label"
+                        :href="link.url ?? '#'"
+                        :class="['px-3 py-1.5 rounded-lg text-xs font-bold transition-colors',
+                            link.active ? 'bg-red-700 text-white' : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-zinc-800',
+                            !link.url ? 'opacity-40 pointer-events-none' : '']"
+                        v-html="link.label" />
                 </div>
             </div>
         </div>

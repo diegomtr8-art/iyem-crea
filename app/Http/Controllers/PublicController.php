@@ -20,6 +20,14 @@ class PublicController extends Controller
     }
 
     /**
+     * Aviso de Privacidad del programa CREA (acceso público).
+     */
+    public function avisoPrivacidad()
+    {
+        return Inertia::render('Legal/AvisoPrivacidad');
+    }
+
+    /**
      * Procesa la consulta del acreditado mediante CURP y RFC.
      */
     public function consultar(Request $request)

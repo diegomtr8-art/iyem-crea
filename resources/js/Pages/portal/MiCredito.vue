@@ -5,9 +5,9 @@ import { ref, computed } from 'vue';
 import {
     BadgeCheck, CalendarDays, CreditCard, DollarSign, TrendingUp,
     FileText, Clock, CheckCircle2, AlertCircle, Minus,
-    Download, Calculator, X
+    Download, Calculator, X, ClipboardCheck, Plus, Trash2, ExternalLink
 } from 'lucide-vue-next';
-import { router } from '@inertiajs/vue3';
+import { router, useForm } from '@inertiajs/vue3';
 
 const props = defineProps<{
     credito: {
@@ -39,12 +39,45 @@ const props = defineProps<{
             monto_recibido: number;
             forma_pago?: string;
         }>;
+        proxima_cuota: null | {
+            numero: number;
+            fecha_vencimiento: string;
+            capital: number;
+            interes: number;
+            mora: number;
+            total: number;
+            dias_mora: number;
+            vencida: boolean;
+        };
+    };
+    datos_pago: {
+        cie_bbva: string;
+        cie_descripcion: string;
+        clabe: string;
+        banco: string;
+        beneficiario: string;
+        rfc: string;
+        concepto: string;
+        caja_horario: string;
+        correo: string;
+        whatsapp: string;
+    };
+    comprobacion: null | {
+        id: number;
+        estatus: 'Pendiente' | 'En_Revision' | 'Aprobada' | 'Rechazada';
+        fecha_desembolso: string;
+        fecha_limite: string;
+        dias_restantes: number;
+        semaforo: 'verde' | 'amarillo' | 'rojo' | 'vencido';
+        documentos: Array<{ id: number; tipo: string; descripcion?: string; monto?: number; proveedor?: string; nombre_original: string; url: string }>;
+        observaciones_operativo?: string;
     };
 }>();
 
 const activeTab = ref<'tabla' | 'pagos'>('tabla');
 
 const estadoCuota = (item: typeof props.credito.tabla[0]) => {
+    if (item.estado === 'Gracia')   return { texto: 'GRACIA',    clase: 'bg-slate-100 text-slate-400 dark:bg-zinc-800 dark:text-zinc-500' };
     if (item.estado === 'Condonado') return { texto: 'CONDONADO', clase: 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400' };
 
     const hoy = new Date();
@@ -96,6 +129,51 @@ const calcularLiquidacion = async () => {
         cargandoLiquidacion.value = false;
     }
 };
+
+// Comprobación de uso del crédito
+const semaforoComprobacion: Record<string, { bg: string; text: string; border: string; label: string }> = {
+    verde:    { bg: 'bg-emerald-50 dark:bg-emerald-950/30', text: 'text-emerald-700 dark:text-emerald-400', border: 'border-emerald-500', label: 'En plazo' },
+    amarillo: { bg: 'bg-amber-50 dark:bg-amber-950/30',     text: 'text-amber-700 dark:text-amber-400',     border: 'border-amber-500', label: 'Por vencer' },
+    rojo:     { bg: 'bg-orange-50 dark:bg-orange-950/30',   text: 'text-orange-700 dark:text-orange-400',   border: 'border-orange-500', label: 'Urgente' },
+    vencido:  { bg: 'bg-red-50 dark:bg-red-950/30',         text: 'text-red-700 dark:text-red-400',         border: 'border-red-500', label: 'Plazo vencido' },
+};
+
+const tipoComprobanteOpciones = [
+    { value: 'factura', label: 'Factura' },
+    { value: 'nota_venta', label: 'Nota de venta' },
+    { value: 'foto_bien', label: 'Foto del bien' },
+    { value: 'otro', label: 'Otro' },
+];
+
+const formComprobacion = useForm<{
+    observaciones_acreditado: string;
+    comprobantes: Array<{ archivo: File | null; tipo: string; descripcion: string; monto: string; proveedor: string }>;
+}>({
+    observaciones_acreditado: '',
+    comprobantes: [{ archivo: null, tipo: 'factura', descripcion: '', monto: '', proveedor: '' }],
+});
+
+const totalComprobado = computed(() =>
+    formComprobacion.comprobantes.reduce((s, c) => s + (Number(c.monto) || 0), 0)
+);
+
+const agregarComprobante = () => {
+    formComprobacion.comprobantes.push({ archivo: null, tipo: 'factura', descripcion: '', monto: '', proveedor: '' });
+};
+const quitarComprobante = (i: number) => {
+    if (formComprobacion.comprobantes.length > 1) formComprobacion.comprobantes.splice(i, 1);
+};
+const onArchivoChange = (i: number, e: Event) => {
+    const input = e.target as HTMLInputElement;
+    formComprobacion.comprobantes[i].archivo = input.files?.[0] ?? null;
+};
+
+const enviarComprobacion = () => {
+    if (!props.comprobacion) return;
+    formComprobacion.post(route('portal.comprobacion.enviar', props.comprobacion.id), {
+        forceFormData: true,
+    });
+};
 </script>
 
 <template>
@@ -110,6 +188,49 @@ const calcularLiquidacion = async () => {
                 <h1 class="text-2xl md:text-3xl font-black text-slate-900 dark:text-white flex items-center gap-3">
                     <BadgeCheck size="28" class="text-red-700" /> Mi Crédito
                 </h1>
+            </div>
+
+            <!-- Próxima cuota -->
+            <div v-if="credito.proxima_cuota" :class="[
+                'rounded-2xl p-5 border-l-4',
+                credito.proxima_cuota.vencida
+                    ? 'bg-red-50 border-red-500 dark:bg-red-950/30'
+                    : 'bg-emerald-50 border-emerald-500 dark:bg-emerald-950/30'
+            ]">
+                <h3 class="font-black text-lg mb-3 flex items-center gap-2 text-slate-900 dark:text-white">
+                    <AlertCircle v-if="credito.proxima_cuota.vencida" size="20" class="text-red-600" />
+                    <CalendarDays v-else size="20" class="text-emerald-600" />
+                    {{ credito.proxima_cuota.vencida ? 'Cuota vencida' : 'Próxima cuota' }} #{{ credito.proxima_cuota.numero }}
+                </h3>
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div>
+                        <p class="text-xs text-slate-500 dark:text-zinc-400">Vencimiento</p>
+                        <p class="font-bold text-slate-900 dark:text-white">{{ credito.proxima_cuota.fecha_vencimiento }}</p>
+                    </div>
+                    <div>
+                        <p class="text-xs text-slate-500 dark:text-zinc-400">Capital</p>
+                        <p class="font-bold text-slate-900 dark:text-white">${{ fmt(credito.proxima_cuota.capital) }}</p>
+                    </div>
+                    <div>
+                        <p class="text-xs text-slate-500 dark:text-zinc-400">Interés</p>
+                        <p class="font-bold text-slate-900 dark:text-white">${{ fmt(credito.proxima_cuota.interes) }}</p>
+                    </div>
+                    <div v-if="credito.proxima_cuota.mora > 0">
+                        <p class="text-xs text-red-500">Mora acumulada</p>
+                        <p class="font-bold text-red-600">${{ fmt(credito.proxima_cuota.mora) }}</p>
+                    </div>
+                </div>
+                <div class="mt-4 pt-3 border-t border-slate-200/60 dark:border-zinc-700/60 flex flex-wrap items-center justify-between gap-2">
+                    <span class="text-xs text-slate-500 dark:text-zinc-400">
+                        {{ credito.proxima_cuota.dias_mora > 0 ? `${credito.proxima_cuota.dias_mora} días de atraso` : '' }}
+                    </span>
+                    <span class="text-xl font-black text-slate-900 dark:text-white">
+                        Total a pagar: ${{ fmt(credito.proxima_cuota.total) }}
+                    </span>
+                </div>
+                <p v-if="credito.proxima_cuota.vencida" class="text-xs text-red-500 mt-2">
+                    Contáctanos para regularizar tu crédito: 999 941 2170
+                </p>
             </div>
 
             <!-- Cards de resumen -->
@@ -170,6 +291,122 @@ const calcularLiquidacion = async () => {
                 <div class="flex items-center justify-between mt-2">
                     <p class="text-xs text-slate-400">{{ cuotasActivas.length > 0 ? ((cuotasPagadas / cuotasActivas.length) * 100).toFixed(0) : 0 }}% completado</p>
                     <p class="text-xs text-slate-400">Total pagado: <strong class="text-slate-700 dark:text-zinc-200">${{ fmt(totalPagado) }}</strong></p>
+                </div>
+            </div>
+
+            <!-- Comprobación de uso del crédito -->
+            <div v-if="comprobacion" class="bg-white dark:bg-zinc-900 rounded-3xl border border-slate-100 dark:border-zinc-800 p-6 shadow-sm space-y-5">
+                <h2 class="font-black text-slate-900 dark:text-white flex items-center gap-2">
+                    <ClipboardCheck size="20" class="text-red-700" /> Comprobación de Uso del Crédito
+                </h2>
+
+                <div :class="['rounded-2xl p-4 border-l-4 flex flex-wrap items-center justify-between gap-3', semaforoComprobacion[comprobacion.semaforo].bg, semaforoComprobacion[comprobacion.semaforo].border]">
+                    <div>
+                        <p :class="['font-bold', semaforoComprobacion[comprobacion.semaforo].text]">
+                            <template v-if="comprobacion.semaforo === 'vencido'">Tu plazo de comprobación ha vencido</template>
+                            <template v-else-if="comprobacion.semaforo === 'rojo'">Te quedan {{ comprobacion.dias_restantes }} días para comprobar el uso de tu crédito</template>
+                            <template v-else>{{ semaforoComprobacion[comprobacion.semaforo].label }} — {{ comprobacion.dias_restantes }} días restantes</template>
+                        </p>
+                        <p class="text-xs text-slate-500 dark:text-zinc-400 mt-0.5">
+                            Desembolso: {{ comprobacion.fecha_desembolso }} · Fecha límite: {{ comprobacion.fecha_limite }} · Estatus: {{ comprobacion.estatus.replace('_', ' ') }}
+                        </p>
+                    </div>
+                </div>
+
+                <div v-if="comprobacion.observaciones_operativo" class="rounded-xl bg-amber-50 dark:bg-amber-900/20 p-4 text-sm text-amber-800 dark:text-amber-300">
+                    <strong>Observaciones de IYEM:</strong> {{ comprobacion.observaciones_operativo }}
+                </div>
+
+                <!-- Documentos ya enviados -->
+                <div v-if="comprobacion.documentos.length > 0" class="space-y-2">
+                    <p class="text-xs font-bold uppercase tracking-wider text-slate-400">Comprobantes enviados</p>
+                    <div v-for="d in comprobacion.documentos" :key="d.id" class="flex items-center justify-between text-sm bg-slate-50 dark:bg-zinc-800/50 rounded-xl px-4 py-2.5">
+                        <span>{{ d.descripcion || d.nombre_original }} <span v-if="d.monto" class="text-slate-400">— ${{ fmt(d.monto) }}</span></span>
+                        <a :href="d.url" target="_blank" class="text-red-700 dark:text-red-400 hover:underline inline-flex items-center gap-1 text-xs font-bold"><ExternalLink size="12" /> Ver</a>
+                    </div>
+                    <p class="text-sm font-bold text-right">Total comprobado: ${{ fmt(comprobacion.documentos.reduce((s, d) => s + (Number(d.monto) || 0), 0)) }}</p>
+                </div>
+
+                <!-- Formulario de envío (solo si Pendiente o Rechazada) -->
+                <form v-if="['Pendiente', 'Rechazada'].includes(comprobacion.estatus)" @submit.prevent="enviarComprobacion" class="space-y-4">
+                    <div v-for="(c, i) in formComprobacion.comprobantes" :key="i"
+                        class="grid grid-cols-1 sm:grid-cols-5 gap-3 items-start bg-slate-50 dark:bg-zinc-800/50 rounded-2xl p-4">
+                        <div class="sm:col-span-1">
+                            <label class="text-xs font-semibold text-slate-500">Tipo</label>
+                            <select v-model="c.tipo" class="w-full mt-1 px-3 py-2 rounded-lg border border-slate-200 dark:border-zinc-700 dark:bg-zinc-900 text-sm">
+                                <option v-for="op in tipoComprobanteOpciones" :key="op.value" :value="op.value">{{ op.label }}</option>
+                            </select>
+                        </div>
+                        <div class="sm:col-span-1">
+                            <label class="text-xs font-semibold text-slate-500">Archivo</label>
+                            <input type="file" accept=".pdf,.jpg,.jpeg,.png" @change="onArchivoChange(i, $event)"
+                                class="w-full mt-1 text-xs file:mr-2 file:py-1.5 file:px-2 file:rounded-lg file:border-0 file:bg-red-50 file:text-red-700 dark:file:bg-red-900/30 dark:file:text-red-400" />
+                        </div>
+                        <div class="sm:col-span-1">
+                            <label class="text-xs font-semibold text-slate-500">Descripción</label>
+                            <input v-model="c.descripcion" type="text" placeholder="Ej. Compra de máquina"
+                                class="w-full mt-1 px-3 py-2 rounded-lg border border-slate-200 dark:border-zinc-700 dark:bg-zinc-900 text-sm" />
+                        </div>
+                        <div class="sm:col-span-1">
+                            <label class="text-xs font-semibold text-slate-500">Monto</label>
+                            <input v-model="c.monto" type="number" step="0.01" min="0" placeholder="0.00"
+                                class="w-full mt-1 px-3 py-2 rounded-lg border border-slate-200 dark:border-zinc-700 dark:bg-zinc-900 text-sm" />
+                        </div>
+                        <div class="sm:col-span-1 flex items-end gap-2">
+                            <div class="flex-1">
+                                <label class="text-xs font-semibold text-slate-500">Proveedor</label>
+                                <input v-model="c.proveedor" type="text" placeholder="Nombre del proveedor"
+                                    class="w-full mt-1 px-3 py-2 rounded-lg border border-slate-200 dark:border-zinc-700 dark:bg-zinc-900 text-sm" />
+                            </div>
+                            <button type="button" @click="quitarComprobante(i)" v-if="formComprobacion.comprobantes.length > 1"
+                                class="mt-1 p-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg">
+                                <Trash2 size="16" />
+                            </button>
+                        </div>
+                    </div>
+
+                    <button type="button" @click="agregarComprobante"
+                        class="inline-flex items-center gap-2 text-sm font-bold text-red-700 dark:text-red-400 hover:underline">
+                        <Plus size="15" /> Agregar otro comprobante
+                    </button>
+
+                    <div>
+                        <label class="text-xs font-semibold text-slate-500">Observaciones (opcional)</label>
+                        <textarea v-model="formComprobacion.observaciones_acreditado" rows="2"
+                            class="w-full mt-1 px-3 py-2 rounded-lg border border-slate-200 dark:border-zinc-700 dark:bg-zinc-900 text-sm"></textarea>
+                    </div>
+
+                    <div class="flex items-center justify-between pt-2 border-t border-slate-100 dark:border-zinc-800">
+                        <p class="text-sm font-bold">Total capturado: ${{ fmt(totalComprobado) }}</p>
+                        <button type="submit" :disabled="formComprobacion.processing"
+                            class="px-5 py-2.5 bg-red-700 hover:bg-red-800 text-white rounded-xl text-sm font-bold shadow-sm disabled:opacity-50">
+                            Enviar comprobación
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- ¿Cómo pagar mi crédito? -->
+            <div class="bg-white dark:bg-zinc-900 rounded-3xl border border-slate-100 dark:border-zinc-800 p-6 shadow-sm space-y-4">
+                <h2 class="font-black text-slate-900 dark:text-white flex items-center gap-2">
+                    <DollarSign size="20" class="text-red-700" /> ¿Cómo pagar mi crédito?
+                </h2>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
+                    <div class="rounded-2xl bg-slate-50 dark:bg-zinc-800/50 p-4 space-y-2">
+                        <p class="text-xs font-bold uppercase tracking-wider text-slate-400">Pago por transferencia</p>
+                        <p class="text-slate-600 dark:text-zinc-300">Banco: <strong class="text-slate-900 dark:text-white">{{ datos_pago.banco }}</strong></p>
+                        <p class="text-slate-600 dark:text-zinc-300">CIE BBVA: <strong class="font-mono text-slate-900 dark:text-white">{{ datos_pago.cie_bbva }}</strong> ({{ datos_pago.cie_descripcion }})</p>
+                        <p class="text-slate-600 dark:text-zinc-300">CLABE: <strong class="font-mono text-sm sm:text-base break-all text-slate-900 dark:text-white">{{ datos_pago.clabe }}</strong></p>
+                        <p class="text-slate-600 dark:text-zinc-300">Beneficiario: <strong class="text-slate-900 dark:text-white">{{ datos_pago.beneficiario }}</strong></p>
+                        <p class="text-slate-600 dark:text-zinc-300">RFC: <strong class="font-mono text-slate-900 dark:text-white">{{ datos_pago.rfc }}</strong></p>
+                        <p class="text-slate-600 dark:text-zinc-300">Concepto: <strong class="text-slate-900 dark:text-white">{{ datos_pago.concepto }}</strong></p>
+                    </div>
+                    <div class="rounded-2xl bg-slate-50 dark:bg-zinc-800/50 p-4 space-y-2">
+                        <p class="text-xs font-bold uppercase tracking-wider text-slate-400">Pago en oficinas IYEM</p>
+                        <p class="text-slate-600 dark:text-zinc-300">Horario de caja: <strong class="text-slate-900 dark:text-white">{{ datos_pago.caja_horario }}</strong></p>
+                        <p class="text-slate-600 dark:text-zinc-300">Correo: <strong class="text-slate-900 dark:text-white">{{ datos_pago.correo }}</strong></p>
+                        <p class="text-slate-600 dark:text-zinc-300">WhatsApp: <strong class="text-slate-900 dark:text-white">{{ datos_pago.whatsapp }}</strong></p>
+                    </div>
                 </div>
             </div>
 
@@ -264,7 +501,7 @@ const calcularLiquidacion = async () => {
 
                 <!-- Tabla de amortización -->
                 <div v-if="activeTab === 'tabla'" class="overflow-x-auto">
-                    <table v-if="credito.tabla.length > 0" class="w-full text-left border-collapse text-sm">
+                    <table v-if="credito.tabla.length > 0" class="w-full min-w-[560px] text-left border-collapse text-sm">
                         <thead>
                             <tr class="bg-slate-50/80 dark:bg-zinc-800/80 text-slate-400 dark:text-zinc-500 text-[11px] uppercase tracking-widest font-bold">
                                 <th class="px-5 py-4">No.</th>
@@ -278,8 +515,13 @@ const calcularLiquidacion = async () => {
                         </thead>
                         <tbody class="divide-y divide-slate-50 dark:divide-zinc-800">
                             <tr v-for="item in credito.tabla" :key="item.numero_cuota"
-                                :class="['hover:bg-slate-50/50 dark:hover:bg-zinc-800/50 transition-colors', estadoCuota(item).texto === 'VENCIDO' ? 'bg-red-50/30 dark:bg-red-900/5' : '']">
-                                <td class="px-5 py-4 font-bold text-slate-500 dark:text-zinc-500">#{{ item.numero_cuota }}</td>
+                                :class="['hover:bg-slate-50/50 dark:hover:bg-zinc-800/50 transition-colors',
+                                    item.estado === 'Gracia' ? 'opacity-50 italic' : '',
+                                    estadoCuota(item).texto === 'VENCIDO' ? 'bg-red-50/30 dark:bg-red-900/5' : '']">
+                                <td class="px-5 py-4 font-bold text-slate-500 dark:text-zinc-500">
+                                    <span v-if="item.estado === 'Gracia'" class="text-xs text-slate-400">Gracia</span>
+                                    <span v-else>#{{ item.numero_cuota }}</span>
+                                </td>
                                 <td class="px-5 py-4 font-medium">{{ item.fecha_vencimiento }}</td>
                                 <td class="px-5 py-4 text-right">${{ fmt(item.capital) }}</td>
                                 <td class="px-5 py-4 text-right">${{ fmt(item.ordinario) }}</td>
@@ -306,7 +548,7 @@ const calcularLiquidacion = async () => {
 
                 <!-- Historial de pagos -->
                 <div v-if="activeTab === 'pagos'" class="overflow-x-auto">
-                    <table v-if="credito.pagos.length > 0" class="w-full text-left border-collapse text-sm">
+                    <table v-if="credito.pagos.length > 0" class="w-full min-w-[420px] text-left border-collapse text-sm">
                         <thead>
                             <tr class="bg-slate-50/80 dark:bg-zinc-800/80 text-slate-400 dark:text-zinc-500 text-[11px] uppercase tracking-widest font-bold">
                                 <th class="px-5 py-4">Folio</th>

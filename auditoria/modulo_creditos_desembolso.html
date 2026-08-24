@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Módulo: Créditos y Desembolso — Auditoría CREA</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;font-family:'Segoe UI',system-ui,sans-serif;}
+body{background:#0f172a;color:#e2e8f0;}
+header{background:linear-gradient(135deg,#7c3aed,#5b21b6);padding:20px 24px;display:flex;align-items:center;gap:14px;}
+header h1{font-size:1.3rem;color:#fff;}
+header .badge{background:rgba(255,255,255,.15);color:#fff;padding:4px 10px;border-radius:20px;font-size:.75rem;margin-left:auto;}
+.container{max-width:1000px;margin:0 auto;padding:24px 16px;}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px;margin-bottom:24px;}
+.card{background:#1e293b;border-radius:12px;padding:18px;border-left:4px solid #8b5cf6;}
+.card.warn{border-left-color:#f59e0b;}
+.card.danger{border-left-color:#ef4444;}
+.card.info{border-left-color:#3b82f6;}
+.card h3{font-size:.95rem;margin-bottom:10px;color:#fff;}
+.card p,.card li{font-size:.83rem;color:#94a3b8;line-height:1.6;}
+.card ul{padding-left:16px;}
+.card li{margin-bottom:4px;}
+.tag{display:inline-block;padding:2px 8px;border-radius:10px;font-size:.7rem;font-weight:700;margin-right:4px;margin-bottom:4px;}
+.tag.ok{background:#1e1a3a;color:#a78bfa;}
+.tag.warn{background:#451a03;color:#fb923c;}
+.tag.danger{background:#450a0a;color:#f87171;}
+.tag.info{background:#0c2a4a;color:#60a5fa;}
+table{width:100%;border-collapse:collapse;font-size:.8rem;}
+th{background:#1e1a3a;color:#a78bfa;padding:8px 10px;text-align:left;}
+td{padding:7px 10px;border-bottom:1px solid #1e293b;color:#cbd5e1;}
+tr:hover td{background:#1e293b;}
+.status-ok::before{content:"✅ ";}
+.status-warn::before{content:"⚠️ ";}
+.status-danger::before{content:"🔴 ";}
+section{margin-bottom:28px;}
+section h2{font-size:1rem;font-weight:700;color:#a78bfa;border-bottom:1px solid #1e293b;padding-bottom:8px;margin-bottom:14px;}
+.modalidad{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:16px;}
+.mod-card{background:#1e1a3a;border:1px solid #5b21b6;border-radius:10px;padding:14px;flex:1;min-width:200px;}
+.mod-card h4{font-size:.85rem;color:#c4b5fd;margin-bottom:8px;}
+.mod-card p{font-size:.78rem;color:#94a3b8;margin-bottom:4px;}
+.mod-val{font-size:1.1rem;font-weight:700;color:#ddd6fe;}
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <h1>💳 Créditos y Desembolso</h1>
+    <p style="font-size:.82rem;color:#ddd6fe;margin-top:4px;">Registro de crédito, contrato, desembolso, tabla de amortización, documentos PDF</p>
+  </div>
+  <div class="badge">Módulo 3 / 6</div>
+</header>
+<div class="container">
+
+  <section>
+    <h2>Las 3 modalidades CREA</h2>
+    <div class="modalidad">
+      <div class="mod-card">
+        <h4>🎨 Artesanal</h4>
+        <p>Monto:</p><div class="mod-val">$5k — $25k</div>
+        <p style="margin-top:8px;">Tasa: <strong>0%</strong> (sin interés)</p>
+        <p>Garantía: Aval personal</p>
+        <p>Formulario: F-PR-OCC-01</p>
+      </div>
+      <div class="mod-card">
+        <h4>🚀 Emprendedores</h4>
+        <p>Monto:</p><div class="mod-val">$25k — $150k</div>
+        <p style="margin-top:8px;">Tasa: <strong>7% anual</strong></p>
+        <p>Garantía: Aval / Prendaria</p>
+        <p>Formulario: F-PR-OCC-02</p>
+      </div>
+      <div class="mod-card">
+        <h4>🌿 Sustentable</h4>
+        <p>Monto:</p><div class="mod-val">$50k — $500k</div>
+        <p style="margin-top:8px;">Tasa: <strong>5% anual</strong></p>
+        <p>Moratoria: 3 meses</p>
+        <p>Garantía: Aval / Hipotecaria</p>
+        <p>Formulario: F-PR-OCC-02</p>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Flujo de registro de crédito</h2>
+    <table>
+      <thead><tr><th>Paso</th><th>Acción</th><th>Estado</th></tr></thead>
+      <tbody>
+        <tr><td>1</td><td>Operativo abre "Registrar Crédito" desde solicitud aprobada</td><td class="status-ok">Funciona</td></tr>
+        <tr><td>2</td><td>Se crea Acreditado (si no existe) o se reutiliza por CURP</td><td class="status-ok">Funciona</td></tr>
+        <tr><td>3</td><td>Se crea registro Credito con clave_contrato, monto, plazo, tasas</td><td class="status-ok">Funciona</td></tr>
+        <tr><td>4</td><td>Se generan las filas de Amortizacion (una por cuota)</td><td class="status-ok">Capital + interés por cuota fija</td></tr>
+        <tr><td>5</td><td>Se vincula la solicitud al crédito (solicitud.credito_id)</td><td class="status-ok">Funciona</td></tr>
+        <tr><td>6</td><td>Generar contrato PDF</td><td class="status-ok">contrato-credito.blade.php</td></tr>
+        <tr><td>7</td><td>Generar dictamen PDF</td><td class="status-ok">dictamen-conclusion.blade.php</td></tr>
+        <tr><td>8</td><td>Registrar desembolso (forma de pago + comprobante)</td><td class="status-ok">Formulario de desembolso</td></tr>
+        <tr><td>9</td><td>Crédito pasa a estatus "Activo"</td><td class="status-ok">Automático al guardar desembolso</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section>
+    <h2>Documentos PDF generados por el sistema operativo</h2>
+    <table>
+      <thead><tr><th>Documento</th><th>Template Blade</th><th>Estado</th></tr></thead>
+      <tbody>
+        <tr><td>Contrato de crédito</td><td>contrato-credito.blade.php</td><td class="status-ok">Generado con dompdf</td></tr>
+        <tr><td>Dictamen de conclusión</td><td>dictamen-conclusion.blade.php</td><td class="status-ok">Generado con dompdf</td></tr>
+        <tr><td>Estado de cuenta</td><td>estado-cuenta.blade.php</td><td class="status-ok">Para operativo y ciudadano</td></tr>
+        <tr><td>Recibo de pago</td><td>recibo-pago.blade.php</td><td class="status-ok">Con folio REC-000001-2026</td></tr>
+        <tr><td>Constancia no adeudo</td><td>constancia-no-adeudo.blade.php</td><td class="status-ok">Al liquidar</td></tr>
+        <tr><td>Formatos IYEM (F-PR-OCC-01 al 07)</td><td>pdf/formatos/*.blade.php</td><td class="status-warn">Generados con dompdf/Blade — NO overlay sobre PDF oficial</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section>
+    <h2>Semáforo de riesgo del crédito (calculado dinámicamente)</h2>
+    <table>
+      <thead><tr><th>Días de mora</th><th>Color</th><th>Acción sugerida</th></tr></thead>
+      <tbody>
+        <tr><td>0 días</td><td style="color:#22c55e">🟢 Verde</td><td>Al corriente</td></tr>
+        <tr><td>1 — 30 días</td><td style="color:#eab308">🟡 Amarillo</td><td>Llamada de aviso</td></tr>
+        <tr><td>31 — 60 días</td><td style="color:#f97316">🟠 Naranja</td><td>Visita domiciliaria</td></tr>
+        <tr><td>61 — 90 días</td><td style="color:#ef4444">🔴 Rojo</td><td>Gestión intensiva</td></tr>
+        <tr><td>+90 días</td><td style="color:#6b7280">⚫ Negro</td><td>Canalizar a Jurídico</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <div class="grid">
+    <div class="card">
+      <h3>✅ Lo que ya funciona</h3>
+      <ul>
+        <li>Generación automática de tabla de amortización con fórmula de cuota fija</li>
+        <li>Condonación total (fallecimiento, causa social) con log en pagos</li>
+        <li>Condonación formal con resolutivo y número de acuerdo</li>
+        <li>Reestructuración: nuevo plazo/tasa, cancela cuotas viejas y genera nuevas</li>
+        <li>Desembolso registrable con comprobante adjunto</li>
+        <li>Constancia de no adeudo al liquidar</li>
+        <li>Estado de cuenta PDF descargable por ciudadano y operativo</li>
+        <li>Liquidación anticipada: condona intereses futuros automáticamente</li>
+      </ul>
+    </div>
+    <div class="card warn">
+      <h3>⚠️ Pendientes</h3>
+      <ul>
+        <li><span class="tag danger">P0</span> Formatos IYEM (F-PR-OCC-01 al 07) usan Blade/dompdf — se ve diferente al PDF oficial. Hay prompt listo (<code>prompt_generacion_pdfs_overlay.txt</code>) para implementar FPDI overlay</li>
+        <li><span class="tag warn">P1</span> Sin alerta de presupuesto agotado al registrar crédito</li>
+        <li><span class="tag warn">P1</span> Moratoria de 3 meses para Sustentable no validada en la generación de amortización</li>
+        <li><span class="tag warn">P1</span> El contrato no tiene firma electrónica</li>
+        <li><span class="tag info">Mejora</span> Integración con SAT para verificar RFC en tiempo real</li>
+        <li><span class="tag info">Mejora</span> Folio de contrato con numeración oficial IYEM</li>
+      </ul>
+    </div>
+  </div>
+</div>
+</body>
+</html>

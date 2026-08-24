@@ -1,0 +1,367 @@
+# PROMPT: LANDING PAGE IMPRESIONANTE + LOGO CREA + DEPLOY A PRODUCCIÓN
+# Para usar en: Claude Code (sesión interactiva en la raíz del proyecto)
+# Stack: Laravel 11 + Vue 3 + Inertia.js + TypeScript + Tailwind CSS
+# Archivo principal a reescribir: resources/js/Pages/Welcome.vue
+# Logo actual: public/logo.svg (reemplazar completamente)
+# Favicon: public/favicon.ico (regenerar desde el nuevo logo SVG)
+
+---
+
+## CONTEXTO DEL PROGRAMA CREA
+
+Lee primero el documento oficial de Reglas de Operación en:
+  `public/formatos/Acuerdo IYEM 03-2025 Programa CREA`
+
+Este documento contiene la información real del programa que DEBE reflejarse en la
+landing page: modalidades exactas, montos, plazos, tasas, requisitos, población
+objetivo y los valores del programa. No inventes datos — extráelos del documento.
+
+El programa es del Instituto Yucateco del Emprendimiento y la Mipyme (IYEM),
+Gobierno del Estado de Yucatán. Colores institucionales de referencia:
+- Verde Yucatán: aproximadamente #006847
+- Dorado/Ámbar acento: aproximadamente #E8A020
+- El diseño debe transmitir: confianza institucional + modernidad + accesibilidad
+
+---
+
+## FASE 1 — DISEÑO DEL LOGOTIPO CREA (SVG)
+
+### 1.1 Crear el logotipo principal
+
+Reemplaza `public/logo.svg` con un logo vectorial original para el programa CREA.
+
+El logo debe:
+- Ser completamente en SVG, sin dependencias externas
+- Contener un símbolo/marca (izotipo) + el texto "CREA" (logotipo)
+- El símbolo debe evocar: crecimiento, emprendimiento, Yucatán (puede incorporar
+  elementos sutiles como una hoja de henequén estilizada, una figura humana
+  ascendente, o una semilla brotando — elige el que quede más elegante)
+- Tipografía del texto "CREA" moderna, geométrica, con peso fuerte (trazos SVG
+  propios, no fuentes web)
+- Subtítulo pequeño: "Programa de Crédito para Emprendedores" en tipografía ligera
+- Paleta: verde institucional (#006847) como color principal, dorado (#E8A020) como
+  acento, blanco para versión oscura
+- El SVG debe tener viewBox responsivo (ej: "0 0 280 80") y funcionar en fondo
+  claro y oscuro (usar `currentColor` donde aplique o incluir variables de color)
+- Versión horizontal para el navbar
+- El isotipo solo (cuadrado ~40x40) para `AppLogoIcon.vue` y favicon
+
+### 1.2 Actualizar AppLogoIcon.vue
+
+Reemplaza el contenido de `resources/js/components/AppLogoIcon.vue` con el isotipo
+SVG (solo el símbolo, sin texto, ~40x40px viewBox) del nuevo logo.
+
+### 1.3 Actualizar AppLogo.vue
+
+Actualiza `resources/js/components/AppLogo.vue` para mostrar el nuevo logo completo
+(símbolo + texto "CREA") usando el SVG inline o importado.
+
+### 1.4 Generar el favicon
+
+Usa el isotipo para generar `public/favicon.svg` (moderno, browsers actuales lo
+soportan) y actualiza el `<link rel="icon">` en la plantilla Blade.
+
+Busca el archivo de layout blade principal (probablemente `resources/views/app.blade.php`)
+y actualiza el favicon para usar el SVG:
+```html
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<link rel="icon" type="image/x-icon" href="/favicon.ico">
+```
+
+Genera también `public/favicon.svg` con el isotipo en verde sobre fondo transparente.
+
+---
+
+## FASE 2 — LANDING PAGE (Welcome.vue)
+
+Reescribe completamente `resources/js/Pages/Welcome.vue`. Esta debe ser la landing
+page más impresionante que un desarrollador Frontend senior con 15 años de experiencia
+en UX/UI podría crear. Sin emojis. Solo SVG para ilustraciones e íconos visuales.
+
+### Stack de animaciones (sin librerías externas de animación):
+- CSS animations y transitions nativas (Tailwind + CSS custom)
+- Intersection Observer API para scroll-triggered animations (Vue `onMounted`)
+- CSS `@keyframes` para efectos continuos (float, pulse, gradient shift)
+- Vue Transition para elementos que entran/salen del DOM
+- NO usar GSAP, AOS, ni librerías de animación externas — solo CSS y JS nativo
+
+### 2.1 NAVBAR
+
+Navbar sticky con efecto glassmorphism (blur + transparencia) que se solidifica al
+hacer scroll:
+- Logo CREA a la izquierda (componente AppLogo o SVG inline)
+- Links de navegación: Inicio | Modalidades | Requisitos | ¿Cómo funciona? | Contacto
+- Botón CTA "Solicitar Crédito" (verde, con hover animado)
+- Botón "Mi Portal" (outline) para ciudadanos ya registrados
+- Menú hamburger en mobile con animación de apertura suave
+- Al hacer scroll >50px: fondo blanco/dark sólido con sombra sutil
+
+### 2.2 HERO SECTION
+
+Hero de pantalla completa (100vh) visualmente impactante:
+
+**Lado izquierdo (60%)**:
+- Badge animado: "Programa del Gobierno de Yucatán" (con logo IYEM/escudo SVG pequeño)
+- Headline principal en 2-3 líneas:
+  "Impulsa tu negocio con el crédito que mereces"
+  Tipografía grande (text-5xl/6xl), peso bold, con una palabra en verde (#006847)
+- Descripción corta (2 líneas) extraída de las Reglas de Operación
+- Dos CTAs: "Solicitar mi crédito" (primario, verde) y "Consultar mi crédito" (secundario)
+- Estadísticas animadas con contador (useCount hook):
+  "Créditos otorgados", "Municipios atendidos", "Emprendedores apoyados"
+  (usa números reales de las RO o valores representativos del programa)
+
+**Lado derecho (40%)**:
+- Ilustración SVG original: escena de un emprendedor/artesana yucateca
+  rodeado de elementos de su negocio, con líneas de crecimiento, plantas,
+  herramientas — estilo flat design moderno, colores del programa
+  La ilustración debe tener elementos con animación CSS: hojas que se mueven
+  levemente (floating), una flecha de crecimiento que se anima, etc.
+
+**Fondo del hero**:
+- Gradiente sutil (blanco hacia verde muy claro) con formas geométricas SVG
+  decorativas en el fondo (círculos, hexágonos) con opacidad baja y animación
+  de rotación/flotación lenta
+
+### 2.3 SECCIÓN ESTADÍSTICAS / IMPACTO
+
+Banda horizontal con fondo verde oscuro (#006847) o gradiente verde-esmeralda.
+4-5 métricas del programa con íconos SVG:
+- Cada número hace un contador animado cuando entra al viewport
+  (Intersection Observer + requestAnimationFrame)
+- Datos reales de las RO (monto máximo, plazo máximo, tasa, municipios, etc.)
+
+### 2.4 SECCIÓN MODALIDADES (CARRUSEL)
+
+Título: "Modalidades del Programa"
+Subtítulo: descripción corta de por qué existen diferentes modalidades
+
+**Carrusel horizontal** (sin librería externa, implementado en Vue puro):
+- 3-5 cards según lo que digan las RO (modalidades exactas del programa)
+- En desktop: mostrar 3 cards simultáneamente con navegación por flechas
+- En mobile: 1 card con swipe gesture nativo (touch events)
+- Cada card debe tener:
+  - Ícono SVG temático (artesano, emprendedor, sustentable, grupal, etc.)
+  - Nombre de la modalidad
+  - Monto máximo y plazo según las RO
+  - 3-4 beneficios o características clave
+  - Tasa de interés (o "Tasa preferencial" si no está especificada)
+  - Botón "Más información" o "Solicitar"
+- Cards con efecto hover: elevación (shadow) + borde verde sutil + ligero scale
+- Indicadores de posición (dots) animados en la parte inferior
+- Auto-play opcional con pausa en hover
+
+### 2.5 SECCIÓN ¿CÓMO FUNCIONA? (TIMELINE)
+
+Timeline visual horizontal (desktop) / vertical (mobile) con los pasos del proceso:
+
+Extraer los pasos exactos de las RO. El flujo típico es:
+1. Registro en el portal
+2. Completar solicitud y expediente
+3. Carga de documentos
+4. Revisión y análisis crediticio
+5. Dictamen del comité
+6. Firma de contrato
+7. Desembolso del crédito
+
+Cada paso:
+- Número en círculo animado (stroke-dashoffset que se "dibuja" al entrar al viewport)
+- Ícono SVG representativo
+- Título del paso
+- Descripción de 1-2 líneas
+- Línea conectora entre pasos (que se "ilumina" en secuencia al hacer scroll)
+
+Animación de entrada: los pasos aparecen de izquierda a derecha (stagger) cuando
+la sección entra al viewport usando Intersection Observer.
+
+### 2.6 SECCIÓN REQUISITOS
+
+Diseño en dos columnas:
+- Izquierda: lista de requisitos con checkmarks SVG animados (que se "dibujan"
+  al entrar al viewport con stroke-dashoffset animation)
+- Derecha: ilustración SVG de documentos/expediente con animación floating
+
+Los requisitos deben extraerse exactamente de las Reglas de Operación.
+
+Incluir un aviso importante (si aplica en las RO): restricciones de elegibilidad,
+casos de exclusión, etc.
+
+### 2.7 SECCIÓN CONSULTAR CRÉDITO
+
+Integra el formulario existente de consulta (CURP + RFC) con diseño premium:
+- Card centrado con fondo blanco, sombra suave, bordes redondeados
+- Título: "¿Ya tienes un crédito CREA?"
+- Descripción: "Consulta el estado de tu crédito, saldo y próximos pagos"
+- Campos: CURP (18 chars, validación en tiempo real) y RFC
+- Botón animado con efecto ripple en el click
+- Si hay resultado (prop `acreditado`): mostrar un card con los datos del crédito
+  de forma elegante (nombre, estatus con badge colorido, próxima cuota, etc.)
+- Si hay error: mensaje de error con animación shake
+
+### 2.8 SECCIÓN NOTICIAS / ANUNCIOS (OPCIONAL)
+
+Si en las RO o en la landing actual hay información sobre convocatorias o fechas
+importantes, incluir una sección de "Convocatoria Vigente" con un diseño destacado
+(banner con countdown o simplemente fechas del programa).
+
+### 2.9 SECCIÓN PREGUNTAS FRECUENTES (FAQ)
+
+Accordion animado con las preguntas más comunes extraídas de las RO:
+- ¿Quién puede solicitar un crédito CREA?
+- ¿Cuáles son los montos disponibles?
+- ¿Cuánto tiempo tarda el proceso?
+- ¿Qué garantías se requieren?
+- ¿Puedo solicitar el crédito en línea?
+- Al menos 6-8 preguntas relevantes de las RO
+
+Cada item del accordion:
+- Abre/cierra con animación de height suave (max-height transition)
+- Ícono + (plus) que rota 45° al abrir
+- Solo uno abierto a la vez
+
+### 2.10 FOOTER
+
+Footer completo y elegante:
+- Logo CREA blanco sobre fondo verde oscuro (#004D35) o negro
+- Columnas: Programa | Modalidades | Portal | Contacto
+- Datos de contacto institucional del IYEM (extraer de las RO si están disponibles)
+- Dirección, teléfono, correo
+- Redes sociales con íconos SVG (Facebook, Twitter/X, Instagram — si aplica)
+- Aviso legal: "Programa sujeto a disponibilidad presupuestal"
+- Copyright: © 2025 IYEM. Gobierno del Estado de Yucatán.
+- Línea divisora y texto pequeño con el aviso de privacidad
+
+### 2.11 DARK MODE
+
+El dark mode debe funcionar perfectamente:
+- Usar clases `dark:` de Tailwind en todos los elementos
+- El toggle de tema debe persistir en localStorage
+- Transición suave entre temas (transition-colors duration-300 en el root)
+- Verificar que todos los SVGs e ilustraciones se vean bien en dark mode
+
+### 2.12 RESPONSIVIDAD
+
+La landing debe verse perfecta en:
+- Mobile (320px - 768px): hero apilado, carousel de 1 card, timeline vertical
+- Tablet (768px - 1024px): transiciones intermedias
+- Desktop (1024px+): layout completo con ilustraciones y efectos
+
+### 2.13 PERFORMANCE
+
+- Lazy load de secciones que no están en el viewport inicial
+- SVGs inline para íconos críticos (no HTTP requests adicionales)
+- Evitar imágenes rasterizadas, solo SVGs
+- Intersection Observer para animar solo cuando sea necesario (no animar offscreen)
+
+---
+
+## FASE 3 — PULIDO FINAL
+
+Después de implementar todo:
+
+1. Revisar que NO haya emojis en ninguna parte de la landing
+2. Verificar que todos los datos (montos, plazos, tasas, requisitos) vengan de las RO
+3. Asegurar que los links de navegación del navbar hagan scroll suave a cada sección
+4. Confirmar que el formulario de consulta de crédito funcione (POST a /consultar-credito)
+5. Verificar el dark mode en todas las secciones
+6. Probar en mobile (simular en devtools)
+7. Correr `npm run build` y verificar que compile sin errores
+
+---
+
+## FASE 4 — DEPLOY A PRODUCCIÓN EN HOSTINGER
+
+Una vez que la landing page y el logo estén terminados y funcionando localmente:
+
+### 4.1 Build del frontend
+
+```bash
+npm run build
+```
+
+Verificar que `public/build/` se genere sin errores.
+
+### 4.2 Optimizaciones Laravel
+
+```bash
+php artisan config:cache
+php artisan route:cache
+php artisan view:cache
+composer install --optimize-autoloader --no-dev
+```
+
+### 4.3 Subir a producción via SSH
+
+**Datos del servidor**:
+- IP: 195.35.38.222
+- Puerto SSH: 65002
+- Usuario: u489236361
+- Dominio destino: https://crea.iyemyucatan.com/
+
+Conectar:
+```bash
+ssh -p 65002 u489236361@195.35.38.222
+```
+
+Subir cambios (solo los archivos modificados) con rsync:
+```bash
+rsync -avz --progress \
+  --exclude='.env' \
+  --exclude='node_modules/' \
+  --exclude='vendor/' \
+  --exclude='storage/logs/*' \
+  --exclude='.git/' \
+  --exclude='database/database.sqlite' \
+  -e "ssh -p 65002" \
+  ./ u489236361@195.35.38.222:/home/u489236361/domains/crea.iyemyucatan.com/public_html/
+```
+
+En el servidor (post-upload):
+```bash
+cd /home/u489236361/domains/crea.iyemyucatan.com/public_html
+
+# Solo si hay cambios en composer.json:
+composer install --optimize-autoloader --no-dev
+
+# Limpiar y regenerar cachés:
+php artisan config:clear
+php artisan route:clear
+php artisan view:clear
+php artisan config:cache
+php artisan route:cache
+php artisan view:cache
+
+# Verificar permisos:
+chmod -R 775 storage bootstrap/cache
+```
+
+### 4.4 Verificación post-deploy
+
+Abrir https://crea.iyemyucatan.com/ y verificar:
+
+- [ ] El nuevo logo CREA aparece en el navbar y el favicon
+- [ ] El hero carga con las animaciones correctamente
+- [ ] El carrusel de modalidades funciona (flechas, swipe mobile)
+- [ ] Los contadores animados de estadísticas se activan al hacer scroll
+- [ ] El timeline de pasos se anima en secuencia
+- [ ] Los checkmarks SVG de requisitos se dibujan al entrar al viewport
+- [ ] El formulario de consulta de crédito funciona (POST /consultar-credito)
+- [ ] El dark mode funciona y persiste
+- [ ] El footer muestra información correcta del IYEM
+- [ ] Sin errores en la consola del navegador
+- [ ] La página carga en menos de 3 segundos (verificar en Network tab)
+- [ ] Se ve correctamente en mobile
+
+---
+
+## NOTAS IMPORTANTES
+
+- La landing es la primera impresión del programa ante la ciudadanía yucateca.
+  Debe transmitir: CONFIANZA institucional, ACCESIBILIDAD para todo público,
+  MODERNIDAD que inspire al emprendedor.
+- Priorizar claridad de información sobre efectismo visual. Las animaciones
+  deben complementar el contenido, no distraer de él.
+- El portal ciudadano (`/mi-portal`) y el login operativo (`/login`) deben seguir
+  funcionando — no romper ninguna ruta existente.
+- Si al revisar las RO encuentras información que contradice datos actualmente
+  en Welcome.vue (modalidades, montos, etc.), usa los datos de las RO.

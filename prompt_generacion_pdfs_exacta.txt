@@ -1,0 +1,275 @@
+# PROMPT: GENERACIÓN CORRECTA DE PDFs DE SOLICITUD + FLUJO EXACTO SEGÚN REFERENCIA HTML
+# Para usar en: Claude Code (sesión interactiva en la raíz del proyecto)
+# Stack: Laravel 11 + Vue 3 + Inertia.js + TypeScript + Tailwind CSS
+# ARCHIVO DE REFERENCIA OBLIGATORIO: flujo_solicitud_y_formatos.html (raíz del proyecto)
+# PLANTILLAS OFICIALES ORIGINALES: public/formatos/FormatoCreaEmprendedores/,
+#   public/formatos/FormatoCreaSustentable/, public/formatos/FormatosCreaartesanal/
+
+---
+
+## CONTEXTO Y CÓMO USAR ESTE PROMPT
+
+Abre primero `flujo_solicitud_y_formatos.html` en un navegador (o lee su código). Ese
+archivo es la **especificación visual exacta** de lo que debe lograrse: muestra el
+flujo completo (verificación CURP → modalidad/persona/garantía → formulario →
+documentos → envío → revisión → aprobación → descarga de ZIP) y, lo más importante,
+la **réplica visual de cada uno de los 5 PDFs oficiales ya llenados con datos de
+ejemplo** (secciones 3 a 7 del HTML: F-PR-OCC-02, 03, 04, 05 y 07).
+
+El objetivo de este prompt es que los PDFs que el sistema genera de verdad (al
+aprobar una solicitud) se vean **igual que esas réplicas del HTML** — mismos
+encabezados, mismas barras de sección con sus colores (azul institucional para
+02/03/04/05, vino/maroon para 06/07), mismo orden de campos, y los datos reales de
+la solicitud en el lugar correcto. Compara constantemente contra el HTML y contra
+los PDF originales en `public/formatos/` mientras implementas.
+
+---
+
+## 1. LO QUE YA EXISTE (REVISAR ANTES DE TOCAR NADA)
+
+Antes de escribir código nuevo, revisa el estado actual:
+- ¿Existen ya plantillas Blade para generar estos PDFs? Busca en
+  `resources/views/pdf/` o similar, y en los controllers que mencionen
+  `dompdf`, `browsershot`, `Pdf::`, `contratoPdf`, `dictamenPdf`
+- ¿Qué librería de generación de PDF está instalada? (`composer.json` —
+  `barryvdh/laravel-dompdf`, `spatie/browsershot`, etc.) Reutilizar la misma
+  para consistencia, salvo que tenga limitaciones serias para reproducir estas
+  plantillas (ej. dompdf no soporta bien flexbox — si es el caso, usar tablas
+  HTML clásicas con `<table>`/`<td>` en las plantillas Blade, que es justo el
+  enfoque usado en este HTML de referencia con `.frow`/`.fcell` simulando un
+  grid de formulario)
+- ¿Qué datos ya están capturados en `SolicitudCredito` y modelos relacionados
+  (ficha técnica, proveedores, clientes, ingresos/egresos, aval, garantías)?
+  Mapea cada campo del HTML de referencia a su columna/relación real en BD. Si
+  falta algún campo en la base de datos (revisar contra la sección "2. Mapeo"
+  del HTML), agrégalo con una migración
+
+---
+
+## 2. PLANTILLAS BLADE PARA CADA PDF (replicar el HTML de referencia)
+
+Crea (o corrige si ya existen) una plantilla Blade por cada documento, usando
+como base visual EXACTA las secciones 3-7 del HTML de referencia (reutiliza sus
+clases CSS de cabecera, barras de sección, grid de campos y tablas — cópialas
+tal cual al `<style>` de las plantillas Blade, adaptando solo lo necesario para
+el motor de PDF que se use):
+
+- `resources/views/pdf/solicitud-persona-fisica.blade.php` → F-PR-OCC-01
+  (Artesanal) / F-PR-OCC-02 (Emprendedores/Sustentable)
+- `resources/views/pdf/solicitud-persona-moral.blade.php` → F-PR-OCC-03
+- `resources/views/pdf/ficha-tecnica.blade.php` → F-PR-OCC-04
+- `resources/views/pdf/ingresos-egresos.blade.php` → F-PR-OCC-05 (reutilizable
+  para histórico y proyección, recibiendo un parámetro `tipo: 'historico'|'proyeccion'`
+  y el rango de fechas correspondiente)
+- `resources/views/pdf/declaracion-bienes-aval.blade.php` → F-PR-OCC-06
+  (Artesanal, sin fila de modalidad Emprendedores/Sustentable) / F-PR-OCC-07
+  (Emprendedores/Sustentable, con fila de modalidad)
+
+### Detalles obligatorios por plantilla (ver HTML de referencia, secciones 3-7):
+
+**Encabezado común a todas**: logo/sello IYEM a la izquierda + "INSTITUTO
+YUCATECO DE EMPRENDEDORES" + "Dirección de Innovación y Competitividad
+Empresarial", badge "CRÉDITOS IYEM" a la derecha, línea de programa, título del
+documento centrado.
+
+**Fila de modalidad** (checkboxes): marcar visualmente (☑ relleno en azul/vino)
+SOLO la modalidad real de la solicitud (`modalidad.nombre`), dejar sin marcar las
+demás. Para F-PR-OCC-01/06 (Artesanal) no hay fila de modalidad múltiple, va fijo
+"MODALIDAD CREA ARTESANAL".
+
+**Barras de sección** (`INFORMACIÓN DEL SOLICITANTE`, `DESTINO DEL CRÉDITO`,
+etc.): fondo azul institucional `#2056a8` con texto blanco, o vino `#8b1538`
+para los formatos de Declaración de Bienes del Aval — igual que en el HTML.
+
+**Checkboxes binarios** (Sí/No, Propio/Rentado, H/M, Casado/Soltero, etc.):
+marcar visualmente la opción correspondiente al valor guardado en BD; dejar la
+otra vacía. Si el dato no existe (es null), dejar ambas casillas vacías, no
+asumir un valor por default.
+
+**Campos vacíos / no aplicables**: si un campo no tiene dato (ej. "Dependencia
+si aplica" cuando el usuario no es empleado público), mostrar el campo vacío o
+"—" / "N/A", igual que se ve en el HTML de referencia — NUNCA omitir el campo
+ni el rótulo.
+
+**Tablas repetibles** (proveedores, clientes, deudas, conceptos de destino del
+crédito, créditos de gobierno, bienes y derechos del aval): iterar sobre la
+colección real (`@foreach`). Si la colección está vacía, mostrar una fila con
+"No aplica" o el texto correspondiente (como en el HTML), no dejar la tabla sin
+filas.
+
+**Formato de moneda**: todos los importes deben mostrarse como `$X,XXX.XX`
+(separador de miles + 2 decimales), usando el mismo helper de formato de moneda
+que ya se use en el resto del sistema (o `number_format($valor, 2)` si no existe
+uno centralizado).
+
+**Declaración final + firma**: incluir el párrafo de "Bajo formal protesta de
+decir verdad..." (texto exacto de cada PDF original — tomarlo de
+`public/formatos/.../*.pdf` para no alterar la redacción legal), con
+`Fecha de Solicitud` (fecha real del envío/aprobación) y el campo
+`Nombre y Firma` en blanco con la nota "(firma autógrafa al entregar impreso)"
+— igual que en el HTML de referencia.
+
+**Pie de página**: nota de aviso de privacidad + código de formato y número de
+página ("F-PR-OCC-XX R00 · Página X de Y"), igual que el HTML de referencia.
+
+---
+
+## 3. LÓGICA CONDICIONAL DE GENERACIÓN
+
+Al momento de generar el ZIP (disparado cuando `SolicitudCredito.estatus` cambia
+a `Aprobada` — ver punto 4), aplica esta lógica exactamente como en la sección
+"2. Mapeo" y el ejemplo de ZIP del HTML de referencia:
+
+```
+SIEMPRE se generan:
+  - Solicitud (F-PR-OCC-01 si Artesanal, 02 si Física Emprendedores/Sustentable,
+    03 si Moral Emprendedores/Sustentable)
+  - Ficha Técnica (F-PR-OCC-04)
+  - Estado de Ingresos y Egresos (F-PR-OCC-05):
+      - 1 copia "Proyección" si solicitud.es_emprendimiento = true
+      - 2 copias "Histórico" + "Proyección" si es_emprendimiento = false
+
+CONDICIONAL según tipo_garantia:
+  - Si tipo_garantia = 'aval' → generar también Declaración de Bienes
+    (F-PR-OCC-06 si Artesanal, F-PR-OCC-07 si Emprendedores/Sustentable)
+  - Si tipo_garantia = 'prendaria' o 'hipotecaria' → NO generar el formato de
+    Declaración de Bienes (la info de garantía ya va dentro de la Solicitud,
+    sección "Garantía Prendaria"/"Garantía Hipotecaria")
+```
+
+Nombrar los archivos dentro del ZIP de forma clara y consistente, ej.:
+```
+F-PR-OCC-02_Solicitud_Persona_Fisica.pdf
+F-PR-OCC-04_Ficha_Tecnica.pdf
+F-PR-OCC-05_Ingresos_Egresos_Historico.pdf   (si aplica)
+F-PR-OCC-05_Ingresos_Egresos_Proyeccion.pdf
+F-PR-OCC-07_Declaracion_Bienes_Aval.pdf      (si aplica)
+```
+
+---
+
+## 4. FLUJO DE ESTATUS (ver sección 1 del HTML — pasos 5, 6 y 7)
+
+Verifica/corrige que el flujo sea exactamente este (si ya está implementado de
+otra forma por un prompt anterior, ajústalo a esto):
+
+1. Ciudadano completa el formulario y presiona "Enviar solicitud" →
+   `estatus = 'Enviada'` → pantalla/notificación: "Tu solicitud fue enviada
+   correctamente. El equipo de CREA está revisando tu información..." — el ZIP
+   **NO se genera todavía**
+2. Operativo cambia el estatus a `En_Revision`, `Documentacion_Incompleta`,
+   `Aprobada` o `Rechazada` desde el panel operativo (esto ya debe existir;
+   si no, no es parte de este prompt — solo verificar que el trigger del punto
+   3 esté conectado a ese cambio de estatus)
+3. SOLO cuando `estatus` cambia a `Aprobada`: disparar (vía Observer del modelo
+   `SolicitudCredito`, o en el método del controller operativo que hace el
+   cambio) la generación de todos los PDFs aplicables + el ZIP, y notificar al
+   ciudadano
+4. El ciudadano ve entonces la pantalla descrita en el paso 7 del HTML:
+   mensaje "¡Felicidades! Tu solicitud va a pasar a Comité.", botón "Descargar
+   formatos (ZIP)", instrucciones de entrega física, y el mapa/dirección del
+   IYEM (reutilizar el mismo embed de Google Maps ya implementado en la sección
+   de Contacto de la landing)
+
+---
+
+## 5. ALMACENAMIENTO Y DESCARGA SEGURA DEL ZIP
+
+- Generar el ZIP con `ZipArchive` (PHP nativo) o la librería ya usada en el
+  proyecto, conteniendo los PDFs aplicables según el punto 3
+- Guardar el ZIP en disco `local` (privado), NUNCA en `public` — mismo criterio
+  de seguridad de prompts anteriores (los PDFs contienen datos personales
+  sensibles: domicilios, RFC, bienes patrimoniales del aval)
+- Ruta autenticada de descarga: `GET /mi-portal/solicitud/{solicitud}/formatos.zip`
+  verificando que el `solicitud->user_id` coincida con el usuario autenticado
+- Si se solicita regenerar (ej. el operativo corrige un dato y vuelve a
+  aprobar), sobrescribir el ZIP anterior, no acumular versiones
+
+---
+
+## 6. VERIFICACIÓN
+
+1. `php artisan migrate` si se agregaron campos faltantes detectados al mapear
+   contra el HTML de referencia
+2. Generar manualmente (vía tinker, seeder de prueba, o flujo real en
+   `php artisan serve`) una solicitud de prueba para cada una de estas
+   combinaciones y comparar visualmente el PDF resultante contra la sección
+   correspondiente del HTML de referencia Y contra el PDF oficial original en
+   `public/formatos/`:
+   - Artesanal + Física + Aval → debe incluir F-PR-OCC-01, 04, 05 (1 o 2
+     copias), 06
+   - Emprendedores + Física + Aval → F-PR-OCC-02, 04, 05, 07 (igual que el
+     ejemplo del HTML de referencia, sección 3-7)
+   - Emprendedores + Moral + Garantía prendaria → F-PR-OCC-03, 04, 05 (sin 07)
+   - Sustentable + Moral + Garantía hipotecaria → F-PR-OCC-03, 04, 05 (sin 07)
+3. Confirmar que los checkboxes de modalidad/sexo/estado civil/etc. se marcan
+   correctamente según los datos reales (no hardcodeados)
+4. Confirmar que las tablas repetibles vacías muestran el texto "No aplica" en
+   lugar de quedar en blanco o romper el layout
+5. Confirmar el formato de moneda ($X,XXX.XX) en TODOS los importes del PDF
+6. Confirmar que el ZIP solo se genera al aprobar, no al enviar
+7. Confirmar que la descarga del ZIP es rechazada para un usuario que no es
+   dueño de la solicitud (403)
+8. `php artisan test` — agregar tests de generación de PDF/ZIP para al menos 2
+   de las combinaciones del punto 2
+
+---
+
+## 7. DEPLOY A PRODUCCIÓN (HOSTINGER)
+
+### Datos del servidor
+- IP: 195.35.38.222 · Puerto: 65002 · Usuario: u489236361
+- Dominio: https://crea.iyemyucatan.com/
+- Ruta: `/home/u489236361/domains/crea.iyemyucatan.com/public_html`
+
+```bash
+# Local
+npm ci && npm run build
+composer install --optimize-autoloader --no-dev
+
+# Rsync
+rsync -avz --progress \
+  --exclude='.env' --exclude='node_modules/' --exclude='vendor/' \
+  --exclude='storage/logs/*' --exclude='.git/' --exclude='database/database.sqlite' \
+  -e "ssh -p 65002" \
+  ./ u489236361@195.35.38.222:/home/u489236361/domains/crea.iyemyucatan.com/public_html/
+
+# En el servidor
+ssh -p 65002 u489236361@195.35.38.222
+cd /home/u489236361/domains/crea.iyemyucatan.com/public_html
+composer install --optimize-autoloader --no-dev
+php artisan migrate --force
+php artisan config:clear && php artisan route:clear && php artisan view:clear
+php artisan config:cache && php artisan route:cache && php artisan view:cache
+chmod -R 775 storage bootstrap/cache
+```
+
+Si la librería de PDF requiere binarios (ej. `spatie/browsershot` necesita
+Chromium/Node), confirmar que Hostinger lo soporte; si no, usar
+`barryvdh/laravel-dompdf` (PHP puro) para evitar fallos en producción.
+
+### Verificación post-deploy en https://crea.iyemyucatan.com/mi-portal
+
+- [ ] Aprobar una solicitud de prueba genera el ZIP correcto según su
+      combinación de modalidad/persona/garantía
+- [ ] Los PDFs generados se ven igual que las réplicas del HTML de referencia
+      (encabezado, colores de barras, checkboxes marcados correctamente,
+      formato de moneda)
+- [ ] El ZIP solo aparece disponible para descarga después de la aprobación,
+      no antes
+- [ ] La descarga del ZIP requiere autenticación y pertenencia de la solicitud
+- [ ] Sin errores en consola del navegador ni en `storage/logs/laravel.log`
+
+---
+
+## NOTAS
+
+- `flujo_solicitud_y_formatos.html` es la fuente de verdad de este prompt —
+  si algo en este texto contradice lo mostrado ahí, prevalece el HTML
+- Los textos legales (declaración bajo protesta, aviso de privacidad) deben
+  copiarse tal cual de los PDF originales en `public/formatos/`, el HTML de
+  referencia los abrevia solo por espacio
+- No reinventar el mapeo de campos si ya existe lógica de otros prompts
+  anteriores (`prompt_portal_rediseno_wizard.txt`, `prompt_portal_mejoras_v2.txt`)
+  — este prompt se enfoca específicamente en que la GENERACIÓN DE PDF sea fiel
+  a los formatos oficiales, no en rediseñar el formulario de captura

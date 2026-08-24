@@ -16,7 +16,7 @@ class UpdateMoratorio extends Command
         $hoy = Carbon::now('America/Merida')->startOfDay();
 
         $pendientes = Amortizacion::with('credito')
-            ->whereNotIn('estado', ['Pagado', 'Condonado', 'Reestructurada'])
+            ->whereNotIn('estado', ['Pagado', 'Condonado', 'Reestructurada', 'Gracia'])
             ->where('fecha_vencimiento', '<', $hoy->toDateString())
             ->get();
 

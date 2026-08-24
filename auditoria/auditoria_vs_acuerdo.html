@@ -1,0 +1,612 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Auditoría Legal CREA vs Acuerdo IYEM 03/2025</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;font-family:'Segoe UI',system-ui,sans-serif;}
+body{background:#0a0f1a;color:#e2e8f0;min-height:100vh;}
+header{background:linear-gradient(135deg,#7c0000 0%,#b91c1c 40%,#1d4ed8 100%);padding:28px 32px;}
+header h1{font-size:1.5rem;color:#fff;font-weight:800;}
+header p{color:rgba(255,255,255,.8);margin-top:6px;font-size:.85rem;}
+.alert-banner{background:#450a0a;border:1px solid #b91c1c;padding:14px 20px;font-size:.88rem;color:#fca5a5;display:flex;align-items:center;gap:12px;}
+.container{max-width:1080px;margin:0 auto;padding:28px 16px;}
+section{margin-bottom:36px;}
+section > h2{font-size:1.05rem;font-weight:700;color:#f87171;border-bottom:2px solid #1e293b;padding-bottom:10px;margin-bottom:18px;display:flex;align-items:center;gap:8px;}
+section > h2.blue{color:#60a5fa;}
+section > h2.green{color:#34d399;}
+section > h2.amber{color:#fbbf24;}
+section > h2.purple{color:#a78bfa;}
+section > h2.sky{color:#38bdf8;}
+.scorecard{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:24px;}
+.sc{background:#1e293b;border-radius:12px;padding:16px;text-align:center;border-top:3px solid;}
+.sc .n{font-size:2rem;font-weight:800;line-height:1;}
+.sc .l{font-size:.72rem;color:#94a3b8;margin-top:6px;}
+.sc.red{border-color:#ef4444;} .sc.red .n{color:#f87171;}
+.sc.amber{border-color:#f59e0b;} .sc.amber .n{color:#fbbf24;}
+.sc.green{border-color:#10b981;} .sc.green .n{color:#34d399;}
+.sc.blue{border-color:#3b82f6;} .sc.blue .n{color:#60a5fa;}
+.sc.purple{border-color:#8b5cf6;} .sc.purple .n{color:#a78bfa;}
+table{width:100%;border-collapse:collapse;font-size:.79rem;margin-bottom:16px;}
+th{background:#0f172a;color:#94a3b8;padding:9px 10px;text-align:left;font-weight:600;border-bottom:1px solid #1e293b;}
+td{padding:8px 10px;border-bottom:1px solid #111827;vertical-align:top;}
+tr:hover td{background:#111827;}
+.art{font-size:.7rem;color:#475569;white-space:nowrap;}
+.tag{display:inline-block;padding:2px 7px;border-radius:8px;font-size:.68rem;font-weight:700;white-space:nowrap;}
+.p0{background:#450a0a;color:#f87171;}
+.p1{background:#451a03;color:#fb923c;}
+.p2{background:#1a2a0a;color:#86efac;}
+.ok{background:#052e16;color:#34d399;}
+.miss{background:#1a0830;color:#c084fc;}
+.icon-ok::before{content:"✅ ";}
+.icon-warn::before{content:"⚠️ ";}
+.icon-no::before{content:"❌ ";}
+.icon-part::before{content:"🟡 ";}
+.card{background:#1e293b;border-radius:12px;padding:18px;margin-bottom:12px;border-left:4px solid #374151;}
+.card.danger{border-left-color:#ef4444;}
+.card.warn{border-left-color:#f59e0b;}
+.card.info{border-left-color:#3b82f6;}
+.card.ok{border-left-color:#10b981;}
+.card h3{font-size:.9rem;font-weight:700;color:#fff;margin-bottom:10px;}
+.card ul{padding-left:16px;}
+.card li{font-size:.81rem;color:#94a3b8;line-height:1.65;margin-bottom:3px;}
+.card li strong{color:#e2e8f0;}
+.mod-header{background:#111827;border-radius:8px;padding:10px 14px;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;}
+.mod-header .name{font-size:.9rem;font-weight:700;color:#fff;}
+.mod-header .subtitle{font-size:.75rem;color:#64748b;}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+@media(max-width:700px){.grid2{grid-template-columns:1fr;}}
+.score-table{display:grid;grid-template-columns:1fr 1fr 1fr;gap:0;border:1px solid #1e293b;border-radius:10px;overflow:hidden;margin-bottom:12px;}
+.st-cell{padding:10px 12px;border-bottom:1px solid #111827;border-right:1px solid #111827;}
+.st-cell:last-child{border-right:none;}
+.st-cell:nth-child(3n){border-right:none;}
+.st-head{background:#0f172a;font-size:.72rem;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.5px;}
+.st-cell .cat{font-size:.8rem;color:#e2e8f0;font-weight:600;}
+.st-cell .pts{font-size:1.1rem;font-weight:800;color:#fbbf24;}
+.st-cell .sub{font-size:.72rem;color:#64748b;margin-top:3px;}
+.prog-bar{height:8px;background:#1e293b;border-radius:4px;overflow:hidden;margin-top:4px;}
+.prog-fill{height:100%;border-radius:4px;}
+.nota{background:#0c1a2a;border:1px solid #1e3a5f;border-radius:8px;padding:12px 16px;font-size:.8rem;color:#94a3b8;margin-bottom:12px;}
+.nota strong{color:#60a5fa;}
+.back-link{display:inline-block;padding:8px 16px;background:#1e293b;color:#94a3b8;text-decoration:none;border-radius:8px;font-size:.8rem;margin-bottom:20px;}
+.back-link:hover{color:#fff;}
+.priority-list{list-style:none;padding:0;}
+.priority-list li{display:flex;align-items:flex-start;gap:10px;padding:10px 12px;border-bottom:1px solid #111827;font-size:.82rem;}
+.priority-list li:last-child{border-bottom:none;}
+.priority-list .num{background:#0f172a;border-radius:6px;width:24px;height:24px;display:flex;align-items:center;justify-content:center;font-size:.72rem;font-weight:700;color:#64748b;flex-shrink:0;margin-top:1px;}
+.priority-list .content{flex:1;}
+.priority-list .title{font-weight:600;color:#e2e8f0;margin-bottom:2px;}
+.priority-list .desc{color:#64748b;}
+.priority-list .effort{font-size:.7rem;color:#475569;margin-top:3px;}
+.annex-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px;}
+.annex-card{background:#1e293b;border-radius:10px;padding:12px 14px;border-left:3px solid;}
+.annex-card.ok-a{border-left-color:#10b981;}
+.annex-card.miss-a{border-left-color:#ef4444;}
+.annex-card.part-a{border-left-color:#f59e0b;}
+.annex-card .code{font-size:.68rem;color:#64748b;font-family:monospace;}
+.annex-card .title-a{font-size:.8rem;color:#e2e8f0;font-weight:600;margin:3px 0;}
+.annex-card .status{font-size:.72rem;}
+.bank-box{background:#0c1a2a;border:1px solid #1d4ed8;border-radius:12px;padding:18px 20px;display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+.bank-item .label{font-size:.72rem;color:#64748b;text-transform:uppercase;letter-spacing:.5px;}
+.bank-item .value{font-size:1rem;font-weight:700;color:#60a5fa;font-family:monospace;margin-top:3px;}
+.bank-item .note{font-size:.72rem;color:#475569;}
+</style>
+</head>
+<body>
+<header>
+  <h1>⚖️ Auditoría Legal CREA vs Acuerdo IYEM 03/2025</h1>
+  <p>Comparación artículo por artículo — Diario Oficial del Estado de Yucatán, 31 oct 2025 · Vigencia hasta dic 2030</p>
+</header>
+<div class="alert-banner">
+  ⚠️ <strong>ATENCIÓN:</strong> Este documento identifica brechas entre la implementación actual y las Reglas de Operación oficiales. Resolverlas es obligatorio antes del lanzamiento para cumplimiento legal.
+</div>
+
+<div class="container">
+  <a href="index.html" class="back-link">← Volver al índice de auditoría</a>
+
+  <!-- SCORECARD EJECUTIVO -->
+  <section>
+    <h2>📊 Scorecard ejecutivo</h2>
+    <div class="scorecard">
+      <div class="sc red"><div class="n">18</div><div class="l">Documentos faltantes por modalidad</div></div>
+      <div class="sc red"><div class="n">10</div><div class="l">Anexos oficiales no generados</div></div>
+      <div class="sc amber"><div class="n">8</div><div class="l">Reglas de negocio sin validar</div></div>
+      <div class="sc amber"><div class="n">3</div><div class="l">Tablas de puntaje no implementadas</div></div>
+      <div class="sc purple"><div class="n">5</div><div class="l">Módulos faltantes</div></div>
+      <div class="sc green"><div class="n">62%</div><div class="l">Funcionalidad core implementada</div></div>
+      <div class="sc blue"><div class="n">P0×6</div><div class="l">Bloqueantes legales críticos</div></div>
+      <div class="sc amber"><div class="n">P1×9</div><div class="l">Importantes para lanzamiento</div></div>
+    </div>
+    <div class="nota">
+      <strong>Criterio de prioridad:</strong> <span style="color:#f87171">P0 = Bloquea cumplimiento legal / riesgo de impugnación</span> · <span style="color:#fb923c">P1 = Necesario antes del lanzamiento (≤2 semanas)</span> · <span style="color:#86efac">P2 = Mejora operacional (post-lanzamiento)</span>
+    </div>
+  </section>
+
+  <!-- DOCUMENTOS POR MODALIDAD -->
+  <section>
+    <h2>📁 Documentos requeridos por modalidad (Arts. 10, 18, 26)</h2>
+
+    <div class="mod-header">
+      <div><div class="name">🪡 Modalidad Artesanal</div><div class="subtitle">Art. 10 — $5,000 – $25,000 · 0% · 6/12/18 cuotas semanales/quincenales/mensuales</div></div>
+    </div>
+    <table>
+      <thead><tr><th>Artículo</th><th>Documento requerido</th><th>Solicitante / Aval</th><th>Estado actual</th><th>Prioridad</th></tr></thead>
+      <tbody>
+        <tr><td class="art">Art. 10 a)</td><td>Solicitud de crédito (F-PR-OCC-01)</td><td>Solicitante</td><td class="icon-ok">Wizard step 1 captura datos</td><td><span class="tag ok">OK</span></td></tr>
+        <tr><td class="art">Art. 10 b)</td><td>Acta de nacimiento</td><td>Solicitante</td><td class="icon-no">NO existe en tiposRequeridos()</td><td><span class="tag p0">P0</span></td></tr>
+        <tr><td class="art">Art. 10 c)</td><td>Comprobante domicilio solicitante (≤90 días, negocio Y domicilio)</td><td>Solicitante</td><td class="icon-part">Solo domicilio personal, falta el del negocio</td><td><span class="tag p1">P1</span></td></tr>
+        <tr><td class="art">Art. 10 d)</td><td>Identificación oficial vigente (INE/pasaporte)</td><td>Solicitante</td><td class="icon-ok">ine_frente + ine_reverso implementados</td><td><span class="tag ok">OK</span></td></tr>
+        <tr><td class="art">Art. 10 e)</td><td>Ficha técnica (F-PR-OCC-04) — datos del negocio</td><td>Solicitante</td><td class="icon-part">Datos en wizard JSON, pero no como PDF firmado</td><td><span class="tag p1">P1</span></td></tr>
+        <tr><td class="art">Art. 10 f)</td><td>Relación de ingresos y egresos históricos últimos 6 meses (F-PR-OCC-05)</td><td>Solicitante</td><td class="icon-part">Capturado en wizard, no como archivo adjunto</td><td><span class="tag p1">P1</span></td></tr>
+        <tr><td class="art">Art. 10 g)</td><td>Proyección de ingresos y egresos siguientes 6 meses (F-PR-OCC-05)</td><td>Solicitante</td><td class="icon-part">Capturado en wizard, no como archivo adjunto</td><td><span class="tag p1">P1</span></td></tr>
+        <tr><td class="art">Art. 10 h)</td><td>Documento que acredite propiedad o posesión del negocio</td><td>Solicitante</td><td class="icon-no">NO existe en tiposRequeridos()</td><td><span class="tag p0">P0</span></td></tr>
+        <tr><td class="art">Art. 10 i)</td><td><strong>2 cotizaciones</strong> de proveedores del bien/servicio a adquirir</td><td>Solicitante</td><td class="icon-no">NO existe — campo crítico para dictamen</td><td><span class="tag p0">P0</span></td></tr>
+        <tr><td class="art">Art. 10 j)</td><td>Carta declaratoria "No ser servidor público" (F-PR-OCC-15)</td><td>Solicitante</td><td class="icon-no">NO existe en ningún flujo</td><td><span class="tag p0">P0</span></td></tr>
+        <tr><td class="art">Art. 10 k)</td><td>Constancia de repatriados (si no tiene acta/INE)</td><td>Solicitante</td><td class="icon-no">NO hay campo condicional</td><td><span class="tag p2">P2</span></td></tr>
+        <tr><td class="art">Post-aprobación</td><td>Fotografía de fachada del negocio</td><td>Solicitante</td><td class="icon-no">No hay flujo post-aprobación para el ciudadano</td><td><span class="tag p0">P0</span></td></tr>
+        <tr><td class="art">Post-aprobación</td><td>Enlace Google Maps del negocio</td><td>Solicitante</td><td class="icon-no">No hay flujo post-aprobación</td><td><span class="tag p0">P0</span></td></tr>
+        <tr><td class="art">Post-aprobación</td><td>Carátula de estado de cuenta bancaria (3 meses)</td><td>Solicitante</td><td class="icon-no">No hay flujo post-aprobación</td><td><span class="tag p1">P1</span></td></tr>
+        <tr><td class="art">Aval</td><td>Acta de nacimiento del aval</td><td>Aval</td><td class="icon-no">NO existe en tiposRequeridos()</td><td><span class="tag p0">P0</span></td></tr>
+        <tr><td class="art">Aval</td><td>Acta de matrimonio del aval (si aplica)</td><td>Aval</td><td class="icon-no">NO existe — sin campo condicional</td><td><span class="tag p1">P1</span></td></tr>
+        <tr><td class="art">Aval</td><td>Comprobante domicilio del aval (≤90 días)</td><td>Aval</td><td class="icon-ok">comprobante_domicilio_aval implementado</td><td><span class="tag ok">OK</span></td></tr>
+        <tr><td class="art">Aval</td><td>Identificación oficial del aval (INE/pasaporte)</td><td>Aval</td><td class="icon-ok">id_oficial_aval implementado</td><td><span class="tag ok">OK</span></td></tr>
+        <tr><td class="art">Aval</td><td>Declaración patrimonial bienes (F-PR-OCC-06)</td><td>Aval</td><td class="icon-part">PDF generado, pero datos del aval incompletos en wizard</td><td><span class="tag p1">P1</span></td></tr>
+      </tbody>
+    </table>
+
+    <div class="mod-header" style="margin-top:20px;">
+      <div><div class="name">🏢 Modalidad Emprendedores</div><div class="subtitle">Art. 18 — $25,000 – $150,000 · 7% anual · 12/18/24 cuotas</div></div>
+    </div>
+    <table>
+      <thead><tr><th>Artículo</th><th>Documento requerido</th><th>PF / PM</th><th>Estado actual</th><th>Prioridad</th></tr></thead>
+      <tbody>
+        <tr><td class="art">Art. 18 1)</td><td>Solicitud de crédito (F-PR-OCC-02 PF / F-PR-OCC-03 PM)</td><td>Ambos</td><td class="icon-ok">Wizard captura datos del solicitante</td><td><span class="tag ok">OK</span></td></tr>
+        <tr><td class="art">Art. 18 2)</td><td>Constancia de situación fiscal (SAT, ≤90 días)</td><td>Ambos</td><td class="icon-ok">constancia_situacion en tiposRequeridos()</td><td><span class="tag ok">OK</span></td></tr>
+        <tr><td class="art">Art. 18 3)</td><td>Acta de nacimiento</td><td>PF</td><td class="icon-no">NO existe — igual que Artesanal</td><td><span class="tag p0">P0</span></td></tr>
+        <tr><td class="art">Art. 18 4)</td><td>Acta de matrimonio (si aplica)</td><td>PF</td><td class="icon-no">NO existe — sin campo condicional por estado civil</td><td><span class="tag p1">P1</span></td></tr>
+        <tr><td class="art">Art. 18 5)</td><td>Comprobante domicilio solicitante Y negocio (≤90 días)</td><td>Ambos</td><td class="icon-part">Solo domicilio personal</td><td><span class="tag p1">P1</span></td></tr>
+        <tr><td class="art">Art. 18 6)</td><td>Identificación oficial vigente</td><td>PF</td><td class="icon-ok">ine_frente + ine_reverso</td><td><span class="tag ok">OK</span></td></tr>
+        <tr><td class="art">Art. 18 6)</td><td>Acta constitutiva + poder notarial del representante</td><td>PM</td><td class="icon-no">NO existe en tiposRequeridos() para PM</td><td><span class="tag p0">P0</span></td></tr>
+        <tr><td class="art">Art. 18 7)</td><td>Ficha técnica (F-PR-OCC-04)</td><td>Ambos</td><td class="icon-part">Datos en wizard, no como PDF firmado</td><td><span class="tag p1">P1</span></td></tr>
+        <tr><td class="art">Art. 18 8)</td><td>Relación ingresos/egresos histórica 6 meses (F-PR-OCC-05)</td><td>Ambos</td><td class="icon-part">Capturado, no como adjunto</td><td><span class="tag p1">P1</span></td></tr>
+        <tr><td class="art">Art. 18 9)</td><td>Proyección ingresos/egresos 6 meses (F-PR-OCC-05)</td><td>Ambos</td><td class="icon-part">Capturado, no como adjunto</td><td><span class="tag p1">P1</span></td></tr>
+        <tr><td class="art">Art. 18 10)</td><td>Documento que acredite propiedad o posesión del negocio</td><td>Ambos</td><td class="icon-no">NO existe</td><td><span class="tag p0">P0</span></td></tr>
+        <tr><td class="art">Art. 18 11)</td><td><strong>3 cotizaciones</strong> de proveedores del bien/equipo a adquirir</td><td>Ambos</td><td class="icon-no">NO existe — crítico para dictamen comité</td><td><span class="tag p0">P0</span></td></tr>
+        <tr><td class="art">Art. 18 12)</td><td>Copia de factura del bien en garantía prendaria</td><td>Ambos</td><td class="icon-ok">factura_bien_mueble en tiposRequeridos()</td><td><span class="tag ok">OK</span></td></tr>
+        <tr><td class="art">Art. 18 13)</td><td><strong>Reporte buró de crédito / círculo de crédito</strong> (≤180 días)</td><td>Ambos</td><td class="icon-no">NO existe en tiposRequeridos() — requerido por contrato</td><td><span class="tag p0">P0</span></td></tr>
+        <tr><td class="art">Art. 18 14)</td><td>Carta declaratoria "No ser servidor público" (F-PR-OCC-15/16)</td><td>Ambos</td><td class="icon-no">NO existe</td><td><span class="tag p0">P0</span></td></tr>
+        <tr><td class="art">Art. 18 15)</td><td>Balance general + estado de resultados (solo PM)</td><td>PM</td><td class="icon-no">NO existe en tiposRequeridos() para PM</td><td><span class="tag p0">P0</span></td></tr>
+        <tr><td class="art">Aval Emp.</td><td>Declaración patrimonial bienes (F-PR-OCC-07) — aval Emp/Sust</td><td>Aval</td><td class="icon-part">Generado, datos incompletos</td><td><span class="tag p1">P1</span></td></tr>
+        <tr><td class="art">Post-aprobación</td><td>Foto fachada, Google Maps, carátula cuenta bancaria</td><td>Ambos</td><td class="icon-no">Sin flujo post-aprobación ciudadano</td><td><span class="tag p0">P0</span></td></tr>
+      </tbody>
+    </table>
+
+    <div class="mod-header" style="margin-top:20px;">
+      <div><div class="name">🌿 Modalidad Sustentable</div><div class="subtitle">Art. 26 — $25,000 – $500,000 · 5% anual · 12/18/24 cuotas + 3 meses gracia</div></div>
+    </div>
+    <table>
+      <thead><tr><th>Artículo</th><th>Documento adicional vs Emprendedores</th><th>Estado actual</th><th>Prioridad</th></tr></thead>
+      <tbody>
+        <tr><td class="art">Art. 26 8)</td><td>Plan de trabajo sostenible (documento libre, no es el plan de negocio genérico)</td><td class="icon-no">plan_negocio genérico — falta especificidad de impacto ambiental</td><td><span class="tag p1">P1</span></td></tr>
+        <tr><td class="art">Art. 26 16)</td><td>Opinión de cumplimiento fiscal (F-32D SAT, ≤30 días — más estricto que Emp.)</td><td class="icon-ok">opinion_cumplimiento implementado, falta validar antigüedad 30 días</td><td><span class="tag p1">P1</span></td></tr>
+        <tr><td class="art">Art. 26 17)</td><td>≥1 año de antigüedad en SAT activo (validar en constancia situación fiscal)</td><td class="icon-no">Sin validación de antigüedad de registro SAT</td><td><span class="tag p0">P0</span></td></tr>
+        <tr><td class="art">Art. 26 — ≥$200k)</td><td>Escritura de garantía hipotecaria</td><td class="icon-no">NO existe en tiposRequeridos()</td><td><span class="tag p0">P0</span></td></tr>
+        <tr><td class="art">Art. 28</td><td>Período de gracia: 3 meses SIN interés ordinario ni capital — solo corre tiempo</td><td class="icon-no">El sistema genera tabla normal sin excluir intereses en meses 1-3</td><td><span class="tag p0">P0</span></td></tr>
+        <tr><td class="art">Art. 28</td><td>Segundo crédito Sustentable: tasa ordinaria + 1% (5% → 6%)</td><td class="icon-no">Sin lógica de renovación con tasa diferenciada</td><td><span class="tag p1">P1</span></td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- ANEXOS OFICIALES -->
+  <section>
+    <h2 class="blue">📋 Anexos oficiales — ¿cuáles genera el sistema?</h2>
+    <div class="nota"><strong>Contexto:</strong> El Acuerdo establece 16 anexos. Al aprobar un crédito, el sistema debe generar el paquete completo de formalización para que el acreditado firme en oficinas.</div>
+    <div class="annex-grid">
+      <div class="annex-card ok-a"><div class="code">Anx 1 / F-PR-OCC-01/02/03</div><div class="title-a">Solicitud de crédito PF/PM</div><div class="status icon-part">Datos capturados en wizard, PDF no oficial</div></div>
+      <div class="annex-card part-a"><div class="code">Anx 2 / F-PR-OCC-04</div><div class="title-a">Ficha técnica del negocio</div><div class="status icon-part">Datos en BD, sin PDF imprimible oficial</div></div>
+      <div class="annex-card part-a"><div class="code">Anx 3 / F-PR-OCC-05</div><div class="title-a">Estado de ingresos y egresos</div><div class="status icon-part">Datos en BD, sin formato oficial</div></div>
+      <div class="annex-card part-a"><div class="code">Anx 4 / F-PR-OCC-06/07</div><div class="title-a">Declaración bienes aval (Artesanal / Emp+Sust)</div><div class="status icon-part">PDF generado pero datos incompletos del aval</div></div>
+      <div class="annex-card miss-a"><div class="code">Anx 5 / GT-PR-OCC-01/02/03</div><div class="title-a">Checklist documentos por modalidad</div><div class="status icon-no">No generado — operativo lo hace manual</div></div>
+      <div class="annex-card part-a"><div class="code">Anx 6 / F-PR-OCC-08</div><div class="title-a">Carátula de crédito</div><div class="status icon-part">Generado en ZIP, revisar campos completos</div></div>
+      <div class="annex-card ok-a"><div class="code">Anx 7 / Contrato</div><div class="title-a">Contrato de apertura de crédito</div><div class="status icon-ok">Generado vía FormatosService / dompdf</div></div>
+      <div class="annex-card ok-a"><div class="code">Anx 7 / Tabla amortización</div><div class="title-a">Tabla de amortización</div><div class="status icon-ok">Generada y adjunta al contrato</div></div>
+      <div class="annex-card miss-a"><div class="code">Anx 8 / F-PR-OCC-10</div><div class="title-a">Pagaré</div><div class="status icon-no">❌ NO generado — documento legal obligatorio</div></div>
+      <div class="annex-card miss-a"><div class="code">Anx 9 / F-PR-OCC-11</div><div class="title-a">Carta compromiso</div><div class="status icon-no">❌ NO generado — firma del acreditado</div></div>
+      <div class="annex-card miss-a"><div class="code">Anx 10 / Garantía prendaria</div><div class="title-a">Documento de garantía prendaria</div><div class="status icon-no">❌ NO generado (Emp/Sust)</div></div>
+      <div class="annex-card miss-a"><div class="code">Anx 11 / F-PR-OCC-13/14</div><div class="title-a">Cédula de geolocalización PF/PM</div><div class="status icon-no">❌ NO generado — incluye foto fachada y Maps</div></div>
+      <div class="annex-card miss-a"><div class="code">Anx 12 / F-PR-OCC-15/16</div><div class="title-a">Carta "No ser servidor público" PF/PM</div><div class="status icon-no">❌ NO generado ni solicitado como documento</div></div>
+      <div class="annex-card miss-a"><div class="code">Anx 13 / F-PR-OCC-17</div><div class="title-a">Carta consentimiento conyugal</div><div class="status icon-no">❌ NO generado (garantía prendaria + casado)</div></div>
+      <div class="annex-card miss-a"><div class="code">Anx 14 / GT-PR-OCC-04</div><div class="title-a">Instructivo del proceso de pago</div><div class="status icon-no">❌ NO generado — incluye CIE BBVA y CLABE</div></div>
+      <div class="annex-card miss-a"><div class="code">Anx 15 / F-PR-OCC-18</div><div class="title-a">Memorial</div><div class="status icon-no">❌ NO generado — acta de antecedentes</div></div>
+    </div>
+    <div class="nota" style="margin-top:14px;"><strong>Resumen:</strong> De 16 anexos — <span style="color:#34d399">3 implementados ✅</span> · <span style="color:#fbbf24">4 parciales ⚠️</span> · <span style="color:#f87171">9 completamente ausentes ❌</span></div>
+  </section>
+
+  <!-- REGLAS DE NEGOCIO -->
+  <section>
+    <h2 class="amber">⚙️ Reglas de negocio sin implementar</h2>
+    <div class="grid2">
+      <div class="card danger">
+        <h3>🔴 Restricciones de destino de crédito (Arts. 9, 17, 25)</h3>
+        <ul>
+          <li><strong>Artesanal:</strong> Prohibido adquirir vehículos de transporte (cualquier tipo)</li>
+          <li><strong>Artesanal:</strong> No puede usarse para compra de insumos del sector primario</li>
+          <li><strong>Emprendedores:</strong> Prohibidos: casas de empeño, catálogo/piramidal, estacionamientos, tianguistas, excursiones, casinos, bebidas alcohólicas (excepto artesanales certificadas)</li>
+          <li><strong>Sustentable:</strong> Mismo listado Emprendedores + énfasis en impacto ambiental positivo</li>
+          <li><span class="tag p0">P0</span> Sin validación en el wizard ni en análisis crediticio</li>
+        </ul>
+      </div>
+      <div class="card danger">
+        <h3>🔴 Restricciones del aval (Art. 10 Artesanal)</h3>
+        <ul>
+          <li>El aval <strong>NO puede ser familiar hasta 2do grado</strong> de consanguinidad del solicitante</li>
+          <li>El aval <strong>NO puede ser familiar de empleado IYEM</strong></li>
+          <li>El aval NO puede ser servidor público</li>
+          <li>Emp/Sust: el aval SÍ puede ser cónyuge (diferente a Artesanal)</li>
+          <li><span class="tag p0">P0</span> Sin validación en el wizard ni en revisión operativa</li>
+        </ul>
+      </div>
+      <div class="card warn">
+        <h3>⚠️ Validaciones de montos por modalidad</h3>
+        <ul>
+          <li>Artesanal: $5,000 – $25,000 (monto mínimo para inscribirse al programa)</li>
+          <li>Emprendedores: $25,001 – $150,000</li>
+          <li>Sustentable: $25,001 – $500,000</li>
+          <li>Sustentable ≥$200,000: garantía hipotecaria obligatoria</li>
+          <li><span class="tag p1">P1</span> El wizard valida monto pero ¿activa hipoteca automáticamente si ≥$200k?</li>
+        </ul>
+      </div>
+      <div class="card warn">
+        <h3>⚠️ Plazos de cuotas oficiales</h3>
+        <ul>
+          <li>Artesanal: <strong>6, 12 o 18 cuotas</strong> (semanales, quincenales o mensuales)</li>
+          <li>Emprendedores: <strong>12, 18 o 24 cuotas</strong> (mensuales)</li>
+          <li>Sustentable: <strong>12, 18 o 24 cuotas</strong> mensuales + 3 meses gracia al inicio</li>
+          <li><span class="tag p1">P1</span> Verificar que el wizard solo ofrezca los plazos permitidos por modalidad</li>
+          <li><span class="tag p0">P0</span> Sustentable: los 3 meses de gracia = solo corre tiempo, SIN generar cuotas de capital ni interés</li>
+        </ul>
+      </div>
+      <div class="card warn">
+        <h3>⚠️ Comité: máximo 40 solicitudes por sesión (Art. 35)</h3>
+        <ul>
+          <li>El Comité sesiona bimestralmente (sesiones ordinarias)</li>
+          <li>Máximo 40 solicitudes por sesión para dictamen</li>
+          <li>Solicitudes adicionales pasan a la siguiente sesión</li>
+          <li><span class="tag p0">P0</span> El sistema actual no tiene módulo de Comité — el operativo aprueba individualmente</li>
+        </ul>
+      </div>
+      <div class="card warn">
+        <h3>⚠️ Renovación de créditos (Arts. 13, 21, 29)</h3>
+        <ul>
+          <li>Se permite más de un crédito solo si el anterior está <strong>totalmente liquidado</strong></li>
+          <li>Emprendedores 2do crédito: tasa sube +1% (7% → 8%)</li>
+          <li>Sustentable 2do crédito: tasa sube +1% (5% → 6%)</li>
+          <li>Artesanal: sin penalización en tasa para renovación</li>
+          <li><span class="tag p1">P1</span> Sistema bloquea CURP duplicada pero no diferencia crédito nuevo vs renovación con tasa diferenciada</li>
+        </ul>
+      </div>
+      <div class="card warn">
+        <h3>⚠️ Tasa moratoria — verificar cálculo (Cláusula 7a del contrato)</h3>
+        <ul>
+          <li>Tasa moratoria = tasa ordinaria × 2.5 (año de 360 días)</li>
+          <li>Artesanal: 0% × 2.5 = <strong>0% moratoria</strong> — ¿el sistema aplica mora en Artesanal?</li>
+          <li>Emprendedores: 7% × 2.5 = <strong>17.5% anual</strong> moratoria</li>
+          <li>Sustentable: 5% × 2.5 = <strong>12.5% anual</strong> moratoria</li>
+          <li><span class="tag p0">P0</span> Artesanal con 0% ordinaria NO debe generar mora — verificar en PagoController.php</li>
+        </ul>
+      </div>
+      <div class="card warn">
+        <h3>⚠️ Comprobación de uso del crédito (Art. 42)</h3>
+        <ul>
+          <li>Artesanal / Emprendedores: <strong>45 días naturales</strong> para presentar facturas de uso</li>
+          <li>Sustentable: <strong>60 días naturales</strong> para presentar facturas de uso</li>
+          <li>Si no comprueba → causal de rescisión del contrato</li>
+          <li><span class="tag p0">P0</span> NO existe módulo de comprobación de uso en el sistema</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- TABLAS DE PUNTAJE -->
+  <section>
+    <h2 class="purple">🎯 Sistema de puntuación oficial (Arts. 11, 19, 27) — No implementado</h2>
+    <div class="nota"><strong>Problema crítico:</strong> El análisis crediticio actual tiene scoring cualitativo libre. El Acuerdo define tablas de 100 puntos específicas por modalidad. Sin estas tablas, el dictamen del Comité carece de sustento técnico oficial.</div>
+
+    <div class="mod-header"><div><div class="name">🪡 Artesanal — Art. 11</div><div class="subtitle">Mínimo para aprobar: 60 puntos de 100</div></div></div>
+    <div class="score-table">
+      <div class="st-cell st-head">Criterio</div><div class="st-cell st-head">Puntos</div><div class="st-cell st-head">Subcriterios</div>
+      <div class="st-cell"><div class="cat">Normativa</div></div><div class="st-cell"><div class="pts">45</div></div><div class="st-cell"><div class="sub">Municipio prioridad (10) · Jurídica (10) · Artesano certificado (25)</div></div>
+      <div class="st-cell"><div class="cat">Técnica</div></div><div class="st-cell"><div class="pts">40</div></div><div class="st-cell"><div class="sub">Viabilidad del negocio (20) · Destino del crédito (10) · Experiencia (10)</div></div>
+      <div class="st-cell"><div class="cat">Financiera</div></div><div class="st-cell"><div class="pts">15</div></div><div class="st-cell"><div class="sub">Capacidad de pago (10) · Aval (5)</div></div>
+    </div>
+
+    <div class="mod-header" style="margin-top:14px;"><div><div class="name">🏢 Emprendedores — Art. 19</div><div class="subtitle">Mínimo para aprobar: 60 puntos de 100</div></div></div>
+    <div class="score-table">
+      <div class="st-cell st-head">Criterio</div><div class="st-cell st-head">Puntos</div><div class="st-cell st-head">Subcriterios</div>
+      <div class="st-cell"><div class="cat">Normativa</div></div><div class="st-cell"><div class="pts">20</div></div><div class="st-cell"><div class="sub">Municipio (10) · Jurídica (10)</div></div>
+      <div class="st-cell"><div class="cat">Técnica</div></div><div class="st-cell"><div class="pts">50</div></div><div class="st-cell"><div class="sub">Viabilidad (15) · Destino (10) · Experiencia (15) · Empleos IMSS (10)</div></div>
+      <div class="st-cell"><div class="cat">Financiera</div></div><div class="st-cell"><div class="pts">30</div></div><div class="st-cell"><div class="sub">Capacidad de pago (15) · Historial crediticio Buró (15)</div></div>
+    </div>
+
+    <div class="mod-header" style="margin-top:14px;"><div><div class="name">🌿 Sustentable — Art. 27</div><div class="subtitle">Mínimo para aprobar: 60 puntos de 100</div></div></div>
+    <div class="score-table">
+      <div class="st-cell st-head">Criterio</div><div class="st-cell st-head">Puntos</div><div class="st-cell st-head">Subcriterios</div>
+      <div class="st-cell"><div class="cat">Normativa</div></div><div class="st-cell"><div class="pts">10</div></div><div class="st-cell"><div class="sub">Jurídica (5) · Municipio (5)</div></div>
+      <div class="st-cell"><div class="cat">Financiera</div></div><div class="st-cell"><div class="pts">40</div></div><div class="st-cell"><div class="sub">Capacidad pago (20) · Historial crediticio (20)</div></div>
+      <div class="st-cell"><div class="cat">Impacto Ambiental</div></div><div class="st-cell"><div class="pts">50</div></div><div class="st-cell"><div class="sub">Certificaciones (20) · Plan sostenible (20) · Empleos verdes (10)</div></div>
+    </div>
+    <div class="nota" style="margin-top:10px;"><span class="tag p0">P0</span> El módulo de Análisis Crediticio debe refactorizarse para exponer estas tablas de puntos por modalidad. El dictamen debe mostrar el puntaje obtenido como justificación de aprobación/rechazo.</div>
+  </section>
+
+  <!-- MÓDULOS FALTANTES -->
+  <section>
+    <h2 class="sky">🧩 Módulos completamente faltantes</h2>
+    <div class="grid2">
+      <div class="card danger">
+        <h3>🔴 Módulo: Comité de Evaluación y Autorización</h3>
+        <ul>
+          <li><strong>Art. 33-36:</strong> El Comité es la instancia oficial de aprobación</li>
+          <li>Sesiones ordinarias <strong>bimestrales</strong> (hasta 40 solicitudes)</li>
+          <li>Necesita: crear sesión, agregar solicitudes, votar (aprobado/rechazado/condicional), generar acta</li>
+          <li>El acta es documento oficial con número de acuerdo</li>
+          <li><span class="tag p0">P0 Legal</span> Sin comité el proceso de aprobación carece de validez institucional</li>
+        </ul>
+      </div>
+      <div class="card danger">
+        <h3>🔴 Módulo: Comprobación de uso del crédito</h3>
+        <ul>
+          <li><strong>Art. 42:</strong> Acreditado debe presentar facturas que prueben el uso correcto</li>
+          <li>Plazo: 45 días (Art/Emp) o 60 días (Sust) desde el desembolso</li>
+          <li>Si no comprueba → causal de rescisión (Cláusula 14a del contrato)</li>
+          <li>Necesita: formulario de carga de facturas en portal ciudadano + revisión operativa</li>
+          <li><span class="tag p0">P0</span> Sin esto el programa es auditable por incumplimiento de destino</li>
+        </ul>
+      </div>
+      <div class="card warn">
+        <h3>⚠️ Módulo: Flujo post-aprobación ciudadano</h3>
+        <ul>
+          <li>Al aprobar, el ciudadano necesita <strong>una tarea clara</strong>: llevar documentos faltantes al IYEM</li>
+          <li>Subir: foto fachada, enlace Google Maps, carátula cuenta bancaria</li>
+          <li>Acudir a firmar: pagaré, carta compromiso, contrato, instructivo de pago</li>
+          <li>El sistema actual solo notifica "tu crédito fue aprobado" y ya</li>
+          <li><span class="tag p1">P1</span> Falta una página "Próximos pasos" en el portal ciudadano</li>
+        </ul>
+      </div>
+      <div class="card warn">
+        <h3>⚠️ Módulo: MIR — Indicadores de Resultados</h3>
+        <ul>
+          <li><strong>Art. 48:</strong> IYEM debe reportar trimestralmente indicadores MIR</li>
+          <li>Indicador principal: <strong>% de créditos otorgados / solicitudes recibidas</strong> por modalidad</li>
+          <li>Desglose por: género, municipio, tipo de beneficiario, monto promedio</li>
+          <li>Para reportes ante SEDESOL / Auditoría Superior del Estado</li>
+          <li><span class="tag p2">P2</span> No es bloqueante para operar pero sí para el informe anual</li>
+        </ul>
+      </div>
+      <div class="card warn">
+        <h3>⚠️ Módulo: Padrón de Acreditados (Art. 50)</h3>
+        <ul>
+          <li>El IYEM debe publicar <strong>anualmente</strong> el padrón en su sitio web</li>
+          <li>Contiene: nombre, municipio, modalidad, monto y fecha de crédito</li>
+          <li>Es información pública obligatoria</li>
+          <li>Necesita: vista exportable + endpoint público (sin datos sensibles)</li>
+          <li><span class="tag p2">P2</span> No bloqueante al lanzar pero debe planearse</li>
+        </ul>
+      </div>
+      <div class="card warn">
+        <h3>⚠️ Módulo: Publicación de deudores (Cláusula 7a contrato)</h3>
+        <ul>
+          <li>Contrato establece: si mora supera <strong>180 días</strong>, IYEM puede publicar el nombre del deudor</li>
+          <li>Funciona como mecanismo de presión de pago</li>
+          <li>Necesita: listado interno de créditos en mora >180 días + workflow de publicación</li>
+          <li><span class="tag p2">P2</span> Puede implementarse post-lanzamiento</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- DATOS BANCARIOS OFICIALES -->
+  <section>
+    <h2 class="green">🏦 Datos bancarios oficiales para pagos (Anexo 14)</h2>
+    <div class="nota"><strong>Estos datos deben aparecer en el portal ciudadano, en el instructivo de pago (Anx 14), en el recibo de cuotas y en las notificaciones de cobranza.</strong></div>
+    <div class="bank-box">
+      <div class="bank-item"><div class="label">CIE – BBVA (ventanilla / OXXO)</div><div class="value">001776533</div><div class="note">Descripción: SERVICIOS</div></div>
+      <div class="bank-item"><div class="label">CLABE interbancaria</div><div class="value">012914002017765339</div><div class="note">Transferencias SPEI</div></div>
+      <div class="bank-item"><div class="label">Institución</div><div class="value">BBVA Bancomer</div><div class="note">—</div></div>
+      <div class="bank-item"><div class="label">Nombre del beneficiario</div><div class="value" style="font-size:.85rem;">Instituto Yucateco de Emprendedores</div><div class="note">RFC: IIC991117V18</div></div>
+      <div class="bank-item"><div class="label">Concepto de pago</div><div class="value" style="font-size:.85rem;">No. de contrato CREA</div><div class="note">Para identificar al acreditado</div></div>
+      <div class="bank-item"><div class="label">Horario de caja IYEM</div><div class="value" style="font-size:.85rem;">Lun–Vie 9:00–14:00</div><div class="note">Presencial con recibo oficial</div></div>
+    </div>
+    <div style="margin-top:14px;background:#1e293b;border-radius:10px;padding:14px 16px;">
+      <div style="font-size:.8rem;color:#94a3b8;margin-bottom:6px;"><strong style="color:#e2e8f0;">Contacto IYEM para el portal:</strong></div>
+      <div style="display:flex;gap:20px;flex-wrap:wrap;font-size:.81rem;color:#64748b;">
+        <span>📧 crea@iyemyucatan.com</span>
+        <span>📱 WhatsApp: 999 234 2693</span>
+        <span>📞 (999) 469.53.06 Ext. 29263 / 29264</span>
+        <span>🌐 iyem.yucatan.gob.mx</span>
+      </div>
+    </div>
+    <div class="nota" style="margin-top:10px;"><span class="tag p0">P0</span> El portal ciudadano debe mostrar estos datos en "¿Cómo pagar mi crédito?" y en la sección Mi Crédito. Actualmente no están configurados en ningún lugar visible del sistema.</div>
+  </section>
+
+  <!-- CUMPLIMIENTO vs INCUMPLIMIENTO -->
+  <section>
+    <h2>✅ Qué sí está bien implementado</h2>
+    <div class="card ok">
+      <h3>Implementación correcta (coincide con el Acuerdo)</h3>
+      <ul>
+        <li class="icon-ok"><strong>3 modalidades con montos y tasas correctos:</strong> Artesanal 0%, Emprendedores 7%, Sustentable 5%</li>
+        <li class="icon-ok"><strong>Cascada de pagos:</strong> Mora → Interés ordinario → Capital (Cláusula 7a)</li>
+        <li class="icon-ok"><strong>5 días de gracia</strong> antes de generar mora (Cláusula 7a del contrato)</li>
+        <li class="icon-ok"><strong>Tasa moratoria:</strong> Configurada en la modalidad (verificar = ordinaria × 2.5)</li>
+        <li class="icon-ok"><strong>Año de 360 días</strong> para cálculo de interés diario</li>
+        <li class="icon-ok"><strong>Estatus de solicitud:</strong> Borrador → Enviada → En_Revisión → Doc_Incompleta → Aprobada/Rechazada</li>
+        <li class="icon-ok"><strong>Documentos base:</strong> INE frente/reverso, comprobante domicilio, factura bien mueble, constancia situación fiscal, opinión cumplimiento</li>
+        <li class="icon-ok"><strong>Roles Spatie:</strong> ciudadano / operativo correctamente separados</li>
+        <li class="icon-ok"><strong>Historial de estatus:</strong> Con usuario, fecha y nota de cada cambio</li>
+        <li class="icon-ok"><strong>Folio de recibo:</strong> REC-XXXXXX-YYYY con cancelación auditada</li>
+        <li class="icon-ok"><strong>Liquidación anticipada</strong> con condonación de intereses ordinarios futuros</li>
+        <li class="icon-ok"><strong>Reestructuración</strong> con nuevos términos y tabla de amortización</li>
+        <li class="icon-ok"><strong>Semáforo de riesgo:</strong> Verde/Amarillo/Naranja/Rojo/Negro según días de mora</li>
+        <li class="icon-ok"><strong>Contrato y tabla de amortización</strong> generados como PDF vía FormatosService</li>
+        <li class="icon-ok"><strong>Verificación CURP</strong> sin crédito activo antes de solicitar</li>
+        <li class="icon-ok"><strong>Auditoría de operaciones</strong> críticas (pagos, condonaciones, desembolsos)</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- PLAN DE ACCIÓN PRIORIZADO -->
+  <section>
+    <h2>🚀 Plan de acción priorizado — para lanzar con cumplimiento legal</h2>
+
+    <div style="margin-bottom:10px;font-size:.85rem;color:#ef4444;font-weight:700;">P0 — Bloqueantes legales (resolver ANTES de lanzar)</div>
+    <div class="card" style="border-left-color:#ef4444;padding:0;">
+      <ul class="priority-list">
+        <li><div class="num" style="background:#450a0a;color:#f87171;">1</div><div class="content"><div class="title">Documentos faltantes en tiposRequeridos()</div><div class="desc">Agregar: acta de nacimiento, 2/3 cotizaciones, propiedad/posesión del negocio, buró de crédito (Emp/Sust), carta No-Servidor-Público, acta constitutiva+poderes (PM), balance general+estado resultados (PM), escritura hipotecaria (Sust ≥$200k)</div><div class="effort">Esfuerzo: 1 día · Archivo: DocumentoSolicitud.php → tiposRequeridos()</div></li>
+        <li><div class="num" style="background:#450a0a;color:#f87171;">2</div><div class="content"><div class="title">Tablas de puntaje por modalidad en AnalisisCreditoController</div><div class="desc">Artesanal: Normativa 45 + Técnica 40 + Financiera 15. Emprendedores: 20+50+30. Sustentable: 10+40+50. Mínimo 60 puntos para aprobar.</div><div class="effort">Esfuerzo: 2 días · Archivo: AnalisisCreditoController.php + vista Vue análisis</div></li>
+        <li><div class="num" style="background:#450a0a;color:#f87171;">3</div><div class="content"><div class="title">Restricciones de giro y de destino de crédito</div><div class="desc">Agregar campo "giro del negocio" al wizard y validar contra lista de giros prohibidos por modalidad. Artesanal: sin vehículos. Emp/Sust: sin casas de empeño, casino, piramidal, etc.</div><div class="effort">Esfuerzo: 1 día · Archivo: WizardSolicitudController.php + wizard Vue</div></li>
+        <li><div class="num" style="background:#450a0a;color:#f87171;">4</div><div class="content"><div class="title">Restricciones del aval — Artesanal</div><div class="desc">Campo "parentesco con solicitante" en datos del aval. Rechazar si familiar hasta 2do grado para modalidad Artesanal. Advertencia si es empleado IYEM.</div><div class="effort">Esfuerzo: 1 día · Archivo: WizardSolicitudController.php + modelo Aval</div></li>
+        <li><div class="num" style="background:#450a0a;color:#f87171;">5</div><div class="content"><div class="title">Periodo de gracia Sustentable — sin intereses ni capital en meses 1-3</div><div class="desc">Al generar tabla de amortización para Sustentable, los primeros 3 meses no deben tener cuota — solo registran el transcurso del tiempo. Capital e intereses arrancan en mes 4.</div><div class="effort">Esfuerzo: 1 día · Archivo: CreditService.php → generarTablaAmortizacion()</div></li>
+        <li><div class="num" style="background:#450a0a;color:#f87171;">6</div><div class="content"><div class="title">Módulo de Comprobación de uso del crédito</div><div class="desc">Portal ciudadano: página "Comprobar uso de mi crédito" con carga de facturas. Operativo: revisar y marcar como comprobado. Alerta automática a los 30 días del desembolso.</div><div class="effort">Esfuerzo: 3 días · Nuevo modelo Comprobacion + controlador + vistas</div></li>
+        <li><div class="num" style="background:#450a0a;color:#f87171;">7</div><div class="content"><div class="title">Módulo de Comité — mínimo MVP</div><div class="desc">Crear sesión bimestral, asignar solicitudes aprobadas por operativo (max 40), registrar votos/resolución, generar número de acuerdo. El estatus "Aprobada" solo lo puede dar una sesión de comité.</div><div class="effort">Esfuerzo: 4 días · Nuevos modelos ComiteSesion + ComiteResolucion + vista operativa</div></li>
+        <li><div class="num" style="background:#450a0a;color:#f87171;">8</div><div class="content"><div class="title">Mora Artesanal = 0% — verificar PagoController</div><div class="desc">Si tasa ordinaria Artesanal = 0%, entonces tasa moratoria = 0% × 2.5 = 0%. El sistema NO debe cobrar mora en créditos Artesanal. Verificar lógica en diasMora() y en PagoController.</div><div class="effort">Esfuerzo: 2 horas · Archivo: PagoController.php + Credito.php → diasMora()</div></li>
+        <li><div class="num" style="background:#450a0a;color:#f87171;">9</div><div class="content"><div class="title">Flujo post-aprobación + datos bancarios en portal ciudadano</div><div class="desc">Agregar en MiCreditoController y vista portal: CIE 001776533, CLABE 012914002017765339, contacto IYEM. Página "Próximos pasos" al aprobar con lista de documentos a entregar y cómo pagar.</div><div class="effort">Esfuerzo: 1 día · Archivo: MiCreditoController.php + portal/MiCredito.vue</div></li>
+        <li><div class="num" style="background:#450a0a;color:#f87171;">10</div><div class="content"><div class="title">Generación de pagaré, carta compromiso e instructivo de pago</div><div class="desc">Agregar 3 plantillas Blade: pagare.blade.php (F-PR-OCC-10), carta-compromiso.blade.php (F-PR-OCC-11), instructivo-pago.blade.php (GT-PR-OCC-04). Incluirlos en el ZIP de formalización.</div><div class="effort">Esfuerzo: 2 días · Archivo: FormatosService.php + 3 nuevas vistas Blade</div></li>
+      </ul>
+    </div>
+
+    <div style="margin-bottom:10px;margin-top:20px;font-size:.85rem;color:#fb923c;font-weight:700;">P1 — Importantes para primera semana de operación</div>
+    <div class="card" style="border-left-color:#f59e0b;padding:0;">
+      <ul class="priority-list">
+        <li><div class="num" style="background:#451a03;color:#fb923c;">11</div><div class="content"><div class="title">Acta de matrimonio condicional y comprobante domicilio del negocio</div><div class="desc">Campo estado civil en wizard: si "casado/a" activar upload acta matrimonio. Segundo campo comprobante domicilio para el domicilio del negocio (diferente al personal).</div><div class="effort">Esfuerzo: 4 horas</div></li>
+        <li><div class="num" style="background:#451a03;color:#fb923c;">12</div><div class="content"><div class="title">Renovación de créditos con tasa diferenciada</div><div class="desc">Al detectar CURP con crédito liquidado previo, mostrar advertencia de tasa +1% para Emp/Sust. Guardar "numero_credito" en modelo y aplicar lógica de tasa en CreditService.</div><div class="effort">Esfuerzo: 1 día</div></li>
+        <li><div class="num" style="background:#451a03;color:#fb923c;">13</div><div class="content"><div class="title">Validación antigüedad SAT ≥1 año en Sustentable</div><div class="desc">En la revisión del operativo, agregar campo: "Fecha de alta en SAT" y validar que sea ≥365 días antes de la solicitud.</div><div class="effort">Esfuerzo: 4 horas</div></li>
+        <li><div class="num" style="background:#451a03;color:#fb923c;">14</div><div class="content"><div class="title">Plan de trabajo sostenible (tipo de documento específico en Sustentable)</div><div class="desc">Renombrar o crear tipo separado de documento para Sustentable que solicite el Plan de Trabajo Sostenible, diferente al plan de negocio genérico.</div><div class="effort">Esfuerzo: 2 horas</div></li>
+        <li><div class="num" style="background:#451a03;color:#fb923c;">15</div><div class="content"><div class="title">Validar plazos disponibles por modalidad en wizard</div><div class="desc">Artesanal: solo ofrecer 6, 12, 18. Emprendedores: 12, 18, 24. Sustentable: 12, 18, 24. El select debe filtrar opciones según la modalidad seleccionada.</div><div class="effort">Esfuerzo: 2 horas</div></li>
+        <li><div class="num" style="background:#451a03;color:#fb923c;">16</div><div class="content"><div class="title">Cédula geolocalización y carta consentimiento conyugal en FormatosService</div><div class="desc">Agregar plantillas Blade para F-PR-OCC-13/14 (cédula geolocalización) y F-PR-OCC-17 (consentimiento conyugal si aplica garantía prendaria + estado civil casado).</div><div class="effort">Esfuerzo: 1 día</div></li>
+        <li><div class="num" style="background:#451a03;color:#fb923c;">17</div><div class="content"><div class="title">Alertas automáticas — cron jobs configurados</div><div class="desc">Artisan command ya existe, necesita scheduling en Kernel.php: cuotas próximas a vencer (3 días antes), cuotas vencidas (día 1, 5, 15, 30), plazo comprobación uso del crédito.</div><div class="effort">Esfuerzo: 4 horas · Archivo: app/Console/Kernel.php</div></li>
+        <li><div class="num" style="background:#451a03;color:#fb923c;">18</div><div class="content"><div class="title">Bloqueo de crédito al superar presupuesto autorizado</div><div class="desc">En DesembolsoController: antes de registrar desembolso, verificar que el monto no supere el presupuesto disponible de esa modalidad. Si supera, bloquear y mostrar error al operativo.</div><div class="effort">Esfuerzo: 2 horas</div></li>
+        <li><div class="num" style="background:#451a03;color:#fb923c;">19</div><div class="content"><div class="title">Hipoteca automática para Sustentable ≥$200,000</div><div class="desc">Si modalidad = Sustentable y monto_solicitado ≥ 200,000: activar tipo de garantía hipotecaria y requerir documento escritura en tiposRequeridos().</div><div class="effort">Esfuerzo: 3 horas</div></li>
+      </ul>
+    </div>
+
+    <div style="margin-bottom:10px;margin-top:20px;font-size:.85rem;color:#86efac;font-weight:700;">P2 — Post-lanzamiento (primeros 2 meses)</div>
+    <div class="card" style="border-left-color:#10b981;padding:0;">
+      <ul class="priority-list">
+        <li><div class="num" style="background:#052e16;color:#34d399;">20</div><div class="content"><div class="title">Módulo MIR — Indicadores de Resultados (Art. 48)</div><div class="desc">Dashboard con: % solicitudes aprobadas por modalidad, monto colocado vs meta anual, distribución por género/municipio. Para informe trimestral ante autoridades.</div><div class="effort">Esfuerzo: 2 días</div></li>
+        <li><div class="num" style="background:#052e16;color:#34d399;">21</div><div class="content"><div class="title">Padrón de acreditados público (Art. 50)</div><div class="desc">Endpoint público: nombre, municipio, modalidad, monto, fecha. Sin CURP ni datos sensibles. Exportable a Excel/PDF. Publicar anualmente en el sitio web del IYEM.</div><div class="effort">Esfuerzo: 1 día</div></li>
+        <li><div class="num" style="background:#052e16;color:#34d399;">22</div><div class="content"><div class="title">Lista de deudores morosos >180 días (Cláusula 7a)</div><div class="desc">Vista interna para el IYEM con créditos en mora >180 días, mecanismo para publicar nombres si se decide ejercer esta opción contractual.</div><div class="effort">Esfuerzo: 4 horas</div></li>
+        <li><div class="num" style="background:#052e16;color:#34d399;">23</div><div class="content"><div class="title">Constancia de repatriados como documento condicional</div><div class="desc">Si el solicitante no tiene acta de nacimiento mexicana ni INE, activar campo de constancia de repatriados en el wizard (caso excepcional).</div><div class="effort">Esfuerzo: 2 horas</div></li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- PROMPT PARA CLAUDE CODE -->
+  <section>
+    <h2 class="sky">🤖 Prompt listo para Claude Code</h2>
+    <div class="nota">Copia y pega esto en Claude Code desde la raíz del proyecto CREA:</div>
+    <div style="background:#0f172a;border:1px solid #1e3a5f;border-radius:10px;padding:16px 18px;font-family:monospace;font-size:.78rem;color:#93c5fd;white-space:pre-wrap;line-height:1.7;max-height:500px;overflow-y:auto;">
+# PROMPT DE CORRECCIONES — ACUERDO IYEM 03/2025
+# Proyecto: CREA · Laravel 11 + Vue 3 + Inertia.js + TypeScript + Tailwind CSS
+
+## TAREA 1 — Documentos faltantes (DocumentoSolicitud.php → tiposRequeridos())
+Agrega los siguientes tipos de documento a tiposRequeridos() con sus condiciones:
+
+TODOS:
+- acta_nacimiento (label: "Acta de nacimiento", tipo: imagen/PDF)
+- propiedad_negocio (label: "Documento de propiedad/posesión del negocio", tipo: PDF)
+- carta_no_servidor (label: "Carta de no ser servidor público", tipo: PDF)
+- foto_fachada (label: "Fotografía de fachada del negocio", tipo: imagen, post-aprobación)
+- google_maps_negocio (label: "Enlace Google Maps del negocio", tipo: texto URL, post-aprobación)
+- cuenta_bancaria_caratula (label: "Carátula de estado de cuenta bancaria 3 meses", post-aprobación)
+
+SI estado_civil = 'casado':
+- acta_matrimonio (label: "Acta de matrimonio")
+
+POR MODALIDAD:
+- Artesanal: cotizaciones_proveedor (2 archivos, label: "2 cotizaciones de proveedores")
+- Emprendedores/Sustentable: cotizaciones_proveedor (3 archivos, label: "3 cotizaciones de proveedores")
+- Emprendedores/Sustentable: buro_credito (label: "Reporte buró de crédito vigente ≤180 días")
+- Emprendedores/Sustentable PM: acta_constitutiva (label: "Acta constitutiva")
+- Emprendedores/Sustentable PM: poder_representante (label: "Poder del representante legal")
+- Emprendedores/Sustentable PM: balance_general (label: "Balance general + estado de resultados")
+- Sustentable: plan_trabajo_sostenible (label: "Plan de trabajo sostenible con impacto ambiental")
+- Sustentable ≥$200,000: escritura_hipotecaria (label: "Escritura de garantía hipotecaria")
+
+AVAL:
+- acta_nacimiento_aval (label: "Acta de nacimiento del aval")
+- acta_matrimonio_aval (si aval casado)
+
+## TAREA 2 — Validaciones de negocio en WizardSolicitudController.php
+1. Agregar campo 'giro_negocio' al wizard y comparar contra lista prohibida por modalidad:
+   - TODOS: ['vehículos de transporte']
+   - Emprendedores/Sustentable: ['casa de empeño','catálogo','pirámide','estacionamiento','tianguista','casino']
+2. Agregar campo 'parentesco_aval' al wizard. Si modalidad = Artesanal, rechazar si parentesco IN ['padre','madre','hijo','hija','hermano','hermana','abuelo','abuela','nieto','nieta','tío','tía','sobrino','sobrina'] (1er y 2do grado).
+3. Agregar campo 'estado_civil' al wizard para condicionar documentos.
+4. Limitar los plazos disponibles por modalidad en el select de cuotas: Artesanal [6,12,18], Emprendedores [12,18,24], Sustentable [12,18,24].
+
+## TAREA 3 — Tabla de amortización Sustentable con período de gracia
+En CreditService.php → función generarTablaAmortizacion():
+- Si modalidad = Sustentable: los primeros 3 meses NO generan cuotas de capital ni interés.
+- Solo registrar en la tabla de amortización esas 3 filas como "Período de gracia — sin pago requerido" con saldo_insoluto igual al monto original.
+- Las cuotas de amortización real empiezan en el mes 4.
+
+## TAREA 4 — Mora en Artesanal = $0
+En PagoController.php y Credito.php:
+- Si credito.modalidad.tasa_interes_ordinario = 0, entonces mora = $0 sin importar los días de atraso.
+- La cascada de pagos en Artesanal solo aplica sobre el capital (no hay mora ni interés ordinario).
+
+## TAREA 5 — Datos bancarios en portal ciudadano
+En MiCreditoController.php y portal/MiCredito.vue:
+- Agregar sección "¿Cómo pagar mi crédito?" con:
+  - CIE BBVA: 001776533 (descripción: SERVICIOS)
+  - CLABE: 012914002017765339
+  - Banco: BBVA Bancomer
+  - Beneficiario: Instituto Yucateco de Emprendedores · RFC: IIC991117V18
+  - Concepto: número de contrato CREA
+  - También puede pagar en caja IYEM: Lun-Vie 9:00-14:00
+  - Contacto: crea@iyemyucatan.com · WhatsApp 9992342693
+
+## TAREA 6 — Flujo post-aprobación en portal ciudadano
+Cuando solicitud.estatus = 'Aprobada', mostrar al ciudadano en el portal:
+1. Página/sección "Próximos pasos para recibir tu crédito"
+2. Lista de documentos pendientes a entregar en oficinas IYEM
+3. Formulario para subir: foto_fachada, google_maps_negocio, cuenta_bancaria_caratula
+4. Dirección de oficinas: Av. Principal Industrias No Contaminantes, Tablaje 13613, Sodzil Norte, CP 97110, Mérida, Yucatán
+
+## TAREA 7 — Tablas de puntaje en AnalisisCreditoController.php
+Reestructurar el módulo de análisis para mostrar formularios de puntaje por modalidad:
+- Artesanal: 3 categorías (Normativa/45, Técnica/40, Financiera/15). Mínimo 60 para aprobar.
+- Emprendedores: 3 categorías (Normativa/20, Técnica/50, Financiera/30). Mínimo 60.
+- Sustentable: 3 categorías (Normativa/10, Financiera/40, Impacto Ambiental/50). Mínimo 60.
+- Guardar puntaje_total en AnalisisCredito. Mostrar "APTO (X pts)" o "NO APTO (X pts, mín. 60)".
+
+## TAREA 8 — FormatosService.php — nuevos documentos del paquete de formalización
+Crear plantillas Blade y agregarlas al ZIP de formalización:
+- resources/views/formatos/pagare.blade.php (F-PR-OCC-10) — pagaré firmado por acreditado y aval
+- resources/views/formatos/carta-compromiso.blade.php (F-PR-OCC-11) — carta compromiso del acreditado
+- resources/views/formatos/instructivo-pago.blade.php (GT-PR-OCC-04) — con CIE y CLABE del IYEM
+- resources/views/formatos/cedula-geolocalizacion.blade.php (F-PR-OCC-13) — con dirección del negocio
+- resources/views/formatos/carta-no-servidor.blade.php (F-PR-OCC-15/16) — declaración bajo protesta
+
+## TAREA 9 — Bloqueo de desembolso al superar presupuesto
+En DesembolsoController.php:
+- Antes de crear el desembolso, verificar presupuesto disponible de la modalidad.
+- Si monto_credito > presupuesto_disponible: throw exception con mensaje claro al operativo.
+- Registrar en log si el crédito dejó el presupuesto en 0.
+
+## TAREA 10 — Renovación de créditos con tasa diferenciada
+En WizardSolicitudController.php:
+- Al verificar CURP, si tiene crédito liquidado previo (status = liquidado):
+  - Emprendedores: aplicar tasa_ordinaria = 8% (7% + 1%)
+  - Sustentable: aplicar tasa_ordinaria = 6% (5% + 1%)
+  - Artesanal: sin cambio
+- Mostrar aviso al ciudadano: "Como beneficiario anterior, tu tasa de interés es X% anual".
+
+---
+Sigue las convenciones del proyecto: PHPDoc en métodos nuevos, FormRequest para validaciones, tipado TypeScript en el front Vue. Usa los modelos existentes antes de crear nuevos.</div>
+  </section>
+
+</div>
+</body>
+</html>

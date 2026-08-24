@@ -1,0 +1,222 @@
+# PROMPT: SECCIÓN DE CONTACTO + MAPA + FOOTER + FIX FAVICON + DEPLOY
+# Para usar en: Claude Code (sesión interactiva en la raíz del proyecto)
+# Stack: Laravel 11 + Vue 3 + Inertia.js + TypeScript + Tailwind CSS
+# Archivo principal: resources/js/Pages/Welcome.vue
+
+---
+
+## 1. FIX DEL FAVICON (no se ve en la pestaña)
+
+`public/favicon.ico` existe pero está VACÍO (0 bytes), por eso varios navegadores
+no muestran el ícono aunque `favicon.svg` sí tenga contenido y esté enlazado en
+`resources/views/app.blade.php`.
+
+- Genera un `public/favicon.ico` real (16x16/32x32/48x48 multi-resolución) a partir
+  del isotipo SVG de CREA (`resources/js/components/AppLogoIcon.vue` o
+  `public/favicon.svg`). Usa cualquier herramienta disponible en el entorno
+  (ImageMagick `convert`, `sharp` vía Node, `png-to-ico`, etc.) para rasterizar el
+  SVG a PNG y empaquetarlo como `.ico`
+- Verifica que `resources/views/app.blade.php` mantenga ambos `<link rel="icon">`
+  (svg + ico), y agrega también:
+  ```html
+  <link rel="apple-touch-icon" href="/favicon.svg">
+  ```
+- Tras el deploy, probar en una pestaña nueva / modo incógnito (el favicon se
+  cachea agresivamente en el navegador)
+
+---
+
+## 2. SECCIÓN DE CONTACTO
+
+Agrega una nueva sección "Contacto" en `resources/js/Pages/Welcome.vue`, antes del
+footer, siguiendo el diseño de referencia (ver imagen adjunta del usuario):
+
+### 2.1 Layout
+
+- Título centrado "Contacto" (text-3xl/4xl, bold)
+- Subtítulo centrado: algo como "¿Tienes preguntas sobre CREA? Escríbenos y te
+  responderemos a la brevedad."
+- Debajo, layout de dos columnas (en desktop) dentro de una card con bordes
+  redondeados y sombra suave:
+  - **Columna izquierda**: formulario "Envíanos un mensaje"
+  - **Columna derecha**: mapa de Google Maps con la ubicación del IYEM
+- En mobile: columnas apiladas (formulario arriba, mapa abajo)
+
+### 2.2 Formulario de contacto
+
+Campos (con las mismas clases de input/label ya usadas en el resto del proyecto
+para mantener consistencia visual):
+- Nombre (texto, requerido)
+- Correo electrónico (email, requerido)
+- Asunto (texto, requerido)
+- Mensaje (textarea, requerido)
+- Botón "Enviar mensaje" (verde institucional #006847, full width, con estado
+  `processing` deshabilitado mientras envía)
+- Texto pequeño debajo del botón: "Tu información es confidencial" con un ícono
+  SVG de candado (sin emojis)
+- Mostrar mensajes de éxito ("Tu mensaje fue enviado correctamente") y error con
+  el sistema de notificaciones ya usado en el proyecto (vue-sonner / flash messages)
+- Limpiar el formulario tras el envío exitoso
+
+### 2.3 Backend del formulario
+
+Crear un endpoint para procesar el envío:
+
+- Nueva ruta pública en `routes/web.php`:
+  ```php
+  Route::post('/contacto', [ContactoController::class, 'enviar'])->name('contacto.enviar');
+  ```
+- Crear `app/Http/Controllers/ContactoController.php` con método `enviar()`:
+  - Validar: `nombre` (required|string|max:255), `email` (required|email),
+    `asunto` (required|string|max:255), `mensaje` (required|string|max:2000)
+  - Aplicar rate limiting (throttle) para evitar spam, ej. `throttle:5,1`
+  - Enviar un correo a **crea@iyemyucatan.com** con los datos del formulario
+    (nombre, correo del remitente como reply-to, asunto, mensaje)
+  - Crear un Mailable simple `app/Mail/ContactoMensaje.php` con una vista Blade
+    `resources/views/emails/contacto.blade.php` (diseño limpio, con los datos del
+    formulario)
+  - Configurar `MAIL_FROM_ADDRESS` y asegurarse de que el `replyTo` del correo sea
+    el email ingresado por el usuario, para poder responder directamente
+  - Devolver `back()->with('success', 'Tu mensaje fue enviado correctamente.')` o
+    el error de validación correspondiente
+- En `.env` y `.env.example` documentar las variables MAIL necesarias (no escribir
+  credenciales reales en `.env.example`). Si Hostinger provee SMTP, dejar
+  `MAIL_MAILER=smtp` con placeholders; si no se cuenta con credenciales SMTP en
+  este momento, dejar `MAIL_MAILER=log` como fallback seguro pero documentar en un
+  comentario que debe configurarse SMTP real en producción para que los correos
+  lleguen a crea@iyemyucatan.com
+
+### 2.4 Mapa de ubicación (Google Maps)
+
+- Insertar un `<iframe>` de Google Maps embed (sin necesidad de API key, usando la
+  URL de embed pública `https://www.google.com/maps/embed?pb=...`) apuntando a la
+  ubicación del **Instituto Yucateco de Emprendedores (IYEM)** en Mérida, Yucatán
+- Buscar la dirección oficial del IYEM (Edificio Administrativo Siglo XXI, Calle 20
+  A No. 284-B, Col. Xcumpich, Mérida, Yucatán — según el encabezado del Diario
+  Oficial en `public/formatos/RO.pdf`) y generar el embed para esa dirección. Si
+  esa no es la dirección de atención al público del programa CREA, usar la
+  dirección oficial de atención ciudadana del IYEM que aparezca en su sitio web
+  (http://iyem.yucatan.gob.mx/) o en las RO
+- El iframe debe ser responsivo (`w-full h-full` dentro de un contenedor con
+  `aspect-ratio` o altura fija ~400-450px), con `loading="lazy"` y bordes
+  redondeados que combinen con la card del formulario
+- Encima o como overlay del mapa (como en la imagen de referencia), mostrar una
+  card pequeña con:
+  - Nombre del lugar: "Instituto Yucateco de Emprendedores (IYEM)"
+  - Dirección completa
+  - Ícono para "Abrir en Google Maps" (link externo a la dirección) y un ícono de
+    "Cómo llegar" (link a direcciones de Google Maps)
+
+### 2.5 Datos de contacto adicionales (junto al formulario o como bloque aparte)
+
+Agregar también, junto al formulario o en una pequeña barra superior de la
+sección, los datos de contacto directo:
+- Correo: crea@iyemyucatan.com (con ícono SVG de sobre, mailto: link)
+- Teléfono del IYEM (extraer de las RO si está disponible; si no se encuentra,
+  dejar el campo preparado pero usar el teléfono del Diario Oficial: (999) 924-23-57
+  como referencia institucional, o el que corresponda al IYEM)
+- Horario de atención (si está disponible en las RO; si no, usar un horario
+  estándar de oficina de gobierno: Lunes a Viernes, 9:00 - 15:00 hrs, y marcarlo
+  como referencial)
+
+---
+
+## 3. FOOTER — AGREGAR CONTACTO
+
+En el footer de `Welcome.vue`, agregar/actualizar la columna de "Contacto" con:
+- Correo: crea@iyemyucatan.com como link `mailto:crea@iyemyucatan.com` (ícono SVG
+  de sobre)
+- Dirección corta del IYEM (la misma usada en el mapa)
+- Teléfono (mismo dato usado en la sección de contacto)
+- Un link "Contáctanos" que haga scroll suave hacia la nueva sección de Contacto
+  (ancla `#contacto`)
+
+Mantener el estilo y estructura visual ya existentes del footer (columnas, colores
+verde oscuro, tipografía).
+
+---
+
+## 4. NAVBAR
+
+Agregar "Contacto" al menú de navegación del navbar (con scroll suave a `#contacto`),
+siguiendo el mismo patrón que los demás links (Inicio, Modalidades, Requisitos,
+¿Cómo funciona?).
+
+---
+
+## 5. VERIFICACIÓN
+
+1. `npm run build` — debe compilar sin errores
+2. `php artisan test` — debe pasar
+3. Probar el formulario de contacto localmente (verificar que se genera el correo,
+   aunque sea con `MAIL_MAILER=log` revisando `storage/logs/laravel.log`)
+4. Verificar responsividad de la nueva sección (mobile: columnas apiladas)
+5. Confirmar que el favicon ahora se muestra correctamente en una pestaña nueva
+
+---
+
+## 6. DEPLOY A PRODUCCIÓN (HOSTINGER)
+
+### Datos del servidor
+- IP: 195.35.38.222
+- Puerto SSH: 65002
+- Usuario: u489236361
+- Dominio destino: https://crea.iyemyucatan.com/
+- Ruta: `/home/u489236361/domains/crea.iyemyucatan.com/public_html`
+
+### 6.1 Build local
+
+```bash
+npm ci
+npm run build
+composer install --optimize-autoloader --no-dev
+```
+
+### 6.2 Subir cambios via rsync sobre SSH
+
+```bash
+rsync -avz --progress \
+  --exclude='.env' \
+  --exclude='node_modules/' \
+  --exclude='vendor/' \
+  --exclude='storage/logs/*' \
+  --exclude='.git/' \
+  --exclude='database/database.sqlite' \
+  -e "ssh -p 65002" \
+  ./ u489236361@195.35.38.222:/home/u489236361/domains/crea.iyemyucatan.com/public_html/
+```
+
+### 6.3 En el servidor (vía SSH)
+
+```bash
+cd /home/u489236361/domains/crea.iyemyucatan.com/public_html
+
+composer install --optimize-autoloader --no-dev
+
+php artisan config:clear
+php artisan route:clear
+php artisan view:clear
+php artisan config:cache
+php artisan route:cache
+php artisan view:cache
+
+chmod -R 775 storage bootstrap/cache
+```
+
+Si se configuró SMTP real para el envío de correos a crea@iyemyucatan.com, agregar
+las variables `MAIL_*` correspondientes directamente en el `.env` del servidor
+(NO subir `.env` por rsync) y volver a correr `php artisan config:cache`.
+
+### 6.4 Verificación post-deploy en https://crea.iyemyucatan.com/
+
+- [ ] El favicon se ve correctamente en la pestaña del navegador (probar en
+      incógnito para evitar caché)
+- [ ] La nueva sección "Contacto" aparece antes del footer, con el diseño de
+      dos columnas (formulario + mapa)
+- [ ] El mapa muestra la ubicación del IYEM correctamente
+- [ ] El formulario envía el mensaje y llega a crea@iyemyucatan.com (o queda
+      registrado en logs si MAIL_MAILER=log)
+- [ ] El footer muestra el correo crea@iyemyucatan.com como link funcional
+- [ ] El navbar tiene el link "Contacto" con scroll suave funcionando
+- [ ] Responsivo en mobile
+- [ ] Sin errores en consola del navegador ni en `storage/logs/laravel.log`

@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Módulo: Solicitudes Operativo — Auditoría CREA</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;font-family:'Segoe UI',system-ui,sans-serif;}
+body{background:#0f172a;color:#e2e8f0;}
+header{background:linear-gradient(135deg,#059669,#047857);padding:20px 24px;display:flex;align-items:center;gap:14px;}
+header h1{font-size:1.3rem;color:#fff;}
+header .badge{background:rgba(255,255,255,.15);color:#fff;padding:4px 10px;border-radius:20px;font-size:.75rem;margin-left:auto;}
+.container{max-width:1000px;margin:0 auto;padding:24px 16px;}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px;margin-bottom:24px;}
+.card{background:#1e293b;border-radius:12px;padding:18px;border-left:4px solid #10b981;}
+.card.warn{border-left-color:#f59e0b;}
+.card.danger{border-left-color:#ef4444;}
+.card.info{border-left-color:#3b82f6;}
+.card h3{font-size:.95rem;margin-bottom:10px;color:#fff;}
+.card p,.card li{font-size:.83rem;color:#94a3b8;line-height:1.6;}
+.card ul{padding-left:16px;}
+.card li{margin-bottom:4px;}
+.tag{display:inline-block;padding:2px 8px;border-radius:10px;font-size:.7rem;font-weight:700;margin-right:4px;margin-bottom:4px;}
+.tag.ok{background:#064e3b;color:#34d399;}
+.tag.warn{background:#451a03;color:#fb923c;}
+.tag.danger{background:#450a0a;color:#f87171;}
+.tag.info{background:#0c2a4a;color:#60a5fa;}
+.flow{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin:12px 0;}
+.step{background:#064e3b;border:1px solid #10b981;border-radius:8px;padding:8px 12px;font-size:.78rem;color:#6ee7b7;white-space:nowrap;}
+.arrow{color:#475569;font-size:.9rem;}
+table{width:100%;border-collapse:collapse;font-size:.8rem;}
+th{background:#064e3b;color:#6ee7b7;padding:8px 10px;text-align:left;}
+td{padding:7px 10px;border-bottom:1px solid #1e293b;color:#cbd5e1;}
+tr:hover td{background:#1e293b;}
+.status-ok::before{content:"✅ ";}
+.status-warn::before{content:"⚠️ ";}
+.status-danger::before{content:"🔴 ";}
+section{margin-bottom:28px;}
+section h2{font-size:1rem;font-weight:700;color:#34d399;border-bottom:1px solid #1e293b;padding-bottom:8px;margin-bottom:14px;}
+.estatus-flow{display:flex;flex-wrap:wrap;gap:0;margin:12px 0;}
+.est{padding:8px 14px;font-size:.78rem;font-weight:700;border-radius:0;}
+.est:first-child{border-radius:8px 0 0 8px;}
+.est:last-child{border-radius:0 8px 8px 0;}
+.est-arrow{display:flex;align-items:center;padding:0 4px;color:#475569;font-size:1.2rem;}
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <h1>📋 Solicitudes — Panel Operativo</h1>
+    <p style="font-size:.82rem;color:#a7f3d0;margin-top:4px;">Revisión, análisis crediticio, cambio de estatus, registro de crédito</p>
+  </div>
+  <div class="badge">Módulo 2 / 6</div>
+</header>
+<div class="container">
+
+  <section>
+    <h2>Ciclo de vida de una solicitud</h2>
+    <div class="estatus-flow">
+      <div class="est" style="background:#334155;color:#94a3b8;">Borrador</div>
+      <div class="est-arrow">→</div>
+      <div class="est" style="background:#1e40af;color:#bfdbfe;">Enviada</div>
+      <div class="est-arrow">→</div>
+      <div class="est" style="background:#065f46;color:#6ee7b7;">En Revisión</div>
+      <div class="est-arrow">↔</div>
+      <div class="est" style="background:#78350f;color:#fde68a;">Doc. Incompleta</div>
+      <div class="est-arrow">→</div>
+      <div class="est" style="background:#14532d;color:#86efac;">Aprobada ✅</div>
+    </div>
+    <div class="estatus-flow" style="margin-top:8px;">
+      <div class="est" style="background:#064e3b;color:#6ee7b7;opacity:.4;">En Revisión</div>
+      <div class="est-arrow">→</div>
+      <div class="est" style="background:#7f1d1d;color:#fca5a5;">Rechazada ❌</div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Funcionalidades del panel operativo</h2>
+    <table>
+      <thead><tr><th>Función</th><th>Ruta</th><th>Estado</th></tr></thead>
+      <tbody>
+        <tr><td>Listado con filtros (estatus, búsqueda)</td><td>GET /solicitudes</td><td class="status-ok">Funciona + KPIs arriba</td></tr>
+        <tr><td>Ver detalle completo + documentos</td><td>GET /solicitudes/{id}</td><td class="status-ok">Historial de estatus incluido</td></tr>
+        <tr><td>Cambiar estatus</td><td>POST /solicitudes/{id}/cambiar-estatus</td><td class="status-ok">Con nota opcional</td></tr>
+        <tr><td>Asignar analista</td><td>POST /solicitudes/{id}/asignar</td><td class="status-ok">Guarda fecha de asignación</td></tr>
+        <tr><td>Revisar documento (Aprobar/Rechazar)</td><td>POST /solicitudes/documento/{doc}/revisar</td><td class="status-ok">Con observación por documento</td></tr>
+        <tr><td>Enviar anuncio al ciudadano</td><td>POST /solicitudes/{id}/anuncio</td><td class="status-ok">Tipo: info/warning/success</td></tr>
+        <tr><td>Análisis crediticio</td><td>GET/POST /solicitudes/{id}/analisis</td><td class="status-ok">Score cualitativo + recomendación</td></tr>
+        <tr><td>Registrar crédito desde solicitud aprobada</td><td>GET/POST /solicitudes/{id}/registrar-credito</td><td class="status-ok">Crea Acreditado + Credito + Amortizaciones</td></tr>
+        <tr><td>Historial de cambios de estatus</td><td>—</td><td class="status-ok">Tabla solicitud_estatus_historial</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section>
+    <h2>Análisis Crediticio — Campos evaluados</h2>
+    <div class="grid" style="margin-bottom:0;">
+      <div class="card">
+        <h3>📊 Campos cuantitativos</h3>
+        <ul>
+          <li>Ingresos mensuales</li>
+          <li>Gastos mensuales</li>
+          <li>Capacidad de pago (ingresos − gastos)</li>
+          <li>Relación deuda/ingreso (auto-calculada)</li>
+          <li>Antigüedad del negocio (meses)</li>
+          <li>Monto recomendado por el analista</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3>✓ Checklist cualitativo (booleans)</h3>
+        <ul>
+          <li>CURP válida</li>
+          <li>RFC activo</li>
+          <li>Municipio elegible</li>
+          <li>Giro comercial elegible</li>
+          <li>Beneficiario duplicado (flag)</li>
+          <li>Alta SAT verificada</li>
+          <li>Documentos completos</li>
+          <li>Referencias verificadas</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3>📝 Recomendación del analista</h3>
+        <ul>
+          <li><strong>Aprobar</strong> — pasa al siguiente paso</li>
+          <li><strong>Rechazar</strong> — requiere motivo de rechazo</li>
+          <li><strong>Modificar Monto</strong> — recomienda monto diferente</li>
+          <li>Score cualitativo (0-100)</li>
+          <li>Observaciones libres</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <div class="grid">
+    <div class="card">
+      <h3>✅ Lo que ya funciona bien</h3>
+      <ul>
+        <li>KPIs en tiempo real en la bandeja (total, enviadas, en revisión, aprobadas, rechazadas, hoy)</li>
+        <li>Filtro por estatus y búsqueda por nombre/CURP/municipio</li>
+        <li>Historial de estatus con fecha y usuario que cambió</li>
+        <li>Revisión documento a documento con observación</li>
+        <li>Registro de crédito directamente desde la solicitud aprobada</li>
+        <li>Análisis crediticio con score y recomendación documentada</li>
+        <li>Anuncios directos al ciudadano desde el panel</li>
+      </ul>
+    </div>
+    <div class="card warn">
+      <h3>⚠️ Pendientes</h3>
+      <ul>
+        <li><span class="tag danger">P0</span> Cuando se aprueba, debería dispararse automáticamente la generación del ZIP (actualmente no hay observer/event)</li>
+        <li><span class="tag warn">P1</span> No existe vista de dictamen definitivo del comité (solo análisis del analista)</li>
+        <li><span class="tag warn">P1</span> Sin alertas automáticas cuando llega solicitud nueva (email/notificación al operativo)</li>
+        <li><span class="tag warn">P1</span> No se puede adjuntar documentos adicionales desde el panel operativo</li>
+        <li><span class="tag info">Mejora</span> Tablero Kanban de solicitudes por columnas de estatus</li>
+      </ul>
+    </div>
+  </div>
+</div>
+</body>
+</html>

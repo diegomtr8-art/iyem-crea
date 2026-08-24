@@ -1,0 +1,401 @@
+═══════════════════════════════════════════════════════════════════
+PROMPT — BUGFIX QA v1 ROUND 2 · Portal CREA · IYEM Yucatán
+Stack: Laravel 11 · Vue 3 · Inertia.js · TypeScript · Tailwind CSS
+═══════════════════════════════════════════════════════════════════
+
+Eres un desarrollador Full Stack experto en Laravel, Vue 3, Inertia.js y Tailwind CSS
+con 15 años de experiencia en UX/UI. Debes resolver los siguientes bugs pendientes y
+parciales del Portal CREA (Crédito para el Renacimiento de Emprendedores y Artesanos)
+del IYEM, Gobierno de Yucatán.
+
+CONTEXTO DEL PROYECTO
+─────────────────────
+- URL local: https://crea.iyemyucatan.com (XAMPP)
+- Raíz del proyecto: C:\xampp\htdocs\CREA\
+- 3 modalidades:
+    Artesanal     → $5k–$25k,   0%,  6/12/18 meses
+    Emprendedores → $25k–$150k, 7%,  12/18/24 meses
+    Sustentable   → $25k–$500k, 5%,  12/18/24 meses + 3 meses de gracia
+- Wizard ciudadano: 8 pasos, WizardSolicitudController.php + WizardCredito.vue
+
+IMPORTANTE — OPCACHE
+─────────────────────
+El servidor tiene OPcache con validate_timestamps=0. Después de cada cambio PHP
+debes limpiar OPcache. El método más confiable es vía XAMPP Control Panel:
+Stop Apache → Start Apache. Si tienes acceso a terminal usa:
+  php artisan opcache:clear
+o accede a http://localhost/phpmyadmin/ → SQL y ejecuta selects de prueba.
+
+═══════════════════════════════════════════════════════════════════
+BUGS A RESOLVER (19 ítems: 14 pendientes + 3 parciales + 2 extras)
+═══════════════════════════════════════════════════════════════════
+
+──────────────────────────────────────────
+GRUPO 1 — CRÍTICOS PENDIENTES
+──────────────────────────────────────────
+
+[C-04] Correo de verificación de email no activo
+ARCHIVO: app/Models/User.php, routes/web.php
+PROBLEMA: Usuarios recién registrados acceden al portal sin verificar su email.
+SOLUCIÓN:
+  1. En User.php añadir:
+       class User extends Authenticatable implements MustVerifyEmail {
+  2. En routes/web.php el grupo portal ya tiene 'verified':
+       Route::middleware(['auth', 'verified', 'ciudadano'])
+     Verificar que sea así (ya estaba en el archivo — solo activar en User.php).
+  3. Ejecutar: php artisan config:clear && php artisan cache:clear
+  4. Con Gmail SMTP ya configurado, el correo de verificación ya se enviará.
+VERIFICAR: Registrar nuevo usuario → debe llegar correo → sin verificar no entra.
+
+[C-06] PDFs del ZIP sin logos IYEM / Gobierno de Yucatán
+ARCHIVOS: resources/views/pdf/ (todas las vistas Blade de PDF)
+PROBLEMA: Los formatos PDF generados en el ZIP salen sin encabezado institucional.
+SOLUCIÓN:
+  1. Crear resources/views/pdf/_header.blade.php:
+     <table width="100%" style="border-bottom:2px solid #6B1938; margin-bottom:16px;">
+       <tr>
+         <td width="20%" align="left">
+           <img src="{{ public_path('img/logos/escudo-yucatan.png') }}"
+                height="60" alt="Escudo Yucatán">
+         </td>
+         <td width="60%" align="center">
+           <p style="font-size:13px; font-weight:bold; color:#6B1938; margin:0;">
+             INSTITUTO YUCATECO DEL EMPRENDIMIENTO Y MICROFINANZAS</p>
+           <p style="font-size:10px; margin:4px 0 0;">
+             Programa CREA — Crédito para el Renacimiento de Emprendedores y Artesanos</p>
+         </td>
+         <td width="20%" align="right">
+           <img src="{{ public_path('img/logos/logo-iyem.png') }}"
+                height="60" alt="IYEM">
+         </td>
+       </tr>
+     </table>
+  2. Añadir @include('pdf._header') al inicio del <body> de TODAS las vistas en
+     resources/views/pdf/*.blade.php
+  3. Colocar las imágenes en public/img/logos/ (escudo-yucatan.png, logo-iyem.png).
+     Si no existen, crear placeholders o usar base64 inline.
+VERIFICAR: Generar ZIP de una solicitud → abrir cualquier PDF → ver encabezado.
+
+──────────────────────────────────────────
+GRUPO 2 — ALTOS PENDIENTES
+──────────────────────────────────────────
+
+[A-02] Recuperar contraseña redirige silenciosamente con sesión activa
+ARCHIVO: app/Http/Middleware/RedirectIfAuthenticated.php (o AuthController)
+PROBLEMA: Con sesión activa, al visitar /forgot-password el middleware 'guest'
+redirige al dashboard sin ningún mensaje.
+SOLUCIÓN:
+  En RedirectIfAuthenticated.php, en el handle():
+    return redirect()->route('portal.dashboard')
+      ->with('info', 'Ya tienes una sesión activa. Para cambiar tu contraseña, ve a tu perfil.');
+  En el layout del dashboard (o BeneficiarioController@index) mostrar el flash 'info'.
+VERIFICAR: Logueado → abrir /forgot-password → debe redirigir con mensaje visible.
+
+[A-04] Aviso de privacidad — página vacía
+ARCHIVO: resources/views/legal/aviso-privacidad.blade.php (o donde esté)
+PROBLEMA: La ruta /aviso-privacidad existe en web.php pero la vista está vacía.
+SOLUCIÓN:
+  1. Revisar qué retorna PublicController@avisoPrivacidad.
+  2. Crear/editar la vista con el contenido oficial del aviso de privacidad del IYEM.
+     Mínimo: responsable, datos recabados, finalidad, derechos ARCO, contacto.
+  3. La vista NO debe tener middleware de autenticación (es pública).
+  4. El link en el formulario de registro:
+       <a :href="route('aviso-privacidad')" target="_blank">Aviso de Privacidad</a>
+VERIFICAR: Abrir /aviso-privacidad sin estar logueado → debe mostrar contenido.
+
+──────────────────────────────────────────
+GRUPO 3 — MEDIOS PENDIENTES
+──────────────────────────────────────────
+
+[M-01] Relación CURP ↔ RFC no validada
+ARCHIVOS: resources/js/Pages/Portal/WizardCredito.vue (paso 3 o donde esté RFC)
+          app/Http/Controllers/Portal/WizardSolicitudController.php
+PROBLEMA: El sistema acepta un CURP y un RFC de personas distintas.
+SOLUCIÓN — FRONTEND (Vue, en tiempo real, no bloqueante):
+  // Computed o watch en el paso donde aparezcan ambos campos:
+  const rfcCurpWarning = computed(() => {
+    if (form.rfc.length >= 4 && form.curp.length >= 4) {
+      return form.rfc.slice(0, 4).toUpperCase() !== form.curp.slice(0, 4).toUpperCase();
+    }
+    return false;
+  });
+  // En el template, debajo del campo RFC:
+  <p v-if="rfcCurpWarning" class="text-amber-600 text-xs mt-1">
+    ⚠️ El RFC no parece corresponder al CURP ingresado. Verifica los datos.
+  </p>
+SOLUCIÓN — BACKEND (advertencia en log, no error bloqueante):
+  En WizardSolicitudController.php, antes de guardar paso 3:
+  if (strlen($rfc) >= 4 && strlen($curp) >= 4) {
+      if (strtoupper(substr($rfc,0,4)) !== strtoupper(substr($curp,0,4))) {
+          \Log::warning("CURP/RFC mismatch: solicitud={$solicitud->id} RFC={$rfc} CURP={$curp}");
+      }
+  }
+VERIFICAR: Ingresar CURP de una persona, RFC de otra → aparece warning en UI.
+
+[M-02] Plazos Artesanal erróneos en landing y calculadora
+ARCHIVOS: resources/js/Pages/Welcome.vue (o como se llame la landing)
+          resources/js/Components/Calculadora.vue (o componente de calculadora)
+PROBLEMA: La landing mostraba "hasta 24 meses" para Artesanal.
+SOLUCIÓN: Buscar y corregir en todos los archivos Vue donde aparezca:
+  - Artesanal: 6, 12 o 18 meses (máximo 18, NO 24)
+  - Emprendedores: 12, 18 o 24 meses
+  - Sustentable: 12, 18 o 24 meses + 3 meses de gracia
+  En la calculadora, si los plazos vienen de un array hardcoded:
+    const plazos = {
+      artesanal:     [6, 12, 18],
+      emprendedores: [12, 18, 24],
+      sustentable:   [12, 18, 24],
+    }
+  También verificar en la BD: tabla modalidades_crea, columna plazos (JSON).
+VERIFICAR: Abrir landing → sección Artesanal → debe decir "hasta 18 meses".
+
+[M-05] Campo teléfono acepta letras y longitud arbitraria
+ARCHIVOS: Todos los pasos del wizard donde aparezcan campos de teléfono
+          (WizardCredito.vue, paso de datos personales, datos del aval, etc.)
+PROBLEMA: Sin filtro ni maxlength en los inputs de teléfono.
+SOLUCIÓN — aplicar en CADA campo de teléfono:
+  <input
+    type="tel"
+    maxlength="10"
+    @input="e => form.telefono_celular =
+      e.target.value.replace(/\D/g, '').slice(0, 10)"
+    placeholder="10 dígitos"
+  />
+  También en el aval (datos.telefono, datos.telefono_celular, etc.)
+  Backend: 'datos.telefono_celular' => 'digits:10'
+VERIFICAR: Escribir "555-abc-1234" → solo quedan "5551234" (máx 10 dígitos).
+
+[M-06] CURP acepta minúsculas y caracteres inválidos
+ARCHIVOS: WizardCredito.vue (campo CURP del solicitante y del aval)
+PROBLEMA: El campo no fuerza mayúsculas ni filtra caracteres no permitidos.
+SOLUCIÓN — aplicar en CADA campo CURP:
+  <input
+    type="text"
+    maxlength="18"
+    @input="e => form.curp =
+      e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 18)"
+    placeholder="18 caracteres"
+  />
+  También agregar indicador visual de longitud: "{{ form.curp.length }}/18"
+VERIFICAR: Escribir "arcr810415mynrzs07" → se convierte a "ARCR810415MYNRZS07".
+
+[M-08] Ficha técnica cerrada por defecto
+ARCHIVO: WizardCredito.vue (paso 6 o donde esté la ficha técnica)
+PROBLEMA: const fichaTecnicaAbierta = ref(false) → oculta campos al usuario.
+SOLUCIÓN: Cambiar a ref(true):
+  const fichaTecnicaAbierta = ref(true)
+VERIFICAR: Abrir el paso de ficha técnica → el acordeón debe estar abierto.
+
+[M-09] Proyección IE — fecha fin no se calcula automáticamente
+ARCHIVO: WizardCredito.vue (paso de ingresos y egresos / proyección)
+PROBLEMA: El usuario llena fecha inicio y fin manualmente — propenso a errores.
+SOLUCIÓN:
+  watch(() => form.proyeccion_fecha_inicio, (val) => {
+    if (val) {
+      const fin = new Date(val + 'T00:00:00');
+      fin.setMonth(fin.getMonth() + 6);
+      form.proyeccion_fecha_fin = fin.toISOString().split('T')[0];
+    }
+  });
+  // El campo de fecha fin queda editable pero con el valor propuesto
+VERIFICAR: Seleccionar fecha inicio → fecha fin se auto-llena con +6 meses.
+
+[M-10] Fechas futuras permitidas en campos de historial
+ARCHIVO: WizardCredito.vue (campos de fecha en historial de ingresos, egresos,
+          fecha de inicio del negocio, etc.)
+PROBLEMA: Sin atributo max en campos históricos.
+SOLUCIÓN:
+  // Computed global en el componente:
+  const hoy = new Date().toISOString().split('T')[0]; // "2026-08-21"
+  // En TODOS los inputs de fecha histórica:
+  <input type="date" :max="hoy" v-model="form.fecha_inicio_negocio" />
+  EXCEPCIÓN: campos de proyección (proyeccion_fecha_inicio/fin) NO llevan max.
+VERIFICAR: Click en campo de fecha de historial → calendario no permite > hoy.
+
+[M-11] Sin límites de caracteres en campos de texto libre
+ARCHIVOS: WizardCredito.vue + WizardSolicitudController.php
+PROBLEMA: Campos sin maxlength permiten texto arbitrariamente largo.
+SOLUCIÓN — Vue (maxlength en el input):
+  nombre_completo:     150
+  nombre_negocio:      150
+  curp:                18
+  rfc:                 13
+  telefono_celular:    10
+  codigo_postal:       5
+  calle:               200
+  colonia:             100
+  descripcion_negocio: 1000
+  observaciones:       500
+SOLUCIÓN — PHP (regla max en validate):
+  'datos.nombre_completo'      => 'required|string|max:150',
+  'datos.descripcion_negocio'  => 'nullable|string|max:1000',
+  // etc.
+VERIFICAR: Pegar texto largo en un campo → se corta al límite.
+
+──────────────────────────────────────────
+GRUPO 4 — BAJOS PENDIENTES
+──────────────────────────────────────────
+
+[B-01] Logo recortado en páginas de autenticación
+ARCHIVOS: resources/js/Components/AppLogo.vue (o como se llame)
+          resources/js/Layouts/AuthCardLayout.vue
+PROBLEMA: El logo aparece cortado en login/registro.
+SOLUCIÓN:
+  1. Verificar en AppLogo.vue que el viewBox sea correcto:
+       <svg viewBox="0 0 32 32" xmlns="...">
+  2. Verificar que el contenedor padre NO tenga overflow:hidden ni clip innecesario.
+  3. Si el logo es una imagen: eliminar object-fit:cover si la aplica.
+  4. Probar en modo claro y oscuro.
+VERIFICAR: Abrir /login → el logo debe verse completo.
+
+[B-02] Orden de modalidades no garantizado
+ARCHIVOS: database/migrations/ (agregar campo 'orden')
+          app/Http/Controllers/Portal/WizardSolicitudController.php
+          app/Http/Controllers/PublicController.php
+          database/seeders/ (actualizar seeds)
+PROBLEMA: ModalidadCrea::all() sin orderBy → orden aleatorio en producción.
+SOLUCIÓN:
+  1. Crear migración:
+       Schema::table('modalidades_crea', function (Blueprint $table) {
+           $table->unsignedTinyInteger('orden')->default(0)->after('nombre');
+       });
+  2. En el seeder o tinker:
+       Artesanal     → orden=1
+       Emprendedores → orden=2
+       Sustentable   → orden=3
+  3. En TODOS los queries que traigan modalidades:
+       ModalidadCrea::orderBy('orden')->get()
+  4. php artisan migrate
+VERIFICAR: La landing y el wizard siempre muestran: Artesanal → Emprendedores → Sustentable.
+
+──────────────────────────────────────────
+GRUPO 5 — PARCIALES A COMPLETAR
+──────────────────────────────────────────
+
+[C-05 PARCIAL] Validación de rango de monto — completar backend
+ARCHIVO: app/Http/Controllers/Portal/WizardSolicitudController.php (paso 2)
+PENDIENTE: La UI ya muestra el rango; falta la validación PHP dinámica.
+SOLUCIÓN:
+  // En guardarPaso(), caso paso === 2:
+  $modalidad = ModalidadCrea::findOrFail($solicitud->modalidad_id);
+  $request->validate([
+      'datos.monto_solicitado' => [
+          'required', 'numeric',
+          "min:{$modalidad->monto_minimo}",
+          "max:{$modalidad->monto_maximo}",
+      ],
+  ], [
+      'datos.monto_solicitado.min' =>
+          "El monto mínimo para esta modalidad es $" . number_format($modalidad->monto_minimo, 2),
+      'datos.monto_solicitado.max' =>
+          "El monto máximo para esta modalidad es $" . number_format($modalidad->monto_maximo, 2),
+  ]);
+  TAMBIÉN: corregir el valor inicial del input en Vue:
+    monto_solicitado: props.solicitud?.datos?.monto_solicitado ?? null
+    // (null fuerza al usuario a escribir, no muestra "$5.00")
+VERIFICAR: Ingresar $1 en Artesanal → error: "El monto mínimo es $5,000.00".
+
+[A-03 PARCIAL] Errores de validación con highlight visual
+ARCHIVO: resources/js/Pages/Portal/WizardCredito.vue
+PENDIENTE: El backend retorna errores 422 con nombres de campo legibles,
+           pero el Vue no los mapea a un highlight rojo en el input.
+SOLUCIÓN:
+  1. Definir ref de errores:
+       const errores = ref<Record<string, string>>({})
+  2. En el bloque catch del axios que llama al paso:
+       if (error.response?.status === 422) {
+         errores.value = error.response.data.errors ?? {};
+         // scroll al primer error
+         nextTick(() => {
+           document.querySelector('.border-red-500')?.scrollIntoView({
+             behavior: 'smooth', block: 'center'
+           });
+         });
+       }
+  3. En CADA input del template:
+       :class="errores['datos.nombre_completo'] ? 'border-red-500' : 'border-gray-300'"
+  4. Debajo de cada input, mostrar el mensaje:
+       <p v-if="errores['datos.nombre_completo']"
+          class="text-red-600 text-xs mt-1">
+         {{ errores['datos.nombre_completo'] }}
+       </p>
+  5. Limpiar errores al avanzar al siguiente paso:
+       errores.value = {}
+VERIFICAR: Avanzar con nombre vacío → input en rojo + mensaje debajo + scroll.
+
+[M-03 PARCIAL] Fecha nacimiento — bloquear menores en frontend
+ARCHIVO: resources/js/Pages/Portal/WizardCredito.vue
+PENDIENTE: PHP ya valida; falta el atributo :max en Vue.
+SOLUCIÓN:
+  const fechaMax18 = computed(() => {
+    const d = new Date();
+    d.setFullYear(d.getFullYear() - 18);
+    return d.toISOString().split('T')[0]; // e.g. "2008-08-21"
+  });
+  // En el input de fecha de nacimiento del solicitante:
+  <input type="date" :max="fechaMax18" v-model="form.fecha_nacimiento" />
+  // En el input de fecha de nacimiento del AVAL:
+  <input type="date" :max="fechaMax18" v-model="form.aval_fecha_nacimiento" />
+VERIFICAR: Abrir calendario de fecha de nacimiento → no permite seleccionar
+           fechas más recientes que hace 18 años.
+
+═══════════════════════════════════════════════════════════════════
+ORDEN DE EJECUCIÓN RECOMENDADO
+═══════════════════════════════════════════════════════════════════
+
+FASE 1 — Cambios solo PHP (requieren OPcache clear después):
+  1. C-04 — MustVerifyEmail en User.php
+  2. C-05 — Validación monto backend
+  3. M-01 — Log de mismatch CURP/RFC
+  4. M-11 — Reglas max en validaciones PHP
+  → php artisan config:clear && php artisan cache:clear
+  → Reiniciar Apache (XAMPP Control Panel)
+
+FASE 2 — Cambios solo Vue (requieren npm run build después):
+  5. M-05 — Filtro teléfono
+  6. M-06 — Filtro CURP
+  7. M-08 — Ficha técnica abierta
+  8. M-09 — Auto-calcular fecha fin proyección
+  9. M-10 — Atributo max en fechas históricas
+  10. M-11 — maxlength en inputs
+  11. M-03 — max en fecha nacimiento
+  12. A-03 — Highlight errores validación
+  13. M-01 — Warning CURP/RFC en Vue
+  → npm run build (en C:\xampp\htdocs\CREA)
+
+FASE 3 — Cambios Blade/PHP menores:
+  14. C-06 — Header PDF con logos
+  15. A-04 — Aviso de privacidad
+  16. A-02 — Flash message en redirección guest
+  17. B-01 — Logo recortado (AppLogo.vue)
+  → Reiniciar Apache
+
+FASE 4 — Migración BD:
+  18. B-02 — Añadir campo 'orden' a modalidades_crea
+  → php artisan migrate
+
+FASE 5 — Verificación M-02:
+  19. M-02 — Corregir plazos Artesanal en landing y calculadora
+
+═══════════════════════════════════════════════════════════════════
+VERIFICACIÓN FINAL
+═══════════════════════════════════════════════════════════════════
+
+Al terminar, verificar:
+□ Nuevo usuario → llega correo de verificación → sin verificar no entra al portal
+□ /aviso-privacidad → muestra contenido (sin login)
+□ Login activo → /forgot-password → redirige con flash message
+□ Artesanal: monto $1 → error claro. Monto $15,000 → acepta.
+□ Teléfono: letras → se eliminan automáticamente
+□ CURP: minúsculas → se convierten a mayúsculas
+□ RFC diferente al CURP → advertencia amarilla (no bloqueante)
+□ Fecha nacimiento: menor de 18 → calendario no permite
+□ Fecha historial: fecha futura → calendario no permite
+□ Ficha técnica → abierta por defecto
+□ Proyección → fecha fin = fecha inicio + 6 meses
+□ Campo con error → borde rojo + mensaje + scroll
+□ ZIP PDF → encabezado IYEM / Escudo Yucatán visible
+□ Landing → Artesanal dice "hasta 18 meses"
+□ Modalidades → siempre en orden Artesanal, Emprendedores, Sustentable
+
+═══════════════════════════════════════════════════════════════════

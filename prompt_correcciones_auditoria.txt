@@ -1,0 +1,776 @@
+# PROMPT: CORRECCIONES COMPLETAS PREVIAS AL LANZAMIENTO — CREA
+# Para usar en: Claude Code (sesión interactiva en la raíz del proyecto)
+# Stack: Laravel 11 + Vue 3 + Inertia.js + TypeScript + Tailwind CSS
+# Antes de empezar: lee este prompt completo, luego revisa los archivos afectados,
+#                   y trabaja sección por sección en el orden indicado (P0 primero).
+
+---
+
+## CONTEXTO GENERAL
+
+El sistema CREA (Crédito para el Renacimiento de Emprendedores y Artesanos) del IYEM
+ya tiene implementados: wizard de solicitud ciudadana, análisis crediticio, gestión de
+créditos, pagos con cascada mora→interés→capital, cobranza, reestructuraciones,
+reportes y exportación Excel.
+
+Se realizó una auditoría completa y se encontraron 4 problemas bloqueantes (P0) que
+impiden el lanzamiento y 7 problemas importantes (P1) que deben corregirse de inmediato.
+Este prompt cubre TODOS ellos. Trabájalos en el orden en que aparecen.
+
+---
+
+## ═══════════════════════════════════════════════════════
+## P0-1 — FLUJO INCORRECTO: ZIP SE GENERA AL ENVIAR, NO AL APROBAR
+## ═══════════════════════════════════════════════════════
+
+**Problema:** Actualmente en `WizardSolicitudController@generarFormatos` el ZIP con los
+PDFs se genera cuando el ciudadano lo solicita antes de la aprobación. Esto es incorrecto:
+el ciudadano puede descargar formatos con datos que aún no han sido validados.
+
+**Solución — flujo correcto:**
+
+1. Al enviar la solicitud → estatus = `Enviada`, mensaje: "Tu solicitud fue enviada.
+   El equipo CREA revisará tu información." SIN ZIP, sin botón de descarga.
+
+2. Solo cuando el operativo cambia estatus a `Aprobada` → disparar automáticamente
+   la generación del ZIP en background y notificar al ciudadano.
+
+3. El ciudadano solo ve el botón de descarga del ZIP cuando estatus = `Aprobada` y
+   `formatos_zip_ruta` no es null.
+
+**Implementación:**
+
+a) Crear un Observer para `SolicitudCredito`:
+   ```
+   php artisan make:observer SolicitudCreditoObserver --model=SolicitudCredito
+   ```
+   En el método `updating()`, detectar cuando `estatus` cambia a `Aprobada`:
+   ```php
+   public function updating(SolicitudCredito $solicitud): void
+   {
+       if ($solicitud->isDirty('estatus') && $solicitud->estatus === 'Aprobada') {
+           // Disparar job en background para no bloquear la request
+           GenerarFormatosSolicitudJob::dispatch($solicitud->id);
+       }
+   }
+   ```
+
+b) Crear job `app/Jobs/GenerarFormatosSolicitudJob.php`:
+   ```php
+   public function handle(FormatosService $service): void
+   {
+       $solicitud = SolicitudCredito::with(['modalidad', 'aval'])->findOrFail($this->solicitudId);
+       $ruta = $service->generarZip($solicitud);
+       $solicitud->update(['formatos_zip_ruta' => $ruta]);
+       // Enviar notificación al ciudadano (ver P1-1)
+   }
+   ```
+
+c) Registrar el observer en `AppServiceProvider::boot()`:
+   ```php
+   SolicitudCredito::observe(SolicitudCreditoObserver::class);
+   ```
+
+d) En `WizardSolicitudController`:
+   - Eliminar la ruta `POST /solicitud/generar-formatos` o protegerla para que solo
+     sea invocable si estatus = `Aprobada` (como fallback manual para operativos).
+   - La ruta `GET /solicitud/{id}/descargar-formatos` debe verificar que
+     `$solicitud->formatos_zip_ruta !== null` y que el usuario es dueño.
+
+e) En el frontend `portal/WizardCredito.vue` y `portal/Dashboard.vue`:
+   - Si estatus = `Enviada` o `En_Revision` → mostrar banner: "Tu solicitud está siendo
+     revisada. Te avisaremos cuando haya novedades."
+   - Si estatus = `Aprobada` y zip disponible → mostrar botón "Descargar formatos (ZIP)"
+     con mensaje: "¡Felicidades! Tu crédito fue aprobado. Descarga los formatos, fírmalos
+     y entrégalos en las oficinas CREA — Instituto Yucateco de Emprendedores,
+     Calle 60 No. 395 por 45 y 47, Col. Centro, Mérida, Yucatán."
+
+---
+
+## ═══════════════════════════════════════════════════════
+## P0-2 — DOCUMENTOS SUBIDOS EN DISCO PUBLIC (ACCESO SIN AUTENTICACIÓN)
+## ═══════════════════════════════════════════════════════
+
+**Problema:** Verificar y garantizar que todos los archivos que suben los ciudadanos
+(INE, CURP, comprobantes, etc.) se almacenan en disco `local` (privado), nunca en
+disco `public`. Los documentos contienen datos personales sensibles (CURP, domicilio,
+fotografías).
+
+**Revisa:** `WizardSolicitudController@subirDocumento` y `SolicitudCreditoController`.
+
+**Solución:**
+
+a) En `WizardSolicitudController@subirDocumento`, asegúrate de que el almacenamiento usa:
+   ```php
+   $ruta = $request->file('archivo')->store(
+       "solicitudes/{$solicitud->id}/documentos",
+       'local'  // ← disco local, NO 'public'
+   );
+   ```
+
+b) Si encuentras algún archivo guardado con `Storage::disk('public')` o
+   `->store('...', 'public')` en cualquier parte del código relacionado con documentos
+   de solicitudes ciudadanas, corrígelo a `'local'`.
+
+c) La ruta de descarga autenticada ya existe:
+   `GET /mi-portal/documentos/{documento}/descargar` → `WizardSolicitudController@descargarDocumento`
+   Verifica que esta ruta comprueba que `$documento->solicitud->user_id === auth()->id()`
+   antes de servir el archivo. Si no lo hace, agrégalo.
+
+d) Para el panel operativo, verifica que la descarga de documentos de una solicitud también
+   pase por una ruta autenticada con middleware `operativo`. Si los documentos se sirven
+   con `url` pública, corrígelo para que usen Storage::disk('local')->temporaryUrl() o
+   una ruta de descarga protegida equivalente.
+
+e) Migración de archivos existentes: si hay archivos en storage/app/public/solicitudes/,
+   muévelos a storage/app/solicitudes/ con un comando artisan:
+   ```php
+   php artisan tinker
+   // Storage::disk('local')->allFiles('solicitudes/') para verificar
+   ```
+
+---
+
+## ═══════════════════════════════════════════════════════
+## P0-3 — FOOTER DEL PORTAL CIUDADANO SE SUBE
+## ═══════════════════════════════════════════════════════
+
+**Problema:** El layout principal del portal no tiene la estructura correcta para que el
+footer quede fijo al fondo. En pantallas con poco contenido o en móvil, el footer queda
+a media pantalla.
+
+**Solución:** En el layout que envuelve las vistas del portal ciudadano
+(busca en `resources/js/layouts/` o el componente raíz de las páginas portal/*),
+aplica este patrón:
+
+```html
+<!-- Layout del portal -->
+<div class="flex flex-col min-h-screen bg-gray-50 dark:bg-gray-900">
+  <!-- Navbar -->
+  <nav>...</nav>
+
+  <!-- Contenido principal — flex-1 hace que empuje el footer abajo -->
+  <main class="flex-1">
+    <slot /> <!-- o <component :is="..." /> -->
+  </main>
+
+  <!-- Footer siempre al fondo -->
+  <footer class="...">
+    ...
+  </footer>
+</div>
+```
+
+Aplica esto en TODOS los layouts del portal ciudadano (Dashboard, WizardCredito,
+MiCredito, Expediente). Si comparten un layout base, basta con corregirlo en un lugar.
+
+---
+
+## ═══════════════════════════════════════════════════════
+## P0-4 — VALIDACIÓN DE MONTO DESCONECTADA DE LA MODALIDAD EN EL WIZARD
+## ═══════════════════════════════════════════════════════
+
+**Problema:** En el wizard ciudadano, cuando el usuario escribe el monto a solicitar, la
+validación de mínimo/máximo no se actualiza dinámicamente según la modalidad seleccionada.
+
+**Solución:**
+
+a) En `WizardSolicitudController@guardarPaso`, cuando el paso incluye `monto_solicitado`,
+   validar contra la modalidad ya seleccionada:
+   ```php
+   if (isset($data['monto_solicitado'])) {
+       $modalidad = ModalidadCrea::find($solicitud->modalidad_id ?? $data['modalidad_id']);
+       if ($modalidad) {
+           $request->validate([
+               'monto_solicitado' => [
+                   'numeric',
+                   "min:{$modalidad->monto_minimo}",
+                   "max:{$modalidad->monto_maximo}",
+               ],
+           ], [
+               'monto_solicitado.min' => "El monto mínimo para {$modalidad->nombre} es $" . number_format($modalidad->monto_minimo, 0) . ".",
+               'monto_solicitado.max' => "El monto máximo para {$modalidad->nombre} es $" . number_format($modalidad->monto_maximo, 0) . ".",
+           ]);
+       }
+   }
+   ```
+
+b) En el frontend `portal/WizardCredito.vue`, el campo de monto debe mostrar en tiempo
+   real el rango permitido según la modalidad seleccionada:
+   ```vue
+   <p class="text-sm text-gray-500">
+     Monto entre {{ formatMoney(modalidadSeleccionada.monto_minimo) }}
+     y {{ formatMoney(modalidadSeleccionada.monto_maximo) }}
+   </p>
+   ```
+   Y el input debe tener `:min` y `:max` reactivos con la modalidad.
+
+---
+
+## ═══════════════════════════════════════════════════════
+## P1-1 — NOTIFICACIONES: MIGRAR A LARAVEL DATABASENOTIFICATION
+## ═══════════════════════════════════════════════════════
+
+**Problema actual:** El sistema usa el modelo `AnuncioCiudadano` para enviar mensajes del
+operativo al ciudadano. Esto es un sistema casero que no tiene badge de "no leídas" en
+tiempo real, ni dropdown estándar, ni integración con el sistema de notificaciones de
+Laravel.
+
+**Solución:** Implementar Laravel `DatabaseNotification` para eventos del sistema,
+manteniendo `AnuncioCiudadano` solo para mensajes manuales del operativo.
+
+a) Crear las notificaciones en `app/Notifications/`:
+
+```php
+// SolicitudEnviadaNotification.php
+class SolicitudEnviadaNotification extends Notification
+{
+    public function via($notifiable): array { return ['database']; }
+    public function toDatabase($notifiable): array {
+        return [
+            'titulo'  => 'Solicitud recibida',
+            'mensaje' => 'Tu solicitud fue enviada correctamente. El equipo CREA la revisará pronto.',
+            'tipo'    => 'info',
+            'url'     => route('portal.dashboard'),
+        ];
+    }
+}
+
+// SolicitudAprobadaNotification.php — incluir URL de descarga del ZIP
+// SolicitudRechazadaNotification.php — incluir motivo
+// DocumentacionIncompletaNotification.php — incluir qué documentos faltan
+// En_RevisionNotification.php
+```
+
+b) Disparar las notificaciones en `SolicitudOperativoController@cambiarEstatus`:
+   ```php
+   match ($nuevoEstatus) {
+       'En_Revision'             => $solicitud->user->notify(new En_RevisionNotification($solicitud)),
+       'Aprobada'                => $solicitud->user->notify(new SolicitudAprobadaNotification($solicitud)),
+       'Rechazada'               => $solicitud->user->notify(new SolicitudRechazadaNotification($solicitud)),
+       'Documentacion_Incompleta'=> $solicitud->user->notify(new DocumentacionIncompletaNotification($solicitud)),
+       default => null,
+   };
+   ```
+   También disparar `SolicitudEnviadaNotification` en `WizardSolicitudController` cuando
+   el ciudadano envía la solicitud.
+
+c) En el Observer del job de ZIP (P0-1), al terminar de generar:
+   ```php
+   $solicitud->user->notify(new FormatosListosNotification($solicitud));
+   ```
+
+d) Agregar ruta en el portal:
+   ```php
+   Route::get('notificaciones', [BeneficiarioController::class, 'notificaciones'])->name('notificaciones.lista');
+   Route::post('notificaciones/{id}/leer', [BeneficiarioController::class, 'marcarLeida'])->name('notificaciones.leer');
+   Route::post('notificaciones/leer-todas', [BeneficiarioController::class, 'marcarTodasLeidas'])->name('notificaciones.leer-todas');
+   ```
+
+e) En `BeneficiarioController@index`, pasar al frontend:
+   ```php
+   'notificaciones' => auth()->user()->notifications()->latest()->take(10)->get()->map(fn($n) => [
+       'id'      => $n->id,
+       'leida'   => !is_null($n->read_at),
+       'titulo'  => $n->data['titulo'],
+       'mensaje' => $n->data['mensaje'],
+       'tipo'    => $n->data['tipo'],
+       'url'     => $n->data['url'] ?? null,
+       'fecha'   => $n->created_at->diffForHumans(),
+   ]),
+   'no_leidas' => auth()->user()->unreadNotifications()->count(),
+   ```
+
+f) En el Navbar del portal ciudadano, el ícono de campanita debe:
+   - Mostrar badge rojo con el número de `no_leidas` cuando > 0
+   - Al hacer clic, abrir dropdown con las últimas 10 notificaciones
+   - Botón "Marcar todas como leídas"
+   - Cada notificación lleva a su `url` y se marca como leída
+
+g) Ejecutar migración si no existe:
+   ```bash
+   php artisan notifications:table
+   php artisan migrate
+   ```
+
+---
+
+## ═══════════════════════════════════════════════════════
+## P1-2 — TABLA EDITABLE DE DESTINO DEL CRÉDITO (CONCEPTOS LIBRES)
+## ═══════════════════════════════════════════════════════
+
+**Problema:** En el paso "Destino del Crédito" del wizard, el usuario no puede escribir
+los conceptos (qué va a comprar y cuánto cuesta). Es fundamental para los formatos IYEM.
+
+**Solución — en `portal/WizardCredito.vue`, en el paso de destino del crédito:**
+
+a) Agregar un campo `conceptos_destino` en `datos_wizard` (array de objetos):
+   ```json
+   [
+     { "concepto": "Máquina de coser industrial", "importe": 15000 },
+     { "concepto": "Materia prima (tela)", "importe": 5000 }
+   ]
+   ```
+
+b) Componente Vue de tabla editable:
+   ```vue
+   <template>
+     <div>
+       <table class="w-full text-sm">
+         <thead>
+           <tr>
+             <th class="text-left">Concepto / Descripción</th>
+             <th class="text-right w-40">Importe ($)</th>
+             <th class="w-10"></th>
+           </tr>
+         </thead>
+         <tbody>
+           <tr v-for="(item, i) in conceptos" :key="i">
+             <td><input v-model="item.concepto" type="text" placeholder="Ej. Máquina industrial" class="w-full border rounded px-2 py-1" /></td>
+             <td>
+               <input v-model.number="item.importe" type="text"
+                 @input="formatearMiles($event, item)"
+                 class="w-full text-right border rounded px-2 py-1" />
+             </td>
+             <td><button @click="eliminarFila(i)" class="text-red-500">✕</button></td>
+           </tr>
+         </tbody>
+       </table>
+       <button @click="agregarFila" class="mt-2 text-sm text-blue-500">+ Agregar concepto</button>
+       <div class="mt-3 text-right font-bold">
+         Total: {{ formatMoney(totalConceptos) }}
+       </div>
+       <p v-if="totalConceptos !== montoSolicitado" class="text-red-500 text-xs mt-1">
+         El total de conceptos (${{ formatMoney(totalConceptos) }}) debe ser igual al monto solicitado (${{ formatMoney(montoSolicitado) }}).
+       </p>
+     </div>
+   </template>
+
+   <script setup>
+   const totalConceptos = computed(() => conceptos.value.reduce((s, c) => s + (c.importe || 0), 0));
+
+   function formatearMiles(event, item) {
+     const raw = event.target.value.replace(/[^0-9]/g, '');
+     item.importe = parseInt(raw) || 0;
+     event.target.value = raw ? parseInt(raw).toLocaleString('es-MX') : '';
+   }
+   </script>
+   ```
+
+c) Validación al avanzar: `totalConceptos === montoSolicitado`. Si no, mostrar error
+   y no permitir continuar al siguiente paso.
+
+d) En `WizardSolicitudController@guardarPaso`, al recibir el paso de destino:
+   ```php
+   $data['conceptos_destino'] = collect($request->conceptos_destino)->map(fn($c) => [
+       'concepto' => strip_tags($c['concepto'] ?? ''),
+       'importe'  => (float) ($c['importe'] ?? 0),
+   ])->filter(fn($c) => $c['concepto'] && $c['importe'] > 0)->values()->toArray();
+
+   $totalConceptos = collect($data['conceptos_destino'])->sum('importe');
+   if (abs($totalConceptos - $solicitud->monto_solicitado) > 1) {
+       return response()->json(['error' => 'El total de conceptos debe ser igual al monto solicitado.'], 422);
+   }
+   ```
+
+---
+
+## ═══════════════════════════════════════════════════════
+## P1-3 — AGREGAR DOCUMENTO "PROPIEDAD O POSESIÓN DEL NEGOCIO"
+## ═══════════════════════════════════════════════════════
+
+**Problema:** Falta el tipo de documento `propiedad_posesion_negocio` en el listado de
+documentos requeridos. Todos los solicitantes deben presentarlo.
+
+**Solución:**
+
+En `app/Models/DocumentoSolicitud.php`, en el método `tiposRequeridos()`, agregar
+en el array `$base` (que aplica a TODOS los tipos):
+
+```php
+$base = [
+    'ine_frente'                => 'INE / Credencial de Elector (Frente)',
+    'ine_reverso'               => 'INE / Credencial de Elector (Reverso)',
+    'curp'                      => 'Documento CURP oficial',
+    'comprobante_domicilio'     => 'Comprobante de Domicilio',
+    'propiedad_posesion_negocio'=> 'Documento que acredite propiedad o posesión del negocio', // ← AGREGAR
+    'foto_negocio'              => 'Fotografía del Negocio o Proyecto',
+];
+```
+
+En el wizard ciudadano (`portal/WizardCredito.vue`), en el paso de documentos, este
+nuevo tipo debe aparecer con el texto descriptivo:
+"Puede ser: escrituras, contrato de arrendamiento, constancia de posesión municipal, etc."
+
+---
+
+## ═══════════════════════════════════════════════════════
+## P1-4 — PRÓXIMA CUOTA CARD EN "MI CRÉDITO" DEL PORTAL
+## ═══════════════════════════════════════════════════════
+
+**Problema:** La vista `portal/MiCredito.vue` muestra la tabla de amortización completa
+pero no destaca de forma prominente la próxima cuota a pagar, su fecha de vencimiento
+y si hay mora acumulada.
+
+**Solución:**
+
+a) En `MiCreditoController@index`, calcular y enviar `proxima_cuota`:
+   ```php
+   $hoy = now()->toDateString();
+   $proxima = $credito->amortizaciones()
+       ->whereNotIn('estado', ['Pagado', 'Condonado', 'Reestructurada'])
+       ->orderBy('fecha_vencimiento')
+       ->first();
+
+   $diasMora = 0;
+   $mora = 0.0;
+   if ($proxima && $proxima->fecha_vencimiento < $hoy) {
+       $diasMora = now()->diffInDays($proxima->fecha_vencimiento);
+       if ($diasMora > 5) {
+           $tasaDiaria = ($credito->tasa_interes_moratorio / 100) / 360;
+           $mora = round((float)$proxima->saldo_insoluto * $tasaDiaria * $diasMora, 2);
+       }
+   }
+
+   // En el array de respuesta del credito:
+   'proxima_cuota' => $proxima ? [
+       'numero'            => $proxima->numero_cuota,
+       'fecha_vencimiento' => $proxima->fecha_vencimiento,
+       'capital'           => (float) $proxima->capital_esperado - (float) $proxima->capital_pagado,
+       'interes'           => (float) $proxima->interes_ordinario_esperado - (float) $proxima->interes_ordinario_pagado,
+       'mora'              => $mora,
+       'total'             => round(((float)$proxima->capital_esperado - (float)$proxima->capital_pagado)
+                                  + ((float)$proxima->interes_ordinario_esperado - (float)$proxima->interes_ordinario_pagado)
+                                  + $mora, 2),
+       'dias_mora'         => $diasMora,
+       'vencida'           => $proxima->fecha_vencimiento < $hoy,
+   ] : null,
+   ```
+
+b) En `portal/MiCredito.vue`, mostrar al inicio de la página una card prominente:
+
+```vue
+<div v-if="credito.proxima_cuota" :class="[
+  'rounded-xl p-5 mb-6 border-l-4',
+  credito.proxima_cuota.vencida
+    ? 'bg-red-50 border-red-500 dark:bg-red-950'
+    : 'bg-green-50 border-green-500 dark:bg-green-950'
+]">
+  <h3 class="font-bold text-lg mb-3">
+    {{ credito.proxima_cuota.vencida ? '🔴 Cuota vencida' : '📅 Próxima cuota' }}
+  </h3>
+  <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+    <div><p class="text-xs text-gray-500">Vencimiento</p>
+         <p class="font-bold">{{ formatDate(credito.proxima_cuota.fecha_vencimiento) }}</p></div>
+    <div><p class="text-xs text-gray-500">Capital</p>
+         <p class="font-bold">{{ formatMoney(credito.proxima_cuota.capital) }}</p></div>
+    <div><p class="text-xs text-gray-500">Interés</p>
+         <p class="font-bold">{{ formatMoney(credito.proxima_cuota.interes) }}</p></div>
+    <div v-if="credito.proxima_cuota.mora > 0">
+         <p class="text-xs text-red-500">Mora acumulada</p>
+         <p class="font-bold text-red-600">{{ formatMoney(credito.proxima_cuota.mora) }}</p></div>
+  </div>
+  <div class="mt-4 pt-3 border-t flex justify-between items-center">
+    <span class="text-xs text-gray-500">
+      {{ credito.proxima_cuota.dias_mora > 0 ? credito.proxima_cuota.dias_mora + ' días de atraso' : '' }}
+    </span>
+    <span class="text-xl font-extrabold">
+      Total a pagar: {{ formatMoney(credito.proxima_cuota.total) }}
+    </span>
+  </div>
+  <p v-if="credito.proxima_cuota.vencida" class="text-xs text-red-500 mt-2">
+    Contáctanos para regularizar tu crédito: (999) 000-0000
+  </p>
+</div>
+```
+
+---
+
+## ═══════════════════════════════════════════════════════
+## P1-5 — LOS 106 MUNICIPIOS DE YUCATÁN + REGÍMENES SAT COMPLETOS
+## ═══════════════════════════════════════════════════════
+
+**Problema:** El select de municipios en el wizard no garantiza que estén los 106
+municipios exactos de Yucatán. Los regímenes fiscales del SAT están incompletos
+(falta "Público en General" y otros).
+
+**Solución:**
+
+a) Crear `resources/js/data/municipios.ts` con los 106 municipios oficiales:
+
+```typescript
+export const MUNICIPIOS_YUCATAN = [
+  'Abalá','Acanceh','Akil','Baca','Bokobá','Buctzotz','Cacalchén','Calotmul',
+  'Cansahcab','Cantamayec','Celestún','Cenotillo','Chacsinkín','Chankom',
+  'Chapab','Chemax','Chichimilá','Chicxulub Pueblo','Chikindzonot','Chocholá',
+  'Chumayel','Conkal','Cuncunul','Cuzamá','Dzan','Dzemul','Dzilam de Bravo',
+  'Dzilam González','Dzitás','Dzoncauich','Espita','Halachó','Hocabá',
+  'Hoctún','Homún','Huhí','Hunucmá','Ixil','Izamal','Kanasín','Kantunil',
+  'Kaua','Kinchil','Kopomá','Mama','Maní','Maxcanú','Mayapán','Mérida',
+  'Mocochá','Motul','Muna','Muxupip','Opichén','Oxkutzcab','Panabá','Peto',
+  'Progreso','Quintana Roo','Río Lagartos','Sacalum','Samahil','San Felipe',
+  'Sanahcat','Santa Elena','Seyé','Sinanché','Sotuta','Sucilá','Sudzal',
+  'Suma','Tahdzip','Tahmek','Teabo','Tecoh','Tekal de Venegas','Tekantó',
+  'Tekax','Tekit','Tekom','Telchac Pueblo','Telchac Puerto','Temax','Temozón',
+  'Tepakán','Tetiz','Teya','Ticul','Timucuy','Tinum','Tixcacalcupul',
+  'Tixkokob','Tixmehuac','Tixpéhual','Tizimín','Tokasín','Tunkás','Tzucacab',
+  'Uayma','Ucú','Umán','Valladolid','Xocchel','Yaxcabá','Yaxkukul','Yobaín',
+] as const;
+```
+
+b) Crear `resources/js/data/regimenes_sat.ts`:
+
+```typescript
+export const REGIMENES_SAT = [
+  { clave: '601', nombre: 'General de Ley Personas Morales' },
+  { clave: '603', nombre: 'Personas Morales con Fines no Lucrativos' },
+  { clave: '605', nombre: 'Sueldos y Salarios e Ingresos Asimilados a Salarios' },
+  { clave: '606', nombre: 'Arrendamiento' },
+  { clave: '607', nombre: 'Régimen de Enajenación o Adquisición de Bienes' },
+  { clave: '608', nombre: 'Demás ingresos' },
+  { clave: '610', nombre: 'Residentes en el Extranjero sin Establecimiento Permanente en México' },
+  { clave: '611', nombre: 'Ingresos por Dividendos (socios y accionistas)' },
+  { clave: '612', nombre: 'Personas Físicas con Actividades Empresariales y Profesionales' },
+  { clave: '614', nombre: 'Ingresos por intereses' },
+  { clave: '615', nombre: 'Régimen de los ingresos por obtención de premios' },
+  { clave: '616', nombre: 'Sin obligaciones fiscales' },
+  { clave: '620', nombre: 'Sociedades Cooperativas de Producción que optan por diferir sus ingresos' },
+  { clave: '621', nombre: 'Incorporación Fiscal' },
+  { clave: '622', nombre: 'Actividades Agrícolas, Ganaderas, Silvícolas y Pesqueras' },
+  { clave: '623', nombre: 'Opcional para Grupos de Sociedades' },
+  { clave: '624', nombre: 'Coordinados' },
+  { clave: '625', nombre: 'Régimen de las Actividades Empresariales con ingresos a través de Plataformas Tecnológicas' },
+  { clave: '626', nombre: 'Régimen Simplificado de Confianza (RESICO)' },
+  { clave: '628', nombre: 'Hidrocarburos' },
+  { clave: '629', nombre: 'De los Regímenes Fiscales Preferentes y de las Empresas Multinacionales' },
+  { clave: '630', nombre: 'Enajenación de acciones en bolsa de valores' },
+  { clave: '000', nombre: 'Público en General' }, // ← INCLUIR SIEMPRE
+] as const;
+```
+
+c) Usar estos catálogos en el wizard (`portal/WizardCredito.vue`):
+   - Select de municipio: `v-for="m in MUNICIPIOS_YUCATAN"` con búsqueda/filtro (input de texto que filtra el array)
+   - Select de régimen fiscal: `v-for="r in REGIMENES_SAT"` mostrando `r.clave — r.nombre`
+
+d) En el backend `WizardSolicitudController@guardarPaso`, agregar validación:
+   ```php
+   'municipio' => ['required', 'string', Rule::in(/* array de 106 municipios */)]
+   ```
+
+---
+
+## ═══════════════════════════════════════════════════════
+## P1-6 — ALERTA DE PRESUPUESTO AGOTADO AL REGISTRAR CRÉDITO
+## ═══════════════════════════════════════════════════════
+
+**Problema:** Un operativo puede registrar créditos aunque el presupuesto de la modalidad
+esté agotado. No hay ninguna alerta ni bloqueo.
+
+**Solución:**
+
+a) En `SolicitudOperativoController@registrarCredito` (vista) y `@guardarCredito` (store),
+   verificar el presupuesto antes de mostrar el formulario y antes de guardar:
+
+```php
+private function verificarPresupuesto(int $modalidadId, float $monto): array
+{
+    $anio = now()->year;
+    $presupuesto = PresupuestoPrograma::where('modalidad_id', $modalidadId)
+        ->where('ejercicio_fiscal', $anio)
+        ->first();
+
+    if (!$presupuesto) {
+        return ['alerta' => true, 'mensaje' => 'No hay presupuesto registrado para esta modalidad en ' . $anio . '.'];
+    }
+
+    $ejercido = Credito::where('modalidad_id', $modalidadId)
+        ->where('estatus', '!=', 'Cancelado')
+        ->whereYear('fecha_entrega', $anio)
+        ->sum('monto_otorgado');
+
+    $disponible = (float)$presupuesto->monto_autorizado - (float)$ejercido;
+
+    if ($monto > $disponible) {
+        return [
+            'bloqueado' => true,
+            'mensaje'   => "El monto solicitado ($" . number_format($monto, 2) . ") supera el presupuesto disponible ($" . number_format($disponible, 2) . ") para esta modalidad.",
+        ];
+    }
+
+    if ($disponible < ($presupuesto->monto_autorizado * 0.1)) {
+        return [
+            'alerta'  => true,
+            'mensaje' => "⚠️ Presupuesto casi agotado. Disponible: $" . number_format($disponible, 2) . ".",
+        ];
+    }
+
+    return ['ok' => true, 'disponible' => $disponible];
+}
+```
+
+b) En `@registrarCredito` (GET), pasar la alerta al Inertia:
+   ```php
+   'presupuesto_status' => $this->verificarPresupuesto($solicitud->modalidad_id, $solicitud->monto_solicitado),
+   ```
+
+c) En la vista de registro de crédito, mostrar el alerta visualmente. Si está bloqueado,
+   deshabilitar el botón de guardar.
+
+---
+
+## ═══════════════════════════════════════════════════════
+## P1-7 — ALERTAS AUTOMÁTICAS DE CUOTAS PRÓXIMAS (SCHEDULER)
+## ═══════════════════════════════════════════════════════
+
+**Problema:** El endpoint `GET /api/notificaciones/cuotas` existe pero no está en el
+scheduler de Laravel. Los acreditados no reciben aviso antes de que venza su cuota.
+
+**Solución:**
+
+a) Crear job `app/Jobs/NotificarCuotasProximasJob.php`:
+```php
+public function handle(): void
+{
+    $manana = now()->addDay()->toDateString();
+
+    $cuotasManana = Amortizacion::whereDate('fecha_vencimiento', $manana)
+        ->whereNotIn('estado', ['Pagado', 'Condonado', 'Reestructurada'])
+        ->with(['credito.acreditado'])
+        ->get();
+
+    foreach ($cuotasManana as $cuota) {
+        $credito = $cuota->credito;
+        // Notificar al ciudadano vía DatabaseNotification
+        $user = User::where('email', $credito->acreditado->correo)->first();
+        if ($user) {
+            $user->notify(new CuotaProximaNotification($credito, $cuota));
+        }
+    }
+}
+```
+
+b) Crear `app/Notifications/CuotaProximaNotification.php`:
+```php
+public function toDatabase($notifiable): array
+{
+    return [
+        'titulo'  => 'Tu cuota vence mañana',
+        'mensaje' => "Tu cuota #" . $this->cuota->numero_cuota . " del crédito " . $this->credito->clave_contrato
+                   . " vence mañana. Total a pagar: $" . number_format($this->cuota->pago_restante, 2),
+        'tipo'    => 'warning',
+        'url'     => route('portal.credito'),
+    ];
+}
+```
+
+c) En `app/Console/Kernel.php` (o usando `routes/console.php` en Laravel 11):
+```php
+// En routes/console.php
+use App\Jobs\NotificarCuotasProximasJob;
+
+Schedule::job(new NotificarCuotasProximasJob)->dailyAt('08:00')->timezone('America/Merida');
+```
+
+d) En el servidor (Hostinger), asegurarse de que el cron de Laravel está activo:
+```bash
+# En crontab del servidor (verificar con el soporte de Hostinger)
+* * * * * cd /home/u489236361/domains/crea.iyemyucatan.com/public_html && php artisan schedule:run >> /dev/null 2>&1
+```
+
+---
+
+## ═══════════════════════════════════════════════════════
+## VERIFICACIÓN GENERAL (ejecutar al terminar todo lo anterior)
+## ═══════════════════════════════════════════════════════
+
+```bash
+php artisan migrate          # Si se agregaron migraciones (notifications table, etc.)
+php artisan config:clear
+php artisan route:clear
+php artisan view:clear
+php artisan queue:table      # Si no existe tabla de jobs
+php artisan migrate
+```
+
+### Pruebas funcionales obligatorias antes del deploy:
+
+1. **Flujo ZIP correcto:**
+   - Crear solicitud como ciudadano → enviar → verificar que NO aparece botón de descarga
+   - Como operativo, cambiar estatus a `Aprobada` → verificar que el job se dispara
+   - El ciudadano ahora ve el botón de descarga y el ZIP contiene los PDFs correctos
+
+2. **Documentos privados:**
+   - Subir un documento → verificar que está en `storage/app/solicitudes/`, NO en `storage/app/public/`
+   - Intentar acceder directamente a la URL sin autenticación → debe dar 403 o 404
+
+3. **Footer:**
+   - Navegar por todas las páginas del portal ciudadano en móvil (375px) → el footer siempre está abajo
+
+4. **Validación de monto:**
+   - Seleccionar modalidad Artesanal → intentar escribir $30,000 → debe mostrar error de máximo $25,000
+
+5. **Notificaciones:**
+   - Cambiar estatus de solicitud → verificar que aparece notificación en la campanita del ciudadano
+   - Badge de no leídas se actualiza
+
+6. **Próxima cuota:**
+   - Ciudadano con crédito activo → ver Mi Crédito → debe mostrar card con próxima cuota y fecha
+
+7. **Municipios y regímenes:**
+   - Verificar que el select de municipio tiene exactamente 106 opciones
+   - Verificar que "Público en General" aparece en el select de régimen fiscal
+
+8. **Tabla de conceptos:**
+   - En el paso de destino del crédito, agregar 3 conceptos → el total debe coincidir con el monto solicitado
+   - No debe permitir avanzar si el total no coincide
+
+9. **Presupuesto:**
+   - Intentar registrar un crédito cuando el presupuesto está agotado → debe mostrar alerta o bloqueo
+
+---
+
+## ═══════════════════════════════════════════════════════
+## DEPLOY A PRODUCCIÓN (después de verificar todo local)
+## ═══════════════════════════════════════════════════════
+
+```bash
+# Local
+npm ci && npm run build
+composer install --optimize-autoloader --no-dev
+
+# Subir a Hostinger
+rsync -avz --progress \
+  --exclude='.env' --exclude='node_modules/' --exclude='vendor/' \
+  --exclude='storage/logs/*' --exclude='.git/' --exclude='database/database.sqlite' \
+  -e "ssh -p 65002" \
+  ./ u489236361@195.35.38.222:/home/u489236361/domains/crea.iyemyucatan.com/public_html/
+
+# En el servidor
+ssh -p 65002 u489236361@195.35.38.222
+cd /home/u489236361/domains/crea.iyemyucatan.com/public_html
+composer install --optimize-autoloader --no-dev
+php artisan migrate --force
+php artisan config:cache && php artisan route:cache && php artisan view:cache
+php artisan queue:work --daemon &   # Si se usa queue para jobs
+chmod -R 775 storage bootstrap/cache
+```
+
+### Checklist post-deploy en https://crea.iyemyucatan.com:
+- [ ] Portal ciudadano carga correctamente
+- [ ] Wizard de solicitud completa todos los pasos
+- [ ] Notificaciones llegan al ciudadano al cambiar estatus
+- [ ] ZIP solo aparece al aprobar
+- [ ] Footer siempre abajo en móvil/tablet/desktop
+- [ ] Los 106 municipios en el select
+- [ ] Sin errores en storage/logs/laravel.log
+
+---
+
+## NOTAS FINALES
+
+- El prompt `prompt_generacion_pdfs_overlay.txt` (raíz del proyecto) debe ejecutarse
+  por separado — cubre la generación de los PDFs oficiales con overlay FPDI. Es
+  independiente de este prompt pero igual de prioritario para el lanzamiento.
+
+- Los archivos de auditoría están en `auditoria/` en la raíz del proyecto:
+  abre `auditoria/index.html` en un navegador para ver el estado detallado de cada módulo.

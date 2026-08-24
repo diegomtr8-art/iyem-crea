@@ -1,0 +1,413 @@
+# PROMPT: REDISEÑO COMPLETO DEL PANEL CIUDADANO + VALIDACIÓN CURP ÚNICA +
+# WIZARD POR MODALIDAD + GENERACIÓN DE PDFs OFICIALES + DEPLOY
+# Para usar en: Claude Code (sesión interactiva en la raíz del proyecto)
+# Stack: Laravel 11 + Vue 3 + Inertia.js + TypeScript + Tailwind CSS
+# Referencia visual/identidad: resources/js/Pages/Welcome.vue (landing ya rediseñada)
+# Formatos oficiales: public/formatos/FormatosCreaartesanal/, FormatoCreaEmprendedores/,
+#                     FormatoCreaSustentable/, RO.pdf
+
+---
+
+## CONTEXTO GENERAL
+
+El panel del ciudadano (`/mi-portal`) ya funciona, pero su diseño no está alineado
+con la landing page (ya rediseñada con identidad CREA: verde institucional #006847,
+dorado/ámbar #E8A020, logo CREA en `public/logo.svg` / `AppLogoIcon.vue`,
+glassmorphism, dark mode, sin emojis, solo SVG).
+
+Este prompt pide un rediseño integral del panel ciudadano como un WIZARD guiado de
+solicitud de crédito, con:
+1. Identidad visual consistente con la landing (logo, colores, footer)
+2. Validación inicial de CURP contra créditos activos (un crédito activo por CURP)
+3. Flujo condicional según modalidad (Artesanal / Emprendedores / Sustentable)
+4. Generación automática de los PDFs oficiales de cada modalidad, prellenados con
+   los datos capturados
+5. Checklist de documentos requeridos según modalidad
+6. Diseño responsivo (mobile / tablet / desktop)
+7. Al finalizar: descarga de un ZIP con los PDFs prellenados + mensaje de
+   felicitación con instrucciones y ubicación del IYEM
+8. Deploy a producción (crea.iyemyucatan.com)
+
+Trabaja con la guía de un Frontend Senior (10+ años, UX/UI) — prioriza claridad,
+jerarquía visual, pasos cortos, feedback inmediato y accesibilidad.
+
+---
+
+## 1. IDENTIDAD VISUAL CONSISTENTE CON LA LANDING
+
+Revisa `resources/js/Pages/Welcome.vue` y los componentes `AppLogo.vue` /
+`AppLogoIcon.vue` para extraer: paleta de colores, tipografía, estilos de botones,
+cards, badges, y el patrón de dark mode (toggle + persistencia en localStorage).
+
+Aplica esa misma identidad al layout del portal ciudadano
+(`resources/js/layouts/` o el layout que use `/mi-portal`):
+
+- **Header/Navbar del portal**: logo CREA (mismo `AppLogo.vue` que la landing),
+  nombre del usuario, botón de cerrar sesión, toggle de dark mode
+- **Sidebar o navegación del portal**: estilo glassmorphism consistente, iconos
+  SVG (sin emojis), resaltado de la sección activa
+- **Footer del portal**: replicar el footer de la landing (o una versión
+  simplificada) con:
+  - Logo CREA
+  - Datos de contacto (crea@iyemyucatan.com, dirección IYEM, teléfono — los
+    mismos usados en `prompt_contacto.txt`)
+  - Aviso legal: "Programa sujeto a disponibilidad presupuestal"
+  - Copyright © 2026 IYEM. Gobierno del Estado de Yucatán
+  - Debe quedar fijo al final del contenido (no flotando a la mitad de la
+    pantalla en vistas con poco contenido) — usar `min-h-screen` + flex column
+    en el layout
+- Verificar dark mode en todas las vistas del portal (Dashboard, Solicitud,
+  Expediente, Mi Crédito, Wizard nuevo)
+
+---
+
+## 2. VALIDACIÓN INICIAL DE CURP (UN CRÉDITO ACTIVO POR CURP)
+
+Antes de permitir iniciar una nueva solicitud, el sistema debe preguntar la CURP y
+validar que esa persona no tenga ya un crédito activo en el programa.
+
+### 2.1 Backend
+
+- Revisar el modelo `Acreditado` / `Credito` (los mismos que usa
+  `/consultar-credito` en la landing) para entender cómo se relacionan CURP ↔
+  crédito activo
+- Crear (o reutilizar si ya existe) un endpoint:
+  ```php
+  Route::post('/mi-portal/validar-curp', [SolicitudCreditoController::class, 'validarCurp'])
+      ->name('portal.validar-curp');
+  ```
+  - Input: `curp` (string, 18 caracteres, validar formato con regex estándar de
+    CURP mexicana)
+  - Lógica:
+    - Buscar si existe un `Credito` con estatus activo (`Vigente`, `Moroso`, o
+      cualquier estatus que NO sea `Liquidado`/`Cancelado`/`Rechazado`) asociado
+      a esa CURP (vía `Acreditado` o `SolicitudCredito`)
+    - Buscar también si existe una `SolicitudCredito` en proceso (`Enviada`,
+      `En_Revision`, `Documentacion_Incompleta`) con esa CURP, que no sea la del
+      usuario actual
+    - Si existe alguno de los dos casos → responder con `{ permitido: false,
+      motivo: '...' }` y un mensaje claro: "Ya existe un crédito activo o una
+      solicitud en proceso asociada a esta CURP. Solo se permite un crédito
+      activo por persona."
+    - Si no existe → `{ permitido: true }`
+  - Aplicar rate limiting (`throttle:10,1`) para evitar abuso
+
+### 2.2 Frontend — Pantalla inicial del wizard
+
+- Antes de mostrar el formulario de solicitud, mostrar una pantalla/paso inicial
+  "Verificación de CURP":
+  - Card centrada con el logo CREA, título "Antes de comenzar, verifiquemos tu
+    CURP"
+  - Input de CURP con validación de formato en tiempo real (18 caracteres,
+    patrón CURP) y máscara/uppercase automático
+  - Botón "Continuar" que llama a `portal.validar-curp`
+  - Si `permitido: false` → mostrar un mensaje de error claro (card roja/ámbar
+    suave, ícono SVG de advertencia) con el motivo, y NO permitir avanzar.
+    Ofrecer un link/botón "Consultar mi crédito" que lleve a `/consultar-credito`
+    o a la sección "Mi Crédito" si el usuario ya tiene uno activo propio
+  - Si `permitido: true` → guardar la CURP validada en el estado del wizard
+    (prellenar el campo `curp` del formulario) y avanzar al paso 2 (selección de
+    modalidad)
+  - Si el usuario YA tiene una solicitud existente (`Borrador`,
+    `Documentacion_Incompleta`, etc.), saltar este paso y llevarlo directo a
+    continuar su solicitud existente
+
+---
+
+## 3. WIZARD CONDICIONAL POR MODALIDAD
+
+Reescribe `Solicitud.vue` (o créalo como un nuevo componente de wizard,
+ej. `resources/js/Pages/portal/SolicitudWizard.vue`, manteniendo retrocompatibilidad
+con la ruta actual) como un wizard de varios pasos con barra de progreso visual
+(stepper horizontal en desktop, vertical/compacto en mobile):
+
+### Paso 1 — Verificación de CURP (sección 2)
+
+### Paso 2 — Selección de modalidad
+
+- 3 cards grandes (Artesanal / Emprendedores / Sustentable), con:
+  - Ícono SVG temático
+  - Nombre, rango de monto, tasa, plazos (datos ya configurados en
+    `ModalidadCrea` / calculadora de la landing)
+  - Breve descripción de a quién va dirigida (extraída de RO.pdf)
+- Al seleccionar una, se determina el "camino" del wizard (qué campos
+  adicionales, qué documentos, qué PDFs se generarán)
+- Si el usuario ya tiene una solicitud con `modalidad_id` ya definido, este paso
+  se muestra pero bloqueado/informativo (no permitir cambiar modalidad si ya hay
+  documentos subidos específicos de esa modalidad — reutilizar la lógica ya
+  implementada en `prompt_portal_fixes_p0.txt` para el manejo de cambio de
+  modalidad)
+
+### Paso 3 — Datos personales y del negocio
+
+- Formulario con los campos ya existentes (`nombre_completo`, `curp` —
+  prellenado y bloqueado desde el paso 1 —, `rfc`, `fecha_nacimiento`, `sexo`,
+  `mayahablante`, `discapacidad`, `municipio`, `direccion`, `telefono`,
+  `correo`, `giro_comercial`, `destino_credito`, `descripcion_negocio`,
+  `monto_solicitado`, `plazo_meses`, `alta_sat`)
+- Reorganizar en sub-secciones con encabezados claros: "Datos personales",
+  "Datos del negocio/proyecto", "Datos del crédito solicitado"
+- `monto_solicitado` y `plazo_meses` deben respetar los rangos/opciones de la
+  modalidad seleccionada (igual que en `prompt_portal_fixes_p0.txt`)
+- **Campos condicionales según modalidad** (revisar los formatos oficiales en
+  `public/formatos/` para extraer los campos exactos que pide cada uno):
+  - **Artesanal** (`F-PR-OCC-01 R00 Solicitud de Crédito Persona Física Artesanal.pdf`,
+    `F-PR-OCC-04 Ficha Técnica.pdf`, `F-PR-OCC-05 Estado de Ingresos y
+    Egresos.pdf`, `F-PR-OCC-06 Declaración de Bienes Aval Artesanal.pdf`):
+    agregar los campos específicos que pidan estos formatos y que no estén ya
+    capturados (ej. tipo de artesanía, productos muestra, antigüedad del
+    negocio, ingresos/egresos mensuales últimos 6 meses, proyección a 6 meses)
+  - **Emprendedores** (`F-PR-OCC-02 Solicitud de Crédito Persona Física.pdf`,
+    `F-PR-OCC-03 Solicitud de Crédito Persona Moral.pdf` si aplica persona
+    moral, `F-PR-OCC-04 Ficha Técnica.pdf`, `F-PR-OCC-05 Estado de Ingresos y
+    Egresos.pdf`, `F-PR-OCC-07 Declaración de Bienes Aval.pdf`): agregar campos
+    análogos (datos de la empresa/razón social si es persona moral, RFC,
+    régimen fiscal, etc.)
+  - **Sustentable**: mismos formatos que Emprendedores (`F-PR-OCC-02/03/04/05/07`)
+    más los criterios de "enfoque sostenible" (biodiversidad, energía, recursos
+    hídricos, residuos y contaminación — Artículo correspondiente de RO.pdf):
+    agregar un campo de texto o checklist donde el solicitante describa cómo su
+    proyecto cumple con alguno de estos criterios
+
+  Antes de definir los campos exactos, **lee los PDFs de `public/formatos/`**
+  (usa una librería de extracción de texto/PDF disponible en el proyecto o
+  Python con `pypdf` vía script auxiliar) para identificar TODOS los campos que
+  el ciudadano debe llenar, y mapéalos 1:1 a inputs del formulario. No inventar
+  campos — deben corresponder exactamente a los formatos oficiales
+
+### Paso 4 — Datos del aval
+
+- Sección "Datos del Aval" (de `prompt_portal_fixes_p0.txt`): nombre completo,
+  CURP, teléfono, dirección, municipio, declaración de parentesco
+- Si el formato oficial de la modalidad (`F-PR-OCC-06`/`F-PR-OCC-07` Declaración
+  de Bienes Aval) pide datos adicionales del aval (bienes patrimoniales), agregar
+  esos campos también en este paso
+
+### Paso 5 — Checklist y carga de documentos
+
+- Lista de documentos requeridos SEGÚN LA MODALIDAD (genéricos + específicos,
+  usando `tiposRequeridos()` ya actualizado en `prompt_portal_fixes_p0.txt`)
+- Cada documento como una card/fila con:
+  - Nombre del documento
+  - Estado (Pendiente / Cargado / Aceptado / Rechazado con observación)
+  - Botón de carga / reemplazo (drag & drop + click, preview de imagen o ícono
+    PDF)
+  - Indicador de progreso general ("4 de 8 documentos cargados")
+- El botón "Continuar" / "Enviar solicitud" solo se habilita cuando el checklist
+  está completo
+
+### Paso 6 — Revisión final
+
+- Resumen de todos los datos capturados, organizados por sección, con opción de
+  "Editar" que regresa al paso correspondiente
+- Checkbox de consentimiento: "Declaro que la información proporcionada es
+  verídica..." (texto basado en RO.pdf si existe una declaratoria similar)
+- Botón final "Enviar solicitud y generar documentos"
+
+---
+
+## 4. GENERACIÓN DE PDFs OFICIALES PRELLENADOS
+
+Al completar el paso 6, el sistema debe:
+
+1. Cambiar el estatus de la solicitud a `Enviada` (como ya ocurre)
+2. Generar, para CADA formato oficial correspondiente a la modalidad
+   seleccionada, una copia del PDF con los campos prellenados con los datos
+   capturados en el wizard
+
+### 4.1 Implementación técnica
+
+- Investigar si los PDFs en `public/formatos/` ya son formularios PDF
+  (AcroForms) con campos nombrados, o son documentos planos:
+  - Si tienen campos de formulario (AcroForm): usar una librería PHP capaz de
+    rellenar campos de formularios PDF (ej. `setasign/fpdi` + `fpdf`, o
+    `spipu/html2pdf`, o si el proyecto ya tiene alguna librería PDF instalada
+    revisarla primero con `composer show | grep -i pdf`). Mapear cada campo del
+    formulario a su dato correspondiente de `SolicitudCredito`
+  - Si son documentos planos (sin campos): generar un PDF nuevo con el mismo
+    layout/encabezado oficial (recreando la plantilla con la librería PDF del
+    proyecto) e insertar los datos del solicitante en las posiciones
+    correspondientes — usar como referencia visual el PDF original para
+    posicionar texto (coordenadas x/y aproximadas)
+- Crear un servicio `app/Services/GeneradorFormatosService.php` con un método
+  por modalidad (o uno genérico parametrizado) que reciba la `SolicitudCredito`
+  y devuelva las rutas de los PDFs generados, guardados temporalmente en
+  `storage/app/temp/solicitudes/{id}/`
+
+### 4.2 Formatos por modalidad (confirmar leyendo los PDFs reales)
+
+- **Artesanal**: F-PR-OCC-01 (Solicitud Persona Física Artesanal), F-PR-OCC-04
+  (Ficha Técnica), F-PR-OCC-05 (Estado de Ingresos y Egresos), F-PR-OCC-06
+  (Declaración de Bienes Aval Artesanal)
+- **Emprendedores**: F-PR-OCC-02 (Solicitud Persona Física) — o F-PR-OCC-03
+  (Persona Moral) si el solicitante indicó que es persona moral —, F-PR-OCC-04
+  (Ficha Técnica), F-PR-OCC-05 (Estado de Ingresos y Egresos), F-PR-OCC-07
+  (Declaración de Bienes Aval)
+- **Sustentable**: mismos formatos que Emprendedores (F-PR-OCC-02/03, F-PR-OCC-04,
+  F-PR-OCC-05, F-PR-OCC-07)
+
+---
+
+## 5. ZIP DE DESCARGA + MENSAJE FINAL
+
+Tras generar los PDFs:
+
+- Empaquetar todos los PDFs generados en un ZIP (`ZipArchive` de PHP), nombrado
+  algo como `CREA_{CURP}_{modalidad}.zip`
+- Endpoint de descarga:
+  ```php
+  Route::get('/mi-portal/solicitud/{solicitud}/descargar-formatos', [SolicitudCreditoController::class, 'descargarFormatos'])
+      ->name('portal.solicitud.descargar-formatos');
+  ```
+  - Verificar que la solicitud pertenezca al usuario autenticado
+  - Generar (o recuperar si ya se generó) el ZIP y devolverlo como descarga
+- En el frontend, tras el envío exitoso (paso 6), mostrar una pantalla de éxito:
+  - Ilustración SVG de "éxito" (check grande, confeti sutil en SVG/CSS, sin
+    emojis), consistente con el estilo de la landing
+  - Mensaje principal: **"¡Felicidades! Tu crédito va a pasar a Comité"**
+  - Texto explicativo: "Descarga tus formatos, fírmalos y entrégalos en las
+    oficinas del Instituto Yucateco de Emprendedores (IYEM)"
+  - Botón prominente "Descargar formatos (ZIP)" que llama al endpoint anterior
+  - Card con la ubicación del IYEM: dirección completa, mapa embebido de Google
+    Maps (reutilizar el mismo embed de `prompt_contacto.txt`), botón "Cómo
+    llegar"
+  - Resumen de próximos pasos (timeline corto): "1. Descarga y firma los
+    formatos → 2. Entrégalos en las oficinas del IYEM → 3. Tu solicitud pasará a
+    revisión del Comité → 4. Te notificaremos el resultado en tu portal"
+
+---
+
+## 6. RESPONSIVIDAD
+
+Todo el wizard (los 6 pasos + pantalla de éxito) debe verse y funcionar
+correctamente en:
+
+- **Mobile** (320px-768px): stepper compacto (ej. solo número de paso actual +
+  barra de progreso, o íconos sin texto), un campo/sección por fila, botones de
+  navegación "Atrás"/"Continuar" fijos al fondo (sticky) para fácil acceso con el
+  pulgar
+- **Tablet** (768px-1024px): formularios en 2 columnas donde tenga sentido
+  (ej. nombre + apellido, teléfono + correo)
+- **Desktop** (1024px+): stepper horizontal completo con etiquetas, formularios
+  en 2-3 columnas, panel lateral opcional con resumen en vivo de la solicitud
+
+Probar especialmente:
+- El checklist de documentos (drag & drop debe degradarse a tap-to-upload en
+  touch devices)
+- La pantalla de verificación de CURP (debe verse bien centrada en pantallas
+  pequeñas)
+- La pantalla de éxito con el mapa embebido (el iframe debe ser responsivo)
+
+---
+
+## 7. VERIFICACIÓN
+
+1. `npm run build` — sin errores
+2. `php artisan test` — debe pasar; agregar tests para:
+   - `validarCurp`: rechaza CURP con crédito activo existente, acepta CURP libre
+   - Generación de PDFs: el servicio produce archivos PDF válidos (verificar
+     que existan y tengan tamaño > 0) para cada modalidad
+   - Endpoint `descargarFormatos`: devuelve un ZIP válido, rechaza acceso de
+     otro usuario
+3. Probar manualmente el wizard completo para las 3 modalidades, desde
+   verificación de CURP hasta descarga del ZIP
+4. Verificar dark mode y las 3 resoluciones (mobile/tablet/desktop) en cada paso
+   del wizard
+5. Confirmar que el footer del portal se ve correctamente anclado al fondo en
+   vistas cortas (ej. Dashboard sin solicitudes) y no se superpone con contenido
+   en vistas largas (ej. wizard paso 5 con muchos documentos)
+
+---
+
+## 8. DEPLOY A PRODUCCIÓN (HOSTINGER)
+
+### Datos del servidor
+- IP: 195.35.38.222
+- Puerto SSH: 65002
+- Usuario: u489236361
+- Dominio destino: https://crea.iyemyucatan.com/
+- Ruta: `/home/u489236361/domains/crea.iyemyucatan.com/public_html`
+
+### Build local
+```bash
+npm ci
+npm run build
+composer install --optimize-autoloader --no-dev
+```
+
+Si se agregó alguna librería PDF nueva vía composer, confirmar que quede
+reflejada en `composer.json`/`composer.lock` antes de subir.
+
+### Subir cambios via rsync
+```bash
+rsync -avz --progress \
+  --exclude='.env' \
+  --exclude='node_modules/' \
+  --exclude='vendor/' \
+  --exclude='storage/logs/*' \
+  --exclude='.git/' \
+  --exclude='database/database.sqlite' \
+  -e "ssh -p 65002" \
+  ./ u489236361@195.35.38.222:/home/u489236361/domains/crea.iyemyucatan.com/public_html/
+```
+
+### En el servidor (vía SSH)
+```bash
+cd /home/u489236361/domains/crea.iyemyucatan.com/public_html
+
+composer install --optimize-autoloader --no-dev
+
+php artisan migrate --force
+
+php artisan config:clear
+php artisan route:clear
+php artisan view:clear
+php artisan config:cache
+php artisan route:cache
+php artisan view:cache
+
+chmod -R 775 storage bootstrap/cache
+
+# Confirmar que storage/app/temp/ exista y tenga permisos de escritura para la
+# generación temporal de PDFs/ZIPs
+mkdir -p storage/app/temp/solicitudes
+chmod -R 775 storage/app/temp
+```
+
+### Verificación post-deploy en https://crea.iyemyucatan.com/mi-portal
+
+- [ ] El panel ciudadano usa el mismo logo, colores y footer que la landing
+- [ ] Dark mode funciona en todas las vistas del portal
+- [ ] El paso de verificación de CURP funciona: rechaza CURP con crédito activo
+      existente, permite continuar con CURP libre
+- [ ] El wizard muestra los campos correctos según la modalidad seleccionada
+      (Artesanal / Emprendedores / Sustentable)
+- [ ] El checklist de documentos muestra el set correcto por modalidad y bloquea
+      el envío si falta alguno
+- [ ] Al enviar, se generan correctamente los PDFs oficiales prellenados con los
+      datos capturados
+- [ ] El ZIP se descarga correctamente y contiene los PDFs esperados
+- [ ] La pantalla de éxito muestra el mensaje, el mapa del IYEM y los próximos
+      pasos
+- [ ] Responsivo correcto en mobile/tablet/desktop (probar en devtools y, si es
+      posible, en un dispositivo real)
+- [ ] Sin errores en consola del navegador ni en `storage/logs/laravel.log`
+
+---
+
+## NOTAS IMPORTANTES
+
+- Este prompt depende de los hallazgos ya identificados en
+  `AUDITORIA_PORTAL_CIUDADANO.md` y de las correcciones de
+  `prompt_portal_fixes_p0.txt` (validación de monto/plazo por modalidad,
+  documentos requeridos por modalidad, campo de aval). Si esas correcciones aún
+  no se implementaron, este prompt debe incorporarlas como parte del wizard (no
+  duplicar trabajo, pero asegurarse de que el resultado final las incluya)
+- No inventar campos de los formatos oficiales — leer los PDFs reales en
+  `public/formatos/` antes de definir el formulario
+- Mantener compatibilidad: un ciudadano con una solicitud ya en progreso
+  (`Borrador`, `Documentacion_Incompleta`, etc.) debe poder continuar desde donde
+  quedó dentro del nuevo wizard, sin perder datos ya guardados
+- Priorizar una experiencia de wizard fluida: guardar el progreso
+  automáticamente (autosave por paso) para que el usuario no pierda información
+  si cierra el navegador a medio llenar

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import AppLayout from '@/layouts/AppLayout.vue';
 import { Head, Link, useForm } from '@inertiajs/vue3';
-import { ArrowLeft, User, Briefcase, CreditCard, CheckCircle2, Sparkles } from 'lucide-vue-next';
+import { ArrowLeft, User, Briefcase, CreditCard, CheckCircle2, Sparkles, AlertTriangle, XCircle } from 'lucide-vue-next';
 
 const props = defineProps<{
     solicitud: {
@@ -16,10 +16,13 @@ const props = defineProps<{
         modalidad_id?: number;
         modalidad_nombre?: string;
         monto_solicitado?: number;
+        tipo_garantia?: string;
         user_email?: string;
     };
     modalidades: Array<{ id: number; nombre: string; tasa_interes?: number }>;
     clave_sugerida: string;
+    tasa_preview?: { ordinaria: number; moratoria: number } | null;
+    presupuesto_status?: { bloqueado?: boolean; alerta?: boolean; ok?: boolean; mensaje?: string; disponible?: number } | null;
 }>();
 
 const form = useForm({
@@ -35,6 +38,7 @@ const form = useForm({
     monto_otorgado:  props.solicitud.monto_solicitado ?? '',
     plazo_meses:     12,
     fecha_entrega:   new Date().toISOString().split('T')[0],
+    fecha_contrato:  new Date().toISOString().split('T')[0],
 });
 
 const submit = () => form.post(route('solicitudes.guardar-credito', props.solicitud.id));
@@ -73,6 +77,24 @@ const labelCls = 'block text-xs font-bold uppercase tracking-wider text-slate-40
                         Los datos del formulario están precargados desde la solicitud del ciudadano. Verifica y completa los datos del crédito.
                         Al guardar se creará el expediente del acreditado, la tabla de amortización y se notificará al ciudadano.
                     </p>
+                </div>
+            </div>
+
+            <!-- Alerta de presupuesto -->
+            <div v-if="presupuesto_status?.bloqueado"
+                class="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800/40 rounded-2xl p-5 flex items-start gap-4">
+                <XCircle size="22" class="text-red-600 shrink-0 mt-0.5" />
+                <div>
+                    <p class="font-black text-red-800 dark:text-red-300">Presupuesto insuficiente</p>
+                    <p class="text-sm text-red-700 dark:text-red-400 mt-0.5">{{ presupuesto_status.mensaje }}</p>
+                </div>
+            </div>
+            <div v-else-if="presupuesto_status?.alerta"
+                class="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800/40 rounded-2xl p-5 flex items-start gap-4">
+                <AlertTriangle size="22" class="text-amber-600 shrink-0 mt-0.5" />
+                <div>
+                    <p class="font-black text-amber-800 dark:text-amber-300">Alerta de presupuesto</p>
+                    <p class="text-sm text-amber-700 dark:text-amber-400 mt-0.5">{{ presupuesto_status.mensaje }}</p>
                 </div>
             </div>
 
@@ -159,24 +181,41 @@ const labelCls = 'block text-xs font-bold uppercase tracking-wider text-slate-40
                                 <option v-for="p in [6,12,18,24,30,36,48,60]" :key="p" :value="p">{{ p }} meses</option>
                             </select>
                         </div>
-                        <div class="sm:col-span-2">
+                        <div>
+                            <label :class="labelCls">Fecha de Contrato</label>
+                            <input v-model="form.fecha_contrato" type="date" :class="inputCls" />
+                        </div>
+                        <div>
                             <label :class="labelCls">Fecha de Entrega del Crédito</label>
                             <input v-model="form.fecha_entrega" type="date" required :class="inputCls" />
                             <p class="text-xs text-slate-400 mt-1">La tabla de amortización se generará a partir de esta fecha.</p>
+                        </div>
+                        <div>
+                            <label :class="labelCls">Tipo de garantía</label>
+                            <div class="px-4 py-3 rounded-xl border border-slate-200 dark:border-zinc-700 bg-slate-50 dark:bg-zinc-800 text-sm font-bold capitalize text-slate-700 dark:text-zinc-200">
+                                {{ solicitud.tipo_garantia || '—' }}
+                            </div>
+                        </div>
+                        <div v-if="tasa_preview">
+                            <label :class="labelCls">Tasas aplicables</label>
+                            <div class="px-4 py-3 rounded-xl border border-slate-200 dark:border-zinc-700 bg-slate-50 dark:bg-zinc-800 text-sm">
+                                <p class="font-bold text-slate-700 dark:text-zinc-200">Ordinaria: {{ tasa_preview.ordinaria }}% anual</p>
+                                <p class="text-slate-500 dark:text-zinc-400 text-xs mt-0.5">Moratoria: {{ tasa_preview.moratoria }}% anual (ordinaria × 2.5, no editable)</p>
+                            </div>
                         </div>
                     </div>
                 </div>
 
                 <!-- Botón submit -->
-                <div class="flex justify-end gap-4">
+                <div class="flex flex-col-reverse sm:flex-row justify-end gap-3 sm:gap-4">
                     <Link :href="route('solicitudes.show', solicitud.id)"
-                        class="px-5 py-3 rounded-xl bg-slate-100 dark:bg-zinc-800 text-slate-700 dark:text-zinc-300 font-bold text-sm hover:bg-slate-200 dark:hover:bg-zinc-700 transition-all">
+                        class="w-full sm:w-auto text-center px-5 py-3 rounded-xl bg-slate-100 dark:bg-zinc-800 text-slate-700 dark:text-zinc-300 font-bold text-sm hover:bg-slate-200 dark:hover:bg-zinc-700 transition-all">
                         Cancelar
                     </Link>
-                    <button type="submit" :disabled="form.processing"
-                        class="inline-flex items-center gap-2 px-8 py-3 bg-red-700 hover:bg-red-800 text-white font-black rounded-xl text-sm transition-all shadow-lg shadow-red-900/20 disabled:opacity-60 active:scale-[0.98]">
+                    <button type="submit" :disabled="form.processing || presupuesto_status?.bloqueado"
+                        class="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-8 py-3 bg-red-700 hover:bg-red-800 text-white font-black rounded-xl text-sm transition-all shadow-lg shadow-red-900/20 disabled:opacity-60 disabled:cursor-not-allowed active:scale-[0.98]">
                         <Sparkles size="16" />
-                        {{ form.processing ? 'Registrando...' : 'Registrar Crédito y Generar Amortización' }}
+                        {{ form.processing ? 'Registrando...' : (presupuesto_status?.bloqueado ? 'Presupuesto insuficiente' : 'Registrar Crédito y Generar Amortización') }}
                     </button>
                 </div>
             </form>

@@ -1,0 +1,434 @@
+# PROMPT: REDISEÑO DEL PANEL CIUDADANO COMO WIZARD DE SOLICITUD + GENERACIÓN DE PDFs + DEPLOY
+# Para usar en: Claude Code (sesión interactiva en la raíz del proyecto)
+# Stack: Laravel 11 + Vue 3 + Inertia.js + TypeScript + Tailwind CSS
+# Identidad visual de referencia: resources/js/Pages/Welcome.vue (landing CREA)
+# Formatos oficiales de referencia: public/formatos/FormatoCreaEmprendedores/,
+#   public/formatos/FormatoCreaSustentable/, public/formatos/FormatosCreaartesanal/
+
+---
+
+## CONTEXTO GENERAL
+
+El panel del ciudadano (`/mi-portal`) necesita un rediseño profundo. El objetivo es
+convertir la solicitud de crédito en un **wizard guiado** que: identifica al
+solicitante por CURP (evitando créditos duplicados), determina la modalidad
+(Artesanal / Emprendedores / Sustentable) y el tipo de persona (Física / Moral),
+recopila TODA la información necesaria para llenar los formatos oficiales del
+IYEM, solicita los documentos requeridos, y al final genera un ZIP con los PDFs
+oficiales llenados con los datos capturados — listos para imprimir, firmar y
+entregar físicamente en las oficinas del IYEM.
+
+Antes de programar, **inspecciona a fondo** los PDFs en:
+- `public/formatos/FormatosCreaartesanal/` (Artesanal — solo Persona Física):
+  - `F-PR-OCC-01 R00 Solicitud de Crédito Persona Física Artesanal.pdf`
+  - `F-PR-OCC-04 R00 Ficha Tecnica.pdf`
+  - `F-PR-OCC-05 R00 Estado de Ingresos y Egresos.pdf`
+  - `F-PR-OCC-06 R00 Declaración de Bienes Aval Artesanal.pdf` (solo si hay AVAL)
+- `public/formatos/FormatoCreaEmprendedores/` (Emprendedores — Física o Moral):
+  - `F-PR-OCC-02 R00 Solicitud de Credito Persona Fisica.pdf`
+  - `F-PR-OCC-03 R00 Solicitud de Credito Persona Moral.pdf`
+  - `F-PR-OCC-04 R00 Ficha Tecnica.pdf`
+  - `F-PR-OCC-05 R00 Estado de Ingresos y Egresos.pdf`
+  - `F-PR-OCC-07 R00 Declaración de Bienes Aval.pdf` (solo si hay AVAL)
+- `public/formatos/FormatoCreaSustentable/` (Sustentable — Física o Moral, mismos
+  formatos que Emprendedores, mismo árbol de archivos)
+
+**IMPORTANTE**: estos PDFs NO tienen campos de formulario (AcroForm) — son
+documentos planos/escaneados-maquetados. Por lo tanto, NO se deben "rellenar" los
+PDF originales directamente. En su lugar:
+1. Extrae con `pypdf`/`pdfplumber` (vía `mcp__workspace__bash` o herramientas
+   disponibles) el texto, estructura, orden de campos y maquetación aproximada
+   de cada formato
+2. Recrea cada formato como una **plantilla Blade/HTML** que reproduzca fielmente
+   el diseño (logo IYEM, encabezados, tablas, casillas de selección) del PDF
+   original, con los valores capturados en el wizard ya insertados
+3. Genera el PDF final a partir de esa plantilla HTML usando una librería ya
+   disponible o instalable en el proyecto (ej. `barryvdh/laravel-dompdf`,
+   `spatie/browsershot`, o la que ya se use para `contratoPdf`/`dictamenPdf` en
+   `CreditoController` — revisar y reutilizar la misma si existe, para
+   consistencia de estilo)
+4. El resultado visual debe parecerse lo más posible al formato oficial (mismo
+   encabezado institucional IYEM, mismas secciones, mismo orden de campos),
+   aunque no sea pixel-perfect
+
+Lee también `AUDITORIA_PORTAL_CIUDADANO.md` y los prompts anteriores
+(`prompt_portal_fixes_p0.txt`) para no contradecir cambios ya en curso (validación
+de monto por modalidad, documentos por modalidad, plazo, aval) — este wizard debe
+INTEGRAR y construir sobre esos cambios, no duplicarlos.
+
+---
+
+## 1. IDENTIDAD VISUAL DEL PORTAL
+
+El panel ciudadano debe sentirse parte de la misma marca que la landing:
+
+- Reutilizar `AppLogo.vue` / `AppLogoIcon.vue` (logo CREA verde #006847 / dorado
+  #E8A020) en el header/sidebar del portal
+- Mismos colores institucionales, tipografía, radios de borde, sombras y estilo
+  de botones que `Welcome.vue`
+- Dark mode funcionando igual que en la landing (toggle persistente en
+  localStorage)
+- **Footer del portal**: agregar un footer simple pero consistente con la marca
+  al final de cada vista del portal (Dashboard, Solicitud, Expediente, Mi
+  Crédito): logo pequeño, "© 2026 IYEM. Gobierno del Estado de Yucatán.", link a
+  la landing, y datos de contacto (crea@iyemyucatan.com). Debe quedar fijo al
+  fondo del contenido (no flotante ni superpuesto), respetando el layout/sidebar
+  existente del portal
+
+---
+
+## 2. PASO 0 DEL WIZARD — VERIFICACIÓN POR CURP (un crédito activo por CURP)
+
+Antes de iniciar/continuar una solicitud, el wizard debe:
+
+- Pedir la **CURP** del solicitante (18 caracteres, con validación de formato en
+  tiempo real)
+- Backend: nuevo endpoint (ej. `POST /mi-portal/solicitud/verificar-curp`) que
+  consulte si existe ya:
+  - Un `Credito` ACTIVO (no liquidado, no rechazado) asociado a esa CURP
+    (vía `SolicitudCredito`/`Acreditado` — revisar el modelo correspondiente que
+    relacione CURP con créditos)
+  - Una `SolicitudCredito` en proceso (`Enviada`, `En_Revision`,
+    `Documentacion_Incompleta`) con esa CURP, de OTRO usuario (no del usuario
+    actual)
+- Si ya existe un crédito activo o solicitud en proceso con esa CURP:
+  - Mostrar un mensaje claro y amable: "Ya existe un crédito activo o una
+    solicitud en proceso asociada a esta CURP. Solo se permite un crédito CREA
+    activo por persona." y NO permitir continuar el wizard
+- Si la CURP coincide con la del propio usuario y ya tiene una solicitud en
+  `Borrador`/`Documentacion_Incompleta`, permitir continuar/editarla
+  normalmente (no bloquear al propio usuario)
+- Si no hay conflicto, guardar la CURP verificada y continuar al Paso 1
+
+---
+
+## 3. PASO 1 — TIPO DE CRÉDITO Y TIPO DE PERSONA (condicional principal)
+
+Pantalla de selección con tarjetas grandes, visuales (iconografía SVG, igual
+estilo que las cards de modalidades en la landing):
+
+- **¿Qué modalidad de crédito buscas?**
+  - CREA Artesanal ($5,000 - $25,000, 0% interés, 12/18/24 meses) — **solo
+    Persona Física**
+  - CREA Emprendedores ($25,000 - $150,000, 7% interés, 12/18/24 meses) —
+    Persona Física o Persona Moral
+  - CREA Sustentable ($50,000 - $500,000, 5% interés, 12/18/24 meses, 3 meses de
+    prórroga) — Persona Física o Persona Moral
+
+- **¿Eres Persona Física o Persona Moral?**
+  - Si la modalidad es Artesanal, ocultar/deshabilitar la opción "Persona Moral"
+    (no aplica) y mostrar nota explicativa
+  - Esta selección determina qué "Solicitud de Crédito" se usa como base:
+    - Artesanal → `F-PR-OCC-01` (siempre Persona Física)
+    - Emprendedores/Sustentable + Física → `F-PR-OCC-02`
+    - Emprendedores/Sustentable + Moral → `F-PR-OCC-03`
+
+- Guardar `modalidad_id` y un nuevo campo `tipo_persona` (`fisica`|`moral`) en
+  `solicitudes_credito` (migración si no existe). Si `modalidad` es Artesanal,
+  forzar `tipo_persona = 'fisica'`
+
+- **Garantía**: pregunta explícita "¿Qué tipo de garantía ofreces?"
+  - **Aval (garantía personal/aval solidario)**
+  - **Garantía prendaria** (bien mueble del solicitante)
+  - **Garantía hipotecaria** (bien inmueble — solo disponible si la modalidad es
+    Sustentable, según el formato F-PR-OCC-02/03)
+  - Según la respuesta:
+    - Si elige **Aval** → se habilita la sección "Datos del Aval" (del prompt
+      anterior, `prompt_portal_fixes_p0.txt`) y se incluye en el ZIP final el
+      formato de "Declaración de Bienes Patrimoniales Aval" correspondiente
+      (`F-PR-OCC-06` para Artesanal, `F-PR-OCC-07` para Emprendedores/Sustentable)
+    - Si elige **Garantía prendaria** → se habilita una sección para describir
+      el bien mueble (descripción, fecha de factura, valor de factura) — campos
+      nuevos, agregar migración si es necesario (tabla `garantias_solicitud` o
+      columnas JSON en `solicitudes_credito`). NO se genera el formato de
+      Declaración de Bienes Aval
+    - Si elige **Garantía hipotecaria** (solo Sustentable) → sección para
+      describir el bien inmueble (descripción, valor) — mismo mecanismo que
+      garantía prendaria
+  - Estas secciones son mutuamente excluyentes; el wizard debe mostrar solo la
+    correspondiente a la elección
+
+---
+
+## 4. PASOS SIGUIENTES — CAPTURA DE INFORMACIÓN POR SECCIONES
+
+Diseña el wizard como una serie de pasos con barra de progreso (stepper visual,
+estilo coherente con el timeline de la landing). Cada paso corresponde a una
+sección de los formatos oficiales. Basándote en el contenido extraído de los
+PDFs, organiza (ajusta nombres/orden según lo que confirmes al leer los PDFs):
+
+### 4.1 Información del solicitante / representante legal
+Campos según `F-PR-OCC-01`/`02`/`03`: nombre completo, fecha de nacimiento,
+dirección, colonia, C.P., municipio de residencia, lugar de nacimiento, edad
+(calculada automáticamente desde fecha de nacimiento), sexo, maya hablante,
+discapacidad (con campo "especifique" si aplica), domicilio propio/rentado,
+renta mensual (si rentado), teléfono celular y fijo, correo electrónico, si es
+empleado de la administración pública (si/dependencia/puesto), estado civil,
+régimen matrimonial, datos del cónyuge si aplica.
+
+### 4.2 Información de la persona moral (solo si `tipo_persona = 'moral'`)
+Razón social, RFC, dirección de la empresa, etc. según `F-PR-OCC-03`.
+
+### 4.3 Referencias personales
+Nombre de referencia (no familiar), teléfono, C.P.
+
+### 4.4 Información del negocio
+Nombre comercial, RFC (con homoclave), dirección, colonia, municipio, teléfono,
+C.P., giro/actividad.
+
+### 4.5 Créditos y/o apoyos de gobierno previos
+Tabla repetible: dependencia, destino del recurso, monto entregado (puede
+quedar vacía si no aplica).
+
+### 4.6 Destino del crédito
+Tabla repetible: concepto, importe cotizado. Importe total del proyecto, importe
+a solicitar (validado contra el rango de la modalidad — integrar con la
+validación de P0-1 del prompt anterior), y plazo (12/18/24 meses según
+modalidad — para Artesanal son 6/12/18 según el PDF, verificar esto al leer
+`F-PR-OCC-01` y ajustar las opciones de plazo mostradas si Artesanal difiere de
+lo ya configurado en `prompt_landing_v2.txt`; si hay discrepancia entre RO/
+landing y el formato oficial, priorizar lo que diga el formato oficial y avisar
+al usuario en el resumen final del wizard).
+
+### 4.7 Ficha Técnica (`F-PR-OCC-04`, todas las modalidades)
+Antecedentes del negocio: nombre comercial, municipio de la empresa, fecha de
+inicio del negocio, actividad/giro específico, régimen fiscal, propiedad
+intelectual/patente (si aplica), monto de ventas mensual aproximado, descripción
+del negocio (textarea grande), descripción del proceso de operación, mobiliario
+y/o maquinaria, recursos humanos (funciones de empleados), principales
+proveedores (tabla repetible: nombre, antigüedad, insumo/producto, monto de
+compras mensual, política de compra contado/crédito-días), productos
+(fabricación y venta)/servicios, distribución (sectores), principales clientes
+(tabla repetible similar a proveedores), detalles de deudas del negocio (tabla:
+nombre, monto, vencimiento, garantía).
+
+### 4.8 Estado de Ingresos y Egresos (`F-PR-OCC-05`, todas las modalidades)
+Periodo (del/al), y montos: ventas/servicios, costo de producto, utilidad bruta,
+gastos de operación (energía eléctrica, agua, teléfono, gas, mano de obra del
+solicitante, nómina de empleados, renta del local, otros gastos — repetible),
+total de gastos, utilidad antes de impuestos, impuestos, utilidad neta. Mostrar
+cálculos automáticos (utilidad bruta = ventas - costo; utilidad neta = utilidad
+antes de impuestos - impuestos) pero permitir edición manual.
+
+### 4.9 Datos del Aval / Garantía (condicional según paso 3)
+- Si **Aval**: formulario completo según `F-PR-OCC-06`/`07` (Declaración de
+  Bienes Patrimoniales Aval): información del aval (nombre, correo, sexo, RFC,
+  teléfonos, edad, fecha de nacimiento, municipios, domicilio, colonia, C.P.,
+  domicilio propio/rentado, renta mensual, lugar laboral, antigüedad, ocupación,
+  fecha inicio actividades laborales, dependientes económicos, estado civil,
+  régimen matrimonial, información del cónyuge si aplica), bienes y derechos
+  (propiedades inmobiliarias — repetible), deudas y obligaciones (hipotecas y
+  créditos bancarios, otras deudas — repetibles, con total calculado),
+  referencias personales del aval (no familiares)
+- Si **Garantía prendaria** o **hipotecaria**: solo el formulario simplificado
+  descrito en el paso 3 (sin el formato de Declaración de Bienes)
+
+---
+
+## 5. DOCUMENTOS REQUERIDOS
+
+Integrando con el sistema de `tiposRequeridos()` por modalidad ya trabajado en
+`prompt_portal_fixes_p0.txt`, asegúrate de que el wizard solicite TODOS los
+documentos aplicables según la combinación modalidad + tipo de persona +
+tipo de garantía elegida, por ejemplo (ajustar según lo que confirmes en RO y en
+los propios formatos PDF, que listan "anexos" y documentación de respaldo):
+
+- Documentos genéricos (todas las modalidades): identificación oficial
+  (frente/reverso), CURP, comprobante de domicilio, acta de nacimiento
+- Persona Moral: acta constitutiva, poder del representante legal, identificación
+  del representante
+- Cotizaciones del destino del crédito (mínimo 2, según RO)
+- Si Artesanal: evidencia/fotos de productos muestra
+- Si **Aval**: identificación del aval, comprobante de domicilio del aval
+- Si **Garantía prendaria**: factura(s) del bien mueble
+- Si **Garantía hipotecaria** (Sustentable): documento que acredite propiedad del
+  bien inmueble
+- Fotografías del negocio/local
+
+Cada documento debe poder subirse (reutilizar `subirDocumento()` ya existente,
+extendiendo el catálogo de tipos), con preview, indicador de estatus, y
+posibilidad de reemplazo — igual que en el flujo actual pero integrado al wizard.
+
+---
+
+## 6. RESPONSIVIDAD
+
+Todo el wizard (formularios extensos con tablas repetibles) debe verse y
+funcionar correctamente en:
+- **Móvil** (320-480px): un campo por fila, tablas repetibles transformadas en
+  "cards" apiladas por cada renglón (con botón "+ Agregar" y "Eliminar" por
+  card), barra de progreso del stepper compacta (solo número de paso actual /
+  total + barra), botones "Anterior"/"Siguiente" fijos en la parte inferior
+  (sticky)
+- **Tablet/iPad** (768-1024px): 2 columnas para campos cortos, tablas repetibles
+  en formato tabla real si caben, si no en cards
+- **Desktop** (1024px+): layout completo multi-columna, stepper horizontal con
+  los nombres de cada paso visibles
+
+Usar componentes reutilizables para: input de texto, select, radio/checkbox
+estilizado, tabla repetible genérica (agregar/eliminar filas), sección
+colapsable. Mantener consistencia con los componentes ya usados en
+`Solicitud.vue` y el resto del portal (ShadCN/ui si aplica).
+
+---
+
+## 7. PASO FINAL — REVISIÓN, GENERACIÓN DE PDFs Y DESCARGA DE ZIP
+
+### 7.1 Pantalla de revisión
+Antes de finalizar, mostrar un resumen navegable de TODA la información
+capturada, organizado por sección (igual que los pasos del wizard), con botones
+"Editar" que regresen al paso correspondiente. Validar que todos los campos
+obligatorios y documentos requeridos estén completos antes de habilitar el botón
+final "Finalizar y generar mis formatos".
+
+### 7.2 Generación de PDFs
+Al confirmar, el backend debe:
+1. Generar cada PDF correspondiente (según modalidad/tipo de persona/garantía)
+   a partir de las plantillas Blade/HTML diseñadas en el paso 1 de este prompt,
+   rellenas con los datos capturados:
+   - Solicitud de Crédito (F-PR-OCC-01, 02 ó 03 según corresponda)
+   - Ficha Técnica (F-PR-OCC-04)
+   - Estado de Ingresos y Egresos (F-PR-OCC-05)
+   - Declaración de Bienes Patrimoniales Aval (F-PR-OCC-06 ó 07) — SOLO si se
+     eligió Aval
+2. Empaquetar todos los PDFs generados en un único archivo ZIP (usar
+   `ZipArchive` de PHP o `Spatie\Browsershot`/librería ya disponible)
+3. Guardar el ZIP en almacenamiento privado (disco `local`, siguiendo el patrón
+   de seguridad de P0-3 del prompt anterior) asociado a la `SolicitudCredito`
+4. Cambiar el `estatus` de la solicitud a `Enviada` (o el estatus que corresponda
+   según el flujo ya definido — revisar que no rompa el enum existente)
+5. Exponer una ruta autenticada para descargar el ZIP, ej.
+   `GET /mi-portal/solicitud/{solicitud}/descargar-formatos` (con verificación de
+   propiedad del usuario)
+
+### 7.3 Pantalla de éxito
+Tras la generación exitosa, mostrar una pantalla de confirmación con diseño
+celebratorio pero institucional (sin emojis, usar SVG — confetti sutil con CSS
+si se desea, ícono de check animado tipo el usado en otras confirmaciones del
+proyecto):
+
+- Mensaje principal: **"¡Felicidades! Tu solicitud va a pasar a Comité."**
+- Texto explicativo: "Descarga tus formatos, fírmalos y entrégalos físicamente en
+  las oficinas del Instituto Yucateco de Emprendedores (IYEM) para continuar con
+  el proceso."
+- Botón prominente "Descargar formatos (ZIP)" → llama a la ruta de descarga
+- Bloque con la **ubicación del IYEM**: reutilizar el mismo mapa embed de Google
+  Maps y dirección ya implementados en `prompt_contacto.txt` (sección de
+  Contacto de la landing), para consistencia (misma dirección, mismo iframe)
+- Información de horario de atención (la misma usada en Contacto)
+- Botón secundario "Ir a mi expediente" → `portal.expediente`
+
+---
+
+## 8. VERIFICACIÓN
+
+1. `php artisan migrate` — nuevas columnas/tablas (`tipo_persona`, garantía
+   prendaria/hipotecaria, y cualquier campo nuevo de los formatos) sin romper
+   datos existentes
+2. `npm run build` — sin errores
+3. `php artisan test` — agregar tests para:
+   - Verificación de CURP duplicada (bloquea correctamente)
+   - Flujo Artesanal fuerza `tipo_persona = 'fisica'`
+   - Generación de PDFs: para cada combinación modalidad + tipo persona +
+     garantía, se generan los PDFs correctos (verificar nombres de archivo en el
+     ZIP)
+   - Descarga del ZIP solo accesible por el dueño de la solicitud
+4. Probar manualmente el wizard completo end-to-end para AL MENOS estas
+   combinaciones:
+   - Artesanal + Física + Aval
+   - Emprendedores + Física + Garantía prendaria
+   - Emprendedores + Moral + Aval
+   - Sustentable + Moral + Garantía hipotecaria
+   En cada caso, descargar el ZIP y verificar visualmente que los PDFs generados
+   contengan los datos capturados y se vean similares al formato oficial
+   correspondiente
+5. Probar responsividad en mobile/tablet/desktop (devtools + dispositivo real si
+   es posible)
+6. Verificar dark mode en todas las pantallas del wizard
+
+---
+
+## 9. DEPLOY A PRODUCCIÓN (HOSTINGER)
+
+### Datos del servidor
+- IP: 195.35.38.222
+- Puerto SSH: 65002
+- Usuario: u489236361
+- Dominio destino: https://crea.iyemyucatan.com/
+- Ruta: `/home/u489236361/domains/crea.iyemyucatan.com/public_html`
+
+### Build local
+```bash
+npm ci
+npm run build
+composer install --optimize-autoloader --no-dev
+```
+
+### Subir cambios via rsync
+```bash
+rsync -avz --progress \
+  --exclude='.env' \
+  --exclude='node_modules/' \
+  --exclude='vendor/' \
+  --exclude='storage/logs/*' \
+  --exclude='.git/' \
+  --exclude='database/database.sqlite' \
+  -e "ssh -p 65002" \
+  ./ u489236361@195.35.38.222:/home/u489236361/domains/crea.iyemyucatan.com/public_html/
+```
+
+### En el servidor (vía SSH)
+```bash
+cd /home/u489236361/domains/crea.iyemyucatan.com/public_html
+
+composer install --optimize-autoloader --no-dev
+
+php artisan migrate --force
+
+php artisan config:clear
+php artisan route:clear
+php artisan view:clear
+php artisan config:cache
+php artisan route:cache
+php artisan view:cache
+
+chmod -R 775 storage bootstrap/cache
+```
+
+Si se usa una librería nueva para generar PDFs (ej. `barryvdh/laravel-dompdf` o
+`spatie/browsershot`), confirmar que sus dependencias (ej. Chromium para
+browsershot) estén disponibles en el hosting; si Hostinger no permite instalar
+binarios adicionales, usar una alternativa basada en PHP puro (dompdf) para
+evitar fallos en producción.
+
+### Verificación post-deploy en https://crea.iyemyucatan.com/
+
+- [ ] El portal `/mi-portal` muestra el logo y colores de la marca CREA, footer
+      incluido
+- [ ] El wizard inicia pidiendo la CURP y bloquea correctamente CURPs con
+      crédito activo
+- [ ] La selección de modalidad + tipo de persona + garantía muestra/oculta las
+      secciones correctas
+- [ ] Todos los pasos del wizard funcionan en mobile, tablet y desktop
+- [ ] Al finalizar, se genera y descarga el ZIP con los PDFs correctos según la
+      combinación elegida
+- [ ] La pantalla de éxito muestra el mensaje, el mapa del IYEM y el botón de
+      descarga
+- [ ] Sin errores en consola del navegador ni en `storage/logs/laravel.log`
+
+---
+
+## NOTAS
+
+- Este es un cambio grande: considera implementarlo de forma incremental
+  (commits por sección/paso del wizard) para poder probar cada parte antes de
+  continuar
+- No perder ni romper datos de solicitudes ya existentes en `Borrador` u otros
+  estatus — los nuevos campos deben ser nullable o tener defaults seguros, y el
+  wizard debe poder "retomar" una solicitud existente cargando los datos ya
+  guardados
+- Si al leer los PDFs encuentras campos/secciones no contemplados en este
+  prompt, agrégalos al wizard en la sección que corresponda — el objetivo es que
+  el PDF generado cubra TODA la información que pide el formato oficial
+- Mantener el mismo nivel de pulido visual (animaciones sutiles, transiciones,
+  microinteracciones) que la landing y el flujo de Auth ya entregados

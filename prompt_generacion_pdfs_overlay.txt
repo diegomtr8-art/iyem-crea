@@ -1,0 +1,263 @@
+# PROMPT: GENERAR LOS PDFs ESCRIBIENDO SOBRE EL FORMATO OFICIAL ORIGINAL (OVERLAY)
+# Para usar en: Claude Code (sesión interactiva en la raíz del proyecto)
+# Stack: Laravel 11 + PHP + Vue 3 + Inertia.js
+# ESTE PROMPT REEMPLAZA EL ENFOQUE DE "RECREAR EN BLADE" DE prompt_generacion_pdfs_exacta.txt
+# REFERENCIA VISUAL: formatos_pdf_overlay_real.html (raíz del proyecto)
+# PDFs ORIGINALES (NO MODIFICAR, SOLO LEER): public/formatos/FormatoCreaEmprendedores/,
+#   public/formatos/FormatoCreaSustentable/, public/formatos/FormatosCreaartesanal/
+
+---
+
+## POR QUÉ ESTE ENFOQUE (leer antes de implementar)
+
+Los 5 PDFs oficiales del IYEM (F-PR-OCC-01/02/03/04/05/06/07) **no tienen campos de
+formulario (AcroForm)** — son documentos planos. Pero eso NO significa que haya que
+recrearlos desde cero en HTML/Blade (enfoque del prompt anterior). La forma correcta
+y más fiel es: **usar el PDF original como plantilla/fondo de cada página y escribir
+el texto encima, en las coordenadas exactas**, con una librería de overlay de PDF en
+PHP. Esto garantiza que el logo del IYEM, los colores institucionales, las líneas y
+bordes queden IDÉNTICOS al original (porque literalmente son el PDF original), y solo
+se agrega el texto de la solicitud encima.
+
+Ya se construyó una prueba de concepto de esto: `formatos_pdf_overlay_real.html` toma
+las imágenes reales de los 5 PDFs y superpone datos de ejemplo en las coordenadas
+correctas (calculadas leyendo la estructura interna del PDF). Ábrelo en un navegador
+para ver exactamente cómo debe verse el resultado final. Esa es la especificación
+visual de este prompt.
+
+---
+
+## 1. LIBRERÍA A USAR
+
+Instalar (si no está ya) `setasign/fpdi` junto con `setasign/fpdf` (o
+`setasign/fpdi-tcpdf` si el proyecto ya usa TCPDF/dompdf en otro lado y se prefiere
+mantener una sola librería de PDF — pero FPDI+FPDF es la opción más ligera y
+suficiente para overlay de texto plano):
+
+```bash
+composer require setasign/fpdi setasign/fpdf
+```
+
+FPDI permite importar cada página de un PDF existente como plantilla
+(`importPage()` + `useTemplate()`) y luego escribir texto encima con coordenadas
+absolutas (`SetXY()` + `Cell()`/`Text()`), exactamente como un overlay.
+
+---
+
+## 2. CÓMO OBTENER LAS COORDENADAS EXACTAS DE CADA CAMPO
+
+Cada PDF usa puntos (pt, 1/72 pulgada) como unidad, con origen (0,0) en la esquina
+superior izquierda si se trabaja con la convención "top" (como en `pdfplumber`) — FPDI/FPDF
+usan típicamente origen superior izquierdo también, así que la conversión es directa.
+
+Para medir las coordenadas de los campos de cada PDF (necesario una sola vez, ya que
+los formatos no cambian), usa un script de Python con `pdfplumber` (se puede ejecutar
+en una sesión de análisis aparte, no necesita ir en el código de producción):
+
+```python
+import pdfplumber
+with pdfplumber.open("public/formatos/.../F-PR-OCC-02 R00 ....pdf") as pdf:
+    page = pdf.pages[0]
+    print(page.width, page.height)          # tamaño de página en pt
+    for r in page.rects:                     # rectángulos = celdas de cada campo
+        print(r['x0'], r['top'], r['x1'], r['bottom'])
+    for w in page.extract_words():           # palabras = etiquetas de cada campo
+        print(w['text'], w['x0'], w['top'], w['x1'], w['bottom'])
+    for l in page.lines:                     # líneas = separadores entre columnas
+        print(l['x0'], l['top'], l['x1'], l['bottom'])
+```
+
+Patrón observado en estos formatos (válido para los 5 PDFs):
+- Cada "fila de etiqueta" (texto pequeño con el nombre del campo) va seguida
+  inmediatamente por una "fila en blanco" del mismo ancho — esa fila en blanco es
+  el área donde debe escribirse el valor
+- Filas anchas que agrupan varias etiquetas cortas (ej. "Folio electrónico |
+  Domicilio | Renta Mensual | No. Teléfono celular | No. Teléfono fijo" en una sola
+  franja) están subdivididas por líneas verticales (`page.lines` con `x0==x1`) que
+  marcan el límite de cada sub-columna
+- Las opciones de selección única (Sí/No, H/M, Casado/Soltero, Propio/Rentado,
+  modalidad) no tienen "fila en blanco": la marca de selección se dibuja como un
+  check pequeño inmediatamente a la izquierda de la palabra de la opción elegida
+
+Esta es exactamente la metodología que se usó para construir
+`formatos_pdf_overlay_real.html` — ya está validada y funciona. Repite el mismo
+proceso de medición para los 5 PDFs (incluyendo F-PR-OCC-01 y F-PR-OCC-06 que no se
+incluyeron en el HTML de referencia, pero comparten estructura casi idéntica a
+F-PR-OCC-02 y F-PR-OCC-07 respectivamente).
+
+Guarda las coordenadas resultantes como constantes en el código PHP (un array de
+"campo → posición" por documento), no las recalcules en cada request.
+
+---
+
+## 3. ESTRUCTURA DEL SERVICIO DE GENERACIÓN
+
+Crear (o adaptar si ya existe de un intento anterior) un servicio dedicado:
+
+`app/Services/PdfFormatoOverlayService.php`
+
+```php
+use setasign\Fpdi\Fpdi;
+
+class PdfFormatoOverlayService
+{
+    public function generarSolicitudPersonaFisica(SolicitudCredito $solicitud): string
+    {
+        $origen = $this->rutaFormatoOriginal($solicitud); // F-PR-OCC-01 o 02 según modalidad
+        $pdf = new Fpdi();
+        $paginas = $pdf->setSourceFile($origen);
+
+        for ($i = 1; $i <= $paginas; $i++) {
+            $tplId = $pdf->importPage($i);
+            $size = $pdf->getTemplateSize($tplId);
+            $pdf->AddPage($size['orientation'], [$size['width'], $size['height']]);
+            $pdf->useTemplate($tplId);
+
+            $this->escribirCamposPagina($pdf, $i, $solicitud);
+        }
+
+        $rutaSalida = storage_path("app/solicitudes/{$solicitud->id}/F-PR-OCC-02.pdf");
+        $pdf->Output('F', $rutaSalida);
+        return $rutaSalida;
+    }
+
+    private function escribirCamposPagina(Fpdi $pdf, int $pagina, SolicitudCredito $solicitud): void
+    {
+        // Coordenadas en mm (FPDI/FPDF usan mm por defecto; convertir desde pt: mm = pt * 0.3528)
+        $pdf->SetFont('Arial', '', 9);
+        $pdf->SetTextColor(11, 61, 34); // verde oscuro, igual al overlay de referencia
+
+        if ($pagina === 1) {
+            $this->celda($pdf, x: 49.8, y: 132, w: 350, texto: $solicitud->nombre_completo);
+            $this->celda($pdf, x: 400, y: 132, w: 110, texto: $solicitud->fecha_nacimiento->format('d/m/Y'));
+            // ... resto de campos de la página 1, usando las coordenadas medidas en el paso 2
+        }
+        if ($pagina === 2) {
+            // ... campos de destino del crédito, aval, garantías, firma
+        }
+    }
+
+    private function celda(Fpdi $pdf, float $x, float $y, float $w, string $texto): void
+    {
+        $pdf->SetXY($x * 0.3528, $y * 0.3528); // pt → mm
+        $pdf->Cell($w * 0.3528, 5, $texto, 0, 0, 'L');
+    }
+
+    private function marcarSeleccion(Fpdi $pdf, float $x, float $y, float $size = 3.5): void
+    {
+        // dibuja un check (✓) o un cuadro relleno en la posición de la casilla elegida
+        $pdf->SetXY($x * 0.3528, $y * 0.3528);
+        $pdf->Cell($size, $size, "X", 0, 0, 'C'); // o usar SetFillColor + Rect para un cuadro relleno
+    }
+}
+```
+
+Crea métodos equivalentes para los 5 (7 contando 01/06) documentos:
+- `generarSolicitudPersonaFisica()` → F-PR-OCC-01 (Artesanal) / F-PR-OCC-02 (Emprendedores/Sustentable)
+- `generarSolicitudPersonaMoral()` → F-PR-OCC-03
+- `generarFichaTecnica()` → F-PR-OCC-04
+- `generarIngresosEgresos(string $tipo)` → F-PR-OCC-05, reutilizable para "historico"/"proyeccion"
+- `generarDeclaracionBienesAval()` → F-PR-OCC-06 (Artesanal) / F-PR-OCC-07 (Emprendedores/Sustentable)
+
+---
+
+## 4. MAPEO DE DATOS (qué campo del modelo va en qué coordenada)
+
+Usa `formatos_pdf_overlay_real.html` como referencia visual exacta de la posición
+de cada dato. El archivo ya muestra, superpuesto sobre el PDF real, dónde debe ir:
+nombre, fecha de nacimiento, domicilio, colonia, C.P., teléfonos, correo, estado
+civil, datos del cónyuge, referencias personales, datos del negocio/persona moral,
+créditos de gobierno previos, conceptos del destino del crédito + plazo + importes,
+datos del aval o garantía, ficha técnica completa (antecedentes, proveedores,
+clientes, deudas, anexos), estado de ingresos y egresos, y bienes/deudas del aval.
+
+Reutiliza el mapeo de "dato capturado → formato oficial" que ya quedó documentado en
+`prompt_generacion_pdfs_exacta.txt` (sección 2, tabla de mapeo) — sigue siendo válido,
+solo cambia la TÉCNICA de generación (overlay con FPDI en vez de Blade+dompdf).
+
+Para los checkboxes (modalidad, sexo, estado civil, Sí/No, Propio/Rentado, tipo de
+garantía), marca SOLO la opción que corresponda al dato real de la solicitud,
+dejando las demás sin marcar — igual que se ve en el HTML de referencia.
+
+---
+
+## 5. LÓGICA CONDICIONAL Y DISPARADOR (sin cambios respecto al prompt anterior)
+
+- El ZIP con los PDFs generados se crea SOLO cuando `SolicitudCredito.estatus`
+  cambia a `Aprobada` (no al enviar)
+- Documentos a incluir según modalidad/tipo de persona/tipo de garantía: la misma
+  lógica condicional ya descrita en `prompt_generacion_pdfs_exacta.txt` sección 3
+- Almacenamiento del ZIP en disco `local` (privado), descarga vía ruta autenticada
+  verificando propiedad de la solicitud
+
+---
+
+## 6. VERIFICACIÓN
+
+1. Generar un PDF de prueba para cada combinación clave (Artesanal+Física+Aval,
+   Emprendedores+Física+Aval, Emprendedores+Moral+Prendaria,
+   Sustentable+Moral+Hipotecaria) y comparar visualmente:
+   - Contra `formatos_pdf_overlay_real.html` (debe verse igual de fiel al original)
+   - Contra el PDF oficial en `public/formatos/` (el fondo debe ser idéntico pixel
+     por pixel, ya que es literalmente el mismo archivo importado como plantilla)
+2. Confirmar que el texto no se desborda de su celda cuando el dato es largo
+   (truncar con elipsis o reducir tamaño de fuente dinámicamente si excede el ancho
+   disponible — FPDF permite medir `GetStringWidth()` antes de escribir)
+3. Confirmar que los acentos y caracteres especiales (á, é, í, ó, ú, ñ, ü) se
+   renderizan correctamente (FPDF requiere texto en ISO-8859-1/Windows-1252 por
+   defecto; usar `iconv('UTF-8', 'ISO-8859-1//TRANSLIT', $texto)` antes de escribir,
+   o configurar FPDI/FPDF para UTF-8 con una fuente compatible)
+4. Confirmar que las casillas de selección (modalidad, sexo, etc.) marcan la opción
+   correcta y solo esa
+5. `php artisan test` — agregar tests que generen el PDF y verifiquen (vía
+   `pdftotext` o similar) que el texto esperado aparece en el archivo resultante
+
+---
+
+## 7. DEPLOY A PRODUCCIÓN (HOSTINGER)
+
+Igual que en prompts anteriores — FPDI/FPDF son librerías PHP puras (no requieren
+binarios externos como Chromium), por lo que son seguras de usar en Hostinger sin
+configuración adicional.
+
+```bash
+npm ci && npm run build
+composer install --optimize-autoloader --no-dev
+
+rsync -avz --progress \
+  --exclude='.env' --exclude='node_modules/' --exclude='vendor/' \
+  --exclude='storage/logs/*' --exclude='.git/' --exclude='database/database.sqlite' \
+  -e "ssh -p 65002" \
+  ./ u489236361@195.35.38.222:/home/u489236361/domains/crea.iyemyucatan.com/public_html/
+
+ssh -p 65002 u489236361@195.35.38.222
+cd /home/u489236361/domains/crea.iyemyucatan.com/public_html
+composer install --optimize-autoloader --no-dev
+php artisan config:clear && php artisan route:clear && php artisan view:clear
+php artisan config:cache && php artisan route:cache && php artisan view:cache
+chmod -R 775 storage bootstrap/cache
+```
+
+### Verificación post-deploy
+
+- [ ] Aprobar una solicitud de prueba genera PDFs cuyo fondo es idéntico al PDF
+      oficial original (logo, colores, líneas) y con los datos reales superpuestos
+      en la posición correcta
+- [ ] Los acentos y caracteres especiales se ven correctos en el PDF generado
+- [ ] El ZIP descargado contiene los documentos correctos según la combinación de
+      modalidad/persona/garantía
+- [ ] Sin errores en `storage/logs/laravel.log`
+
+---
+
+## NOTAS
+
+- Este prompt sustituye la técnica de `prompt_generacion_pdfs_exacta.txt` (que
+  proponía recrear los formatos en Blade/HTML). El mapeo de datos y la lógica
+  condicional de ese prompt SIGUEN siendo válidos — solo cambia cómo se genera el
+  PDF final (overlay con FPDI sobre el original, en vez de renderizar HTML a PDF)
+- `formatos_pdf_overlay_real.html` es la prueba de que esta técnica funciona y la
+  referencia visual exacta de cómo debe verse cada documento generado
+- Si en el futuro el IYEM actualiza alguno de los formatos oficiales (cambia de
+  revisión R00 a R01, por ejemplo), habrá que volver a medir las coordenadas de
+  ese documento específico con el script de `pdfplumber` del punto 2

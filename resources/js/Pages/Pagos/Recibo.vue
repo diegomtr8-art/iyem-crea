@@ -24,8 +24,7 @@ const fmtDate = (d) => {
             <!-- Encabezado -->
             <div class="flex items-center gap-4 mb-6">
                 <button
-                    @click="router.visit(route('acreditados.show', pago.acreditado ? undefined : undefined))"
-                    @click.prevent="history.back()"
+                    @click="history.back()"
                     class="p-3 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 transition-colors shadow-sm"
                 >
                     <ArrowLeft :size="18" class="text-slate-600 dark:text-slate-300" />
@@ -111,9 +110,9 @@ const fmtDate = (d) => {
                                     <span class="font-black text-slate-700 dark:text-slate-200">Cuota {{ c.cuota }}</span>
                                 </div>
                                 <div class="flex gap-3 text-[10px]">
-                                    <span v-if="c.aplicado_mora > 0" class="text-orange-500 font-bold">Mora {{ fmt(c.aplicado_mora) }}</span>
-                                    <span v-if="c.aplicado_ordinario > 0" class="text-red-500 font-bold">Ord {{ fmt(c.aplicado_ordinario) }}</span>
-                                    <span v-if="c.aplicado_capital > 0" class="text-blue-500 font-bold">Cap {{ fmt(c.aplicado_capital) }}</span>
+                                    <span v-if="(c.mor ?? c.aplicado_mora) > 0" class="text-orange-500 font-bold">Mora {{ fmt(c.mor ?? c.aplicado_mora) }}</span>
+                                    <span v-if="(c.int ?? c.aplicado_ordinario) > 0" class="text-red-500 font-bold">Ord {{ fmt(c.int ?? c.aplicado_ordinario) }}</span>
+                                    <span v-if="(c.cap ?? c.aplicado_capital) > 0" class="text-blue-500 font-bold">Cap {{ fmt(c.cap ?? c.aplicado_capital) }}</span>
                                 </div>
                             </div>
                         </div>
@@ -130,7 +129,8 @@ const fmtDate = (d) => {
             <!-- Acciones -->
             <div class="mt-4 flex gap-3">
                 <button
-                    @click="router.visit(route('operaciones.index', { acreditado: pago.acreditado?.id ?? '' }))"
+                    v-if="pago.acreditado?.id"
+                    @click="router.visit(route('operaciones.index', pago.acreditado.id))"
                     class="flex-1 py-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl text-sm font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-50 transition-colors"
                 >
                     Ver todos los movimientos

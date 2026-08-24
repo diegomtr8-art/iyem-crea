@@ -1,0 +1,454 @@
+# PROMPT: REDISEÑO DE AUTH (LOGIN, REGISTRO, RECUPERAR/RESTABLECER CONTRASEÑA)
+# + LOGIN CON GOOGLE + CORREOS DE RECUPERACIÓN + ROLES Y PERMISOS
+# Para usar en: Claude Code (sesión interactiva en la raíz del proyecto)
+# Stack: Laravel 11 + Vue 3 + Inertia.js + TypeScript + Tailwind CSS + Spatie Permission
+
+---
+
+## CONTEXTO
+
+Ya terminamos la landing page (`resources/js/Pages/Welcome.vue`) y la sección de
+Contacto, con un sistema de diseño definido: paleta verde institucional (#006847)
++ dorado/ámbar (#E8A020), tipografía, glassmorphism, animaciones suaves con
+Intersection Observer, dark mode, logo e isotipo CREA en
+`resources/js/components/AppLogo.vue` / `AppLogoIcon.vue`.
+
+Ahora toca rediseñar TODO el flujo de autenticación con esa misma identidad
+visual — debe sentirse como una extensión natural de la landing, no como las
+páginas genéricas del starter kit de Laravel/Vue que existen actualmente.
+
+### Estructura actual del proyecto (no romper)
+
+- `app/Models/User.php`: tiene campo `tipo` (`'ciudadano'` | `'operativo'`) y usa
+  `Spatie\Permission\Traits\HasRoles`
+- Middlewares: `EsCiudadano` (redirige a `dashboard` si no es ciudadano) y
+  `EsOperativo` (redirige a `portal.dashboard` si no es operativo)
+- Rutas (`routes/auth.php`):
+  - `register` → alta de usuarios operativos (uso interno/admin)
+  - `ciudadano/registro` → auto-registro de ciudadanos
+  - `login`, `forgot-password`, `reset-password/{token}`, etc.
+- Páginas Vue actuales en `resources/js/Pages/auth/`: `Login.vue`, `Register.vue`,
+  `CiudadanoRegister.vue`, `ForgotPassword.vue`, `ResetPassword.vue`,
+  `ConfirmPassword.vue`, `VerifyEmail.vue`
+- Portal ciudadano: `/mi-portal` (ruta `portal.dashboard`)
+- Panel operativo: `/dashboard`
+
+---
+
+## 1. DISEÑO VISUAL — IDENTIDAD CONSISTENTE CON LA LANDING
+
+Todas las páginas de auth deben usar el mismo lenguaje visual de la landing:
+
+- Layout de dos columnas en desktop:
+  - **Columna izquierda** (~45-50%): formulario, fondo blanco/dark según tema,
+    con el logo CREA (`AppLogo.vue`) en la parte superior y un link "Volver al
+    inicio" hacia `/`
+  - **Columna derecha** (~50-55%): panel decorativo con gradiente verde
+    institucional + formas geométricas SVG animadas (las mismas del hero de la
+    landing: círculos/hexágonos flotantes con animación lenta), más una
+    ilustración SVG temática (emprendedor, crecimiento) y un mensaje motivacional
+    corto relacionado al programa CREA
+- En mobile: solo la columna del formulario, con el panel decorativo colapsado a
+  un header pequeño con el logo y gradiente
+- Dark mode funcional en todas las páginas (igual que la landing, con persistencia
+  en localStorage y transición suave)
+- Inputs, botones y mensajes de error deben usar los mismos componentes/estilos ya
+  usados en el proyecto (ShadCN/ui, `InputError.vue`, etc.) pero con el toque
+  visual de la landing (bordes redondeados, focus ring verde, transiciones)
+- Sin emojis. Solo SVG para iconografía e ilustraciones
+- Animaciones sutiles: fade-in + slide-up al cargar la página, focus states
+  animados, botones con estados `processing` claros (spinner SVG)
+
+---
+
+## 2. PÁGINAS A REESCRIBIR
+
+### 2.1 `resources/js/Pages/auth/Login.vue`
+
+- Título: "Bienvenido de nuevo" / subtítulo: "Ingresa a tu cuenta CREA"
+- Campos: correo electrónico, contraseña (con toggle mostrar/ocultar contraseña,
+  ícono SVG de ojo)
+- Checkbox "Recordarme"
+- Link "¿Olvidaste tu contraseña?" alineado a la derecha
+- Botón "Iniciar sesión" (verde institucional, full width, estado loading)
+- Separador "o continúa con" + **botón "Continuar con Google"** (ver sección 4)
+- Footer del formulario: "¿No tienes cuenta? Regístrate aquí" → enlaza a
+  `ciudadano/registro` (el registro operativo NO debe ser público, solo accesible
+  por el admin desde el panel)
+- Mostrar mensajes flash (status de reset de contraseña, errores) con el sistema
+  de notificaciones del proyecto (vue-sonner), todo en español
+
+### 2.2 `resources/js/Pages/auth/CiudadanoRegister.vue`
+
+- Título: "Crea tu cuenta" / subtítulo: "Regístrate para acceder a tu portal CREA"
+- Campos: nombre completo, correo, contraseña, confirmar contraseña
+- Checkbox de aceptación de aviso de privacidad / términos (texto breve, sin
+  inventar políticas legales — usar un texto genérico tipo "He leído y acepto el
+  Aviso de Privacidad del programa CREA" con link a `/aviso-privacidad` si existe,
+  o a una sección de la landing)
+- Botón "Crear cuenta" + separador "o regístrate con" + botón "Continuar con
+  Google"
+- Footer: "¿Ya tienes cuenta? Inicia sesión"
+- Validaciones y mensajes de error en español, con feedback en tiempo real
+  (fortaleza de contraseña con indicador visual simple: débil/media/fuerte)
+
+NOTA: `resources/js/Pages/auth/Register.vue` (registro operativo) se mantiene
+funcional para uso interno (cuando el admin da de alta usuarios desde el panel),
+pero también debe actualizarse visualmente para que sea consistente — sin embargo
+NO debe estar accesible desde un link público en Login. Confirmar que la ruta
+`register` (operativo) esté protegida adecuadamente o, si se usa solo desde
+`UserController` (alta de usuarios desde el panel administrativo), evaluar si esta
+página standalone sigue siendo necesaria o si todo se maneja vía modal/formulario
+dentro de `Users/Index.vue`. Documentar la decisión en un comentario.
+
+### 2.3 `resources/js/Pages/auth/ForgotPassword.vue`
+
+- Título: "Recupera tu contraseña" / subtítulo: "Ingresa tu correo y te
+  enviaremos un enlace para restablecerla"
+- Campo: correo electrónico
+- Botón "Enviar enlace de recuperación"
+- Mensaje de confirmación tras el envío (con ícono SVG de correo enviado),
+  indicando "Revisa tu bandeja de entrada (y spam)"
+- Link "Volver al inicio de sesión"
+- Todos los textos y mensajes de validación en español
+
+### 2.4 `resources/js/Pages/auth/ResetPassword.vue`
+
+- Título: "Restablece tu contraseña" / subtítulo: "Ingresa tu nueva contraseña"
+- Campos: nueva contraseña, confirmar nueva contraseña (con toggle mostrar/ocultar
+  e indicador de fortaleza)
+- Botón "Restablecer contraseña"
+- Mensajes de error/éxito en español
+- Tras éxito, redirigir a login con mensaje de confirmación
+
+### 2.5 Otras páginas de auth (consistencia)
+
+Actualizar también con el mismo layout/diseño:
+- `ConfirmPassword.vue`: "Confirma tu contraseña" — usado antes de acciones
+  sensibles
+- `VerifyEmail.vue`: "Verifica tu correo electrónico" — pantalla de espera con
+  botón "Reenviar correo de verificación" y link de cerrar sesión
+
+---
+
+## 3. PLANTILLAS DE CORREO
+
+Crear/rediseñar las plantillas de email con la identidad visual de CREA (logo,
+colores verde/dorado, tipografía limpia, footer institucional):
+
+### 3.1 Correo de restablecimiento de contraseña
+
+Laravel usa por defecto `Illuminate\Auth\Notifications\ResetPassword`. Hay que
+sobreescribir su plantilla:
+
+- Publicar las vistas de notificación de Laravel si no existen:
+  ```bash
+  php artisan vendor:publish --tag=laravel-notifications
+  ```
+- Personalizar `resources/views/vendor/notifications/email.blade.php` (o crear un
+  Mailable propio `app/Mail/RestablecerContrasenaMail.php` + notificación
+  personalizada en `User::sendPasswordResetNotification()`):
+  - Header con el logo CREA (usar una versión del SVG embebida o referenciar
+    `https://crea.iyemyucatan.com/logo.svg` / un PNG exportado para compatibilidad
+    con clientes de correo que no soportan SVG)
+  - Franja superior verde institucional (#006847)
+  - Texto: "Hola [nombre], recibimos una solicitud para restablecer la contraseña
+    de tu cuenta CREA."
+  - Botón CTA "Restablecer contraseña" (verde, redondeado) que enlaza al link de
+    reset
+  - Texto secundario: "Si no solicitaste este cambio, puedes ignorar este correo.
+    El enlace expirará en 60 minutos." (ajustar el tiempo según
+    `config('auth.passwords.users.expire')`)
+  - Footer: logo pequeño + "Instituto Yucateco de Emprendedores · Programa CREA"
+    + dirección + crea@iyemyucatan.com
+- Todo el contenido del correo en español
+- Probar el envío con `MAIL_MAILER=log` y revisar el HTML generado en
+  `storage/logs/laravel.log`
+
+### 3.2 Correo de verificación de cuenta (si aplica)
+
+Si el flujo de registro de ciudadanos requiere verificación de email, aplicar el
+mismo rediseño a la notificación `VerifyEmail` (mismo header/footer, botón
+"Verificar mi correo")
+
+### 3.3 Correo de bienvenida (opcional, si no existe ya)
+
+Si al registrarse un ciudadano no se envía ningún correo de bienvenida, considerar
+agregar uno simple con el mismo diseño: "Bienvenido a CREA, [nombre]" + breve
+explicación de los siguientes pasos (completar expediente, solicitar crédito) +
+botón "Ir a mi portal"
+
+---
+
+## 4. LOGIN / REGISTRO CON GOOGLE (OAuth)
+
+### 4.1 Instalación
+
+```bash
+composer require laravel/socialite
+```
+
+### 4.2 Configuración
+
+- Agregar a `config/services.php`:
+  ```php
+  'google' => [
+      'client_id' => env('GOOGLE_CLIENT_ID'),
+      'client_secret' => env('GOOGLE_CLIENT_SECRET'),
+      'redirect' => env('GOOGLE_REDIRECT_URI'),
+  ],
+  ```
+- Agregar a `.env.example` (sin valores reales):
+  ```
+  GOOGLE_CLIENT_ID=
+  GOOGLE_CLIENT_SECRET=
+  GOOGLE_REDIRECT_URI="${APP_URL}/auth/google/callback"
+  ```
+- NOTA: el usuario (Diego) proporcionará las credenciales reales de Google OAuth
+  más adelante (Client ID / Secret desde Google Cloud Console). Dejar todo
+  preparado para que solo falte configurar el `.env` de producción. Documentar en
+  un comentario o en `CHANGELOG_AUDITORIA.md` qué URI de redirect debe registrarse
+  en Google Cloud Console: `https://crea.iyemyucatan.com/auth/google/callback`
+
+### 4.3 Migración — agregar columnas para OAuth
+
+Crear migración para agregar a la tabla `users`:
+- `google_id` (string, nullable, unique)
+- `avatar` (string, nullable) — para guardar la foto de perfil de Google
+
+### 4.4 Rutas
+
+En `routes/auth.php`, dentro del grupo `guest`:
+```php
+Route::get('auth/google/redirect', [GoogleAuthController::class, 'redirect'])
+    ->name('auth.google.redirect');
+Route::get('auth/google/callback', [GoogleAuthController::class, 'callback'])
+    ->name('auth.google.callback');
+```
+
+### 4.5 Controller
+
+Crear `app/Http/Controllers/Auth/GoogleAuthController.php`:
+
+- `redirect()`: `Socialite::driver('google')->redirect()`
+- `callback()`:
+  1. Obtener el usuario de Google (`Socialite::driver('google')->user()`)
+  2. Buscar un `User` existente por `google_id` o por `email`
+  3. **Si no existe ningún usuario con ese email**:
+     - Crear un nuevo `User` con `tipo = 'ciudadano'`, `google_id`, `avatar`,
+       `name`, `email`, `email_verified_at = now()` (Google ya verificó el
+       correo), y una contraseña aleatoria hasheada (no usable, ya que entrará
+       siempre por Google)
+     - Asignar el rol correspondiente de Spatie si aplica (ver sección 5)
+  4. **Si ya existe un usuario con ese email pero sin `google_id`**: vincular la
+     cuenta (actualizar `google_id` y `avatar`) — esto permite que un ciudadano
+     que ya se registró manualmente también pueda entrar con Google después
+  5. **Si el usuario existente es de `tipo = 'operativo'`**: permitir el login con
+     Google igualmente (vincular cuenta), respetando su tipo y permisos —
+     SOLO los usuarios SIN cuenta previa que entran por primera vez vía Google se
+     crean como `ciudadano`
+  6. Iniciar sesión (`Auth::login($user)`)
+  7. Redirigir según el tipo de usuario (ver sección 6 de routing)
+
+### 4.6 Botón "Continuar con Google" (frontend)
+
+Componente reutilizable `resources/js/components/GoogleLoginButton.vue`:
+- Botón con el ícono oficial de Google (SVG multicolor — usar el SVG estándar de
+  la "G" de Google, NO un emoji ni un ícono genérico)
+- Texto: "Continuar con Google"
+- Estilo: fondo blanco, borde gris claro, sombra sutil al hover, texto oscuro
+  (sigue las guías de marca de Google: no recolorear el logo de Google)
+- `<a :href="route('auth.google.redirect')">` (link normal, no fetch — debe hacer
+  una navegación completa para el flujo OAuth)
+- Usar este componente en `Login.vue` y `CiudadanoRegister.vue`
+
+---
+
+## 5. ROLES Y PERMISOS (Spatie Permission)
+
+El usuario aún no tiene definidos todos los permisos, pero hay que dejar la base
+lista y organizada:
+
+### 5.1 Estructura de roles propuesta
+
+Sin sobre-diseñar (el usuario ajustará después), crear/verificar en el seeder de
+roles y permisos (`database/seeders/` — buscar si existe `RolesSeeder` o similar,
+o crear `RoleAndPermissionSeeder`):
+
+- **Rol `ciudadano`**: usuarios del portal `/mi-portal`. Sin permisos de Spatie
+  especiales (controlado por middleware `EsCiudadano` + `tipo = 'ciudadano'`)
+- **Roles operativos** (todos con `tipo = 'operativo'`, diferenciados por rol de
+  Spatie y sus permisos):
+  - `admin` / `super-admin`: todos los permisos, incluye gestión de usuarios y
+    roles (`UserController`, `RoleController`)
+  - `analista-credito`: permisos sobre `solicitudes.*`, `analisis.*`
+  - `cajero` / `cobranza`: permisos sobre `pagos.*`, `cobranza.*`
+  - `juridico`: permisos sobre `juridico.*`, `cobranza.juridico`
+  - `consulta` / `lectura`: solo permisos de visualización (reportes, dashboard)
+
+Definir los permisos como strings claros, agrupados por módulo, por ejemplo:
+`solicitudes.ver`, `solicitudes.gestionar`, `pagos.registrar`, `pagos.cancelar`,
+`cobranza.gestionar`, `juridico.ver`, `juridico.editar`, `reportes.ver`,
+`usuarios.gestionar`, `roles.gestionar`, `presupuesto.gestionar`,
+`auditoria.ver`, etc. — basarse en los controllers existentes en
+`app/Http/Controllers/` para cubrir cada módulo operativo.
+
+### 5.2 Aplicar permisos a las rutas
+
+En `routes/web.php`, dentro del grupo `auth + verified + operativo`, agregar
+middleware `can:` o `permission:` (Spatie) a las rutas sensibles según el mapeo
+de permisos. NO romper rutas existentes — si un permiso aún no está bien definido,
+dejar un comentario `// TODO: revisar permiso` en lugar de bloquear el acceso, ya
+que el usuario terminará de definir la matriz de permisos después.
+
+### 5.3 UI de gestión de roles
+
+Revisar `resources/js/Pages/Roles/Index.vue` y `app/Http/Controllers/RoleController.php`
+para confirmar que ya permiten crear roles y asignar permisos desde la interfaz
+(checkboxes agrupados por módulo). Si la UI es básica, mejorarla visualmente
+(agrupar permisos por módulo en acordeones o secciones, con el mismo estilo visual
+del proyecto) pero sin cambiar la lógica de negocio si ya funciona.
+
+---
+
+## 6. FLUJO DE REDIRECCIÓN POST-LOGIN
+
+Confirmar/ajustar la lógica de redirección tras autenticación exitosa
+(`AuthenticatedSessionController::store()` y `GoogleAuthController::callback()`):
+
+- Si `$user->tipo === 'ciudadano'` → redirigir a `route('portal.dashboard')`
+  (`/mi-portal`)
+- Si `$user->tipo === 'operativo'` → redirigir a `route('dashboard')`
+  (`/dashboard`)
+
+Esto ya debería estar parcialmente implementado (los middlewares `EsCiudadano` /
+`EsOperativo` ya redirigen si el tipo no coincide); confirmar que el login inicial
+también respete esta regla desde el primer redirect (para no mostrar un
+"redirigiendo..." doble).
+
+---
+
+## 7. ALERTAS Y NOTIFICACIONES EN ESPAÑOL
+
+Revisar TODO el flujo de auth y asegurar que estén en español:
+
+- Mensajes de validación de Laravel: confirmar que `lang/es/` (o
+  `resources/lang/es/`) exista y tenga las traducciones de `validation.php`,
+  `auth.php`, `passwords.php`. Si no existe el paquete de idioma español, crear
+  los archivos necesarios o instalar un paquete de traducciones (ej.
+  `laravel-lang/lang` vía composer) y configurar `APP_LOCALE=es` /
+  `APP_FALLBACK_LOCALE=es` en `.env` y `config/app.php`
+- Mensajes de Spatie Permission (si se muestran al usuario)
+- Todos los toasts/notificaciones (vue-sonner) disparados desde las páginas de
+  auth: "Sesión iniciada correctamente", "Cuenta creada exitosamente", "Enlace de
+  recuperación enviado", "Contraseña restablecida correctamente", "Credenciales
+  incorrectas", "Este correo ya está registrado", etc.
+- Mensajes de error de Google OAuth (ej. si el usuario cancela el login o hay un
+  error de configuración): "No se pudo completar el inicio de sesión con Google.
+  Inténtalo de nuevo."
+
+---
+
+## 8. VERIFICACIÓN
+
+1. `npm run build` — sin errores
+2. `php artisan test` — debe pasar (agregar/ajustar tests de Auth si es necesario,
+   especialmente para el nuevo flujo de Google y la redirección por tipo de
+   usuario)
+3. Probar manualmente (con `MAIL_MAILER=log`):
+   - Login normal (ciudadano y operativo) → verificar redirección correcta
+   - Registro de ciudadano → verificar creación con `tipo = 'ciudadano'`
+   - Forgot password → verificar correo generado en logs con el nuevo diseño
+   - Reset password → verificar cambio exitoso y redirección a login
+   - Botón de Google visible y con el link correcto (aunque no se pueda probar el
+     flujo completo sin credenciales reales todavía)
+4. Confirmar dark mode en todas las páginas de auth
+5. Confirmar responsividad (mobile: panel decorativo colapsado)
+6. Confirmar que TODOS los textos visibles están en español
+
+---
+
+## 9. PENDIENTE PARA EL USUARIO (NO BLOQUEANTE)
+
+Documentar en `CHANGELOG_AUDITORIA.md` o en un archivo `PENDIENTES_AUTH.md` lo
+siguiente, ya que el usuario lo proporcionará después:
+
+- Credenciales de Google OAuth (Client ID / Secret) y configuración del proyecto
+  en Google Cloud Console (URI de redirect: `https://crea.iyemyucatan.com/auth/google/callback`)
+- Definición final de la matriz de roles y permisos operativos (admin, analista
+  de crédito, cajero, cobranza, jurídico, etc.)
+- Credenciales SMTP reales para que los correos de recuperación lleguen
+  correctamente en producción
+
+---
+
+## 10. DEPLOY A PRODUCCIÓN (HOSTINGER)
+
+### Datos del servidor
+- IP: 195.35.38.222 | Puerto SSH: 65002 | Usuario: u489236361
+- Dominio: https://crea.iyemyucatan.com/
+- Ruta: `/home/u489236361/domains/crea.iyemyucatan.com/public_html`
+
+### 10.1 Build y optimización local
+
+```bash
+npm ci
+npm run build
+composer install --optimize-autoloader --no-dev
+```
+
+### 10.2 Subir cambios via rsync sobre SSH
+
+```bash
+rsync -avz --progress \
+  --exclude='.env' \
+  --exclude='node_modules/' \
+  --exclude='vendor/' \
+  --exclude='storage/logs/*' \
+  --exclude='.git/' \
+  --exclude='database/database.sqlite' \
+  -e "ssh -p 65002" \
+  ./ u489236361@195.35.38.222:/home/u489236361/domains/crea.iyemyucatan.com/public_html/
+```
+
+### 10.3 En el servidor (vía SSH)
+
+```bash
+cd /home/u489236361/domains/crea.iyemyucatan.com/public_html
+
+composer install --optimize-autoloader --no-dev
+
+# Ejecutar la nueva migración (google_id, avatar) y los seeders de roles/permisos
+# si son seguros de re-ejecutar (usar updateOrCreate, no truncate):
+php artisan migrate --force
+php artisan db:seed --class=RoleAndPermissionSeeder --force   # si existe
+
+php artisan config:clear
+php artisan route:clear
+php artisan view:clear
+php artisan config:cache
+php artisan route:cache
+php artisan view:cache
+
+chmod -R 775 storage bootstrap/cache
+```
+
+NOTA: el login con Google NO funcionará en producción hasta que se agreguen
+`GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` y `GOOGLE_REDIRECT_URI` al `.env` del
+servidor (pendiente, ver sección 9). El resto del flujo de auth (login, registro,
+forgot/reset password con el nuevo diseño) debe quedar funcional sin esa
+configuración.
+
+### 10.4 Verificación post-deploy en https://crea.iyemyucatan.com/
+
+- [ ] `/login`, `/ciudadano/registro`, `/forgot-password`, `/reset-password/{token}`
+      muestran el nuevo diseño consistente con la landing
+- [ ] El botón "Continuar con Google" se ve correctamente (aunque no esté
+      configurado todavía)
+- [ ] Login de un usuario ciudadano redirige a `/mi-portal`
+- [ ] Login de un usuario operativo redirige a `/dashboard`
+- [ ] Forgot password genera el correo con el nuevo diseño (revisar logs si no
+      hay SMTP configurado)
+- [ ] Todos los textos y validaciones están en español
+- [ ] Dark mode funcional en todas las páginas de auth
+- [ ] Sin errores en consola ni en `storage/logs/laravel.log`

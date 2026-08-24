@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Auditoría CREA — Índice</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;font-family:'Segoe UI',system-ui,sans-serif;}
+body{background:#0f172a;color:#e2e8f0;min-height:100vh;}
+header{background:linear-gradient(135deg,#006847 0%,#009060 50%,#E8A020 100%);padding:28px 32px;}
+header h1{font-size:1.6rem;color:#fff;font-weight:800;letter-spacing:.5px;}
+header p{color:rgba(255,255,255,.8);margin-top:6px;font-size:.9rem;}
+.container{max-width:1000px;margin:0 auto;padding:28px 16px;}
+.modules{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px;margin-bottom:32px;}
+.mod-card{background:#1e293b;border-radius:14px;padding:20px;text-decoration:none;display:block;transition:transform .15s,box-shadow .15s;border:1px solid #334155;}
+.mod-card:hover{transform:translateY(-3px);box-shadow:0 8px 24px rgba(0,0,0,.4);}
+.mod-card .icon{font-size:2rem;margin-bottom:10px;}
+.mod-card h3{font-size:1rem;color:#fff;margin-bottom:6px;}
+.mod-card p{font-size:.78rem;color:#94a3b8;line-height:1.5;}
+.mod-card .num{font-size:.7rem;color:#64748b;margin-top:8px;text-transform:uppercase;letter-spacing:.5px;}
+.mod-card.green{border-top:3px solid #10b981;}
+.mod-card.purple{border-top:3px solid #8b5cf6;}
+.mod-card.blue{border-top:3px solid #3b82f6;}
+.mod-card.amber{border-top:3px solid #f59e0b;}
+.mod-card.sky{border-top:3px solid #0ea5e9;}
+.mod-card.red{border-top:3px solid #ef4444;}
+.summary{background:#1e293b;border-radius:14px;padding:24px;margin-bottom:32px;}
+.summary h2{color:#fcd34d;font-size:1rem;margin-bottom:16px;}
+.kpi-row{display:flex;gap:12px;flex-wrap:wrap;}
+.kpi{background:#0f172a;border-radius:10px;padding:12px 18px;text-align:center;flex:1;min-width:100px;}
+.kpi .n{font-size:1.8rem;font-weight:800;}
+.kpi .l{font-size:.7rem;color:#94a3b8;margin-top:3px;}
+.tag{display:inline-block;padding:3px 9px;border-radius:10px;font-size:.72rem;font-weight:700;margin:2px;}
+.tag.p0{background:#450a0a;color:#f87171;}
+.tag.p1{background:#451a03;color:#fb923c;}
+.tag.ok{background:#064e3b;color:#34d399;}
+.note{background:#0c1a2a;border:1px solid #1e3a5f;border-radius:10px;padding:14px 18px;font-size:.82rem;color:#94a3b8;margin-bottom:20px;}
+.note strong{color:#60a5fa;}
+</style>
+</head>
+<body>
+<header>
+  <h1>📋 Auditoría CREA — Sistema de Microcréditos IYEM</h1>
+  <p>Acuerdo IYEM 03/2025 · Stack: Laravel 11 + Vue 3 + Inertia.js + TypeScript + Tailwind CSS · Agosto 2026</p>
+</header>
+<div class="container">
+
+  <div class="note">
+    <strong>Cómo usar esta auditoría:</strong> Haz clic en cada tarjeta de módulo para abrir su análisis detallado. La tarjeta "Pendientes" contiene el checklist interactivo para el lanzamiento. El diagrama de flujo ya fue generado en la sesión de trabajo.
+  </div>
+
+  <div class="summary">
+    <h2>📊 Resumen del sistema</h2>
+    <div class="kpi-row">
+      <div class="kpi"><div class="n" style="color:#38bdf8">9</div><div class="l">Controladores operativos</div></div>
+      <div class="kpi"><div class="n" style="color:#a78bfa">6</div><div class="l">Controladores portal</div></div>
+      <div class="kpi"><div class="n" style="color:#34d399">20</div><div class="l">Modelos Eloquent</div></div>
+      <div class="kpi"><div class="n" style="color:#fcd34d">3</div><div class="l">Modalidades CREA</div></div>
+      <div class="kpi"><div class="n" style="color:#ef4444">4</div><div class="l">P0 Bloqueantes</div></div>
+      <div class="kpi"><div class="n" style="color:#fb923c">7</div><div class="l">P1 Importantes</div></div>
+    </div>
+    <div style="margin-top:16px;">
+      <span class="tag ok">✅ Dashboard KPIs</span>
+      <span class="tag ok">✅ Wizard ciudadano</span>
+      <span class="tag ok">✅ Análisis crediticio</span>
+      <span class="tag ok">✅ Cascada pagos</span>
+      <span class="tag ok">✅ Cobranza + Jurídico</span>
+      <span class="tag ok">✅ Reestructuración</span>
+      <span class="tag ok">✅ Condonación formal</span>
+      <span class="tag ok">✅ Presupuesto</span>
+      <span class="tag ok">✅ Auditoría de cambios</span>
+      <span class="tag ok">✅ Exportación Excel</span>
+      <span class="tag p0">🔴 PDFs formato oficial</span>
+      <span class="tag p0">🔴 Flujo ZIP al aprobar</span>
+      <span class="tag p0">🔴 Docs en disco local</span>
+      <span class="tag p0">🔴 Footer portal</span>
+      <span class="tag p1">🟠 Notificaciones</span>
+      <span class="tag p1">🟠 106 municipios</span>
+      <span class="tag p1">🟠 Regímenes SAT</span>
+      <span class="tag p1">🟠 Tabla destino crédito</span>
+    </div>
+  </div>
+
+  <div class="modules">
+    <a href="modulo_portal_ciudadano.html" class="mod-card green">
+      <div class="icon">🌐</div>
+      <h3>Portal Ciudadano</h3>
+      <p>Wizard de solicitud, verificación CURP, subida de documentos, Mi Crédito, notificaciones, estado de cuenta.</p>
+      <div class="num">Módulo 1 → 3 P0 + 5 P1</div>
+    </a>
+    <a href="modulo_solicitudes.html" class="mod-card green">
+      <div class="icon">📋</div>
+      <h3>Solicitudes — Operativo</h3>
+      <p>Bandeja de solicitudes, revisión de documentos, análisis crediticio, comité, cambio de estatus, registro de crédito.</p>
+      <div class="num">Módulo 2 → 1 P0 + 3 P1</div>
+    </a>
+    <a href="modulo_creditos_desembolso.html" class="mod-card purple">
+      <div class="icon">💳</div>
+      <h3>Créditos y Desembolso</h3>
+      <p>3 modalidades CREA, tabla de amortización, contrato, dictamen, desembolso, condonación, reestructuración.</p>
+      <div class="num">Módulo 3 → 1 P0 + 3 P1</div>
+    </a>
+    <a href="modulo_pagos_cobranza.html" class="mod-card amber">
+      <div class="icon">💰</div>
+      <h3>Pagos y Cobranza</h3>
+      <p>Cascada mora→interés→capital, 5 días de gracia, recibo PDF, cobranza extrajudicial y jurídica, semáforo de riesgo.</p>
+      <div class="num">Módulo 4 → 1 P0 + 2 P1</div>
+    </a>
+    <a href="modulo_reportes_dashboard.html" class="mod-card sky">
+      <div class="icon">📊</div>
+      <h3>Reportes y Dashboard</h3>
+      <p>KPIs filtrable por modalidad, cartera, pagos, beneficiarios, exportación Excel, presupuesto, auditoría, simulador.</p>
+      <div class="num">Módulo 5 → 1 P0 + 3 P1</div>
+    </a>
+    <a href="pendientes_para_lanzar.html" class="mod-card red">
+      <div class="icon">🚀</div>
+      <h3>Pendientes para Lanzar</h3>
+      <p>Checklist interactivo completo con los 4 P0 bloqueantes, 7 P1 importantes, estimado de esfuerzo y prompts listos para ejecutar.</p>
+      <div class="num">Módulo 6 → Plan de lanzamiento</div>
+    </a>
+  </div>
+
+  <a href="auditoria_vs_acuerdo.html" class="mod-card" style="background:#1a0830;border:2px solid #7c3aed;border-radius:14px;padding:20px;text-decoration:none;display:block;margin-bottom:20px;">
+    <div class="icon">⚖️</div>
+    <h3 style="color:#c084fc;">Auditoría Legal vs Acuerdo IYEM 03/2025</h3>
+    <p style="color:#7c3aed;">Comparación artículo por artículo del reglamento oficial (115 pp, DOE 31 oct 2025) vs implementación actual. 18 documentos faltantes · 10 anexos ausentes · 8 reglas sin validar · 5 módulos faltantes · Prompt completo para Claude Code.</p>
+    <div class="num" style="color:#7c3aed;">⭐ DOCUMENTO PRINCIPAL — leer primero</div>
+  </a>
+
+  <div class="note" style="margin-top:0;">
+    <strong>Prompts listos para ejecutar en Claude Code (raíz del proyecto):</strong><br>
+    <code style="color:#34d399">prompt_generacion_pdfs_overlay.txt</code> — PDFs con overlay FPDI sobre formato oficial IYEM<br>
+    <code style="color:#34d399">prompt_correcciones_auditoria.txt</code> — Correcciones generales del sistema<br>
+    <code style="color:#a78bfa">auditoria/auditoria_vs_acuerdo.html</code> → sección "Prompt Claude Code" — Correcciones legales Acuerdo 03/2025
+  </div>
+</div>
+</body>
+</html>

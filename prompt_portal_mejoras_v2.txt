@@ -1,0 +1,437 @@
+# PROMPT: MEJORAS AL PORTAL CIUDADANO V2 + DEPLOY
+# Para usar en: Claude Code (sesión interactiva en la raíz del proyecto)
+# Stack: Laravel 11 + Vue 3 + Inertia.js + TypeScript + Tailwind CSS
+# Contexto previo: prompt_portal_rediseno_wizard.txt ya fue ejecutado.
+# Este prompt corrige y amplía lo entregado.
+
+---
+
+## CONTEXTO
+
+Ya existe el portal ciudadano (`/mi-portal`) con el flujo de solicitud de
+crédito implementado. Este prompt corrige bugs, mejora UX y agrega
+funcionalidad faltante. Lee primero el código actual de cada archivo antes
+de modificar para no perder lógica ya existente.
+
+---
+
+## 1. FOOTER FIJO EN LA PARTE INFERIOR DEL PORTAL
+
+**Problema**: el footer sube y no se queda abajo cuando el contenido es corto.
+
+En el layout principal del portal ciudadano (probablemente
+`resources/js/Layouts/PortalLayout.vue` o similar):
+
+- El layout debe usar **flex-col con min-h-screen** (o `h-screen overflow-y-auto`)
+  de forma que el contenido principal ocupe el espacio disponible y el footer
+  quede siempre pegado al fondo de la pantalla, sin usar `position: fixed`
+  (que taparía contenido):
+  ```html
+  <div class="flex flex-col min-h-screen">
+    <header>...</header>
+    <main class="flex-1">
+      <slot />
+    </main>
+    <footer>...</footer>
+  </div>
+  ```
+- Verificar que esto aplique a TODAS las vistas del portal:
+  `Dashboard.vue`, `Solicitud.vue`, `Expediente.vue`, `MiCredito.vue`, y
+  cualquier pantalla nueva del wizard/formulario
+- El footer debe verse en todo momento (al final del scroll, no flotante encima
+  del contenido)
+
+---
+
+## 2. ELIMINAR LA NAVEGACIÓN TIPO WIZARD / STEPPER
+
+**Problema**: el stepper tipo wizard no gustó visualmente.
+
+- Eliminar completamente el componente de stepper/barra de progreso numerada
+  que se implementó
+- Reemplazar por un **formulario de una sola página con secciones colapsables**
+  (accordion) o un formulario continuo con scroll natural, donde cada sección
+  tenga un encabezado claro (h2/h3 con línea separadora y/o fondo diferenciado)
+  y el usuario pueda ver todo el formulario a la vez, rellenarlo a su ritmo y
+  hacer scroll hacia arriba/abajo libremente
+- Mantener el botón "Guardar borrador" (guarda el progreso sin enviar) y el
+  botón "Enviar solicitud" (visible solo cuando todos los campos requeridos
+  estén completos) — ambos fijos en un panel inferior sticky dentro del área
+  de contenido, no sobre el footer del portal
+- Las secciones del formulario (Información del Solicitante, Datos del Negocio,
+  Destino del Crédito, Documentos, Aval/Garantía, etc.) pueden ir colapsadas
+  por defecto y expandirse al hacer clic, o ir todas abiertas — lo que quede
+  más limpio visualmente. Priorizar claridad sobre animación.
+
+---
+
+## 3. LÓGICA DE INGRESOS Y EGRESOS SEGÚN TIPO DE NEGOCIO
+
+En la sección **"Datos del Negocio"**, agregar la pregunta:
+
+> "¿Tu negocio es un **emprendimiento** (idea de negocio nueva, sin historial
+> de operación) o ya lleva tiempo operando?"
+
+Con dos opciones de radio/toggle:
+- **Emprendimiento** (negocio nuevo)
+- **Negocio en operación**
+
+Esta respuesta determina qué tablas de Ingresos y Egresos se solicitan:
+
+### Si es EMPRENDIMIENTO:
+Mostrar únicamente:
+- **Proyección de Ingresos y Egresos — próximos 6 meses** (F-PR-OCC-05, un
+  período hacia adelante)
+- Etiqueta del período: "Proyección: próximos 6 meses"
+
+### Si es NEGOCIO EN OPERACIÓN:
+Mostrar DOS tablas consecutivas:
+- **Estado de Ingresos y Egresos — últimos 6 meses** (F-PR-OCC-05 histórico)
+  - Etiqueta: "Historial: últimos 6 meses"
+  - El período "del / al" se rellena automáticamente (fecha actual menos 6 meses
+    hasta fecha actual) pero el usuario puede editarlo
+- **Proyección de Ingresos y Egresos — próximos 6 meses** (F-PR-OCC-05
+  proyectado)
+  - Etiqueta: "Proyección: próximos 6 meses"
+  - El período "del / al" se rellena automáticamente (fecha actual hasta fecha
+    actual más 6 meses) pero el usuario puede editarlo
+
+Ambas tablas usan la misma estructura del formato F-PR-OCC-05 (Ventas/Servicios,
+Costo Producto, Utilidad Bruta, Gastos de Operación desglosados, Total Gastos,
+Utilidad antes de Impuestos, Impuestos, Utilidad Neta) con cálculos automáticos.
+
+Guardar en BD: agregar campo `es_emprendimiento` (boolean) a
+`solicitudes_credito` (migración) y almacenar los datos de ingresos/egresos en
+una tabla relacionada o columnas JSON — revisar cómo está implementado
+actualmente y extender sin romper lo existente.
+
+Al generar los PDFs finales, incluir en el ZIP:
+- Solo el F-PR-OCC-05 de proyección → si es emprendimiento
+- Dos F-PR-OCC-05 (histórico + proyección, debidamente etiquetados) → si es
+  negocio en operación
+
+---
+
+## 4. DESTINO DEL CRÉDITO — CONCEPTOS EDITABLES + FORMATEO DE MONTOS
+
+**Problema**: el campo de conceptos del destino del crédito no permite escribir,
+y los importes no tienen formato de miles.
+
+En la sección **"Destino del Crédito"**:
+
+### 4.1 Tabla de conceptos editable
+- Cada fila de la tabla debe tener:
+  - Campo de texto libre **"Concepto"** (ej. "Materia prima", "Maquinaria de
+    coser", "Capital de trabajo") — input text o textarea pequeño, editable
+  - Campo **"Importe cotizado"** — input numérico con formato automático de
+    miles (ej. `$15,000.00`) usando un formateador de moneda en Vue (o una
+    directiva `v-money`/función de formato onInput). El valor guardado en BD
+    debe ser el número sin comas
+- Botones "+ Agregar concepto" (agrega una nueva fila vacía) y "× Eliminar"
+  por fila
+- Máximo razonable de filas (ej. 20), mínimo 1
+
+### 4.2 Totales vinculados
+- **Importe Total del Proyecto**: suma automática de todos los importes
+  cotizados de la tabla (calculado en tiempo real al modificar cualquier fila),
+  mostrado con formato de miles, campo de solo lectura (o readonly editable
+  con advertencia si el usuario lo modifica manualmente)
+- **Importe a Solicitar**: campo editable por el usuario, con formato de miles
+- **Validación**: al guardar/enviar, validar que `importe_a_solicitar <=
+  importe_total_proyecto` Y que `importe_a_solicitar` esté dentro del rango
+  de la modalidad (Artesanal: $5,000-$25,000; Emprendedores: $25,000-$150,000;
+  Sustentable: $50,000-$500,000). Si no, mostrar mensaje de error claro junto
+  al campo, no esperar hasta el envío final
+- Los campos de importe en TODA la solicitud (aval, garantía, ingresos/egresos,
+  deudas) deben usar el mismo formato de miles consistente
+
+---
+
+## 5. DOCUMENTO DE PROPIEDAD O POSESIÓN DEL NEGOCIO
+
+Agregar al catálogo de documentos requeridos (`DocumentoSolicitud::tiposRequeridos()`
+por modalidad) el tipo:
+
+```php
+'propiedad_posesion_negocio' => 'Documento que acredite propiedad o posesión del local/negocio'
+```
+
+- Aplica a TODAS las modalidades (Artesanal, Emprendedores, Sustentable)
+- Descripción de ayuda para el ciudadano: "Puede ser escritura, contrato de
+  arrendamiento, comodato u otro documento que acredite que puedes operar en
+  ese domicilio"
+- El documento debe mostrarse en la sección de Documentos del formulario junto
+  a los demás, con la misma UX (subir archivo, preview, reemplazar)
+- Incluir en la validación de "todos los documentos obligatorios completos" antes
+  de permitir el envío
+
+---
+
+## 6. FLUJO DE ESTATUS — "EN REVISIÓN" ANTES DEL ZIP
+
+**Cambio importante de flujo**:
+
+El ZIP con los PDFs llenados y el mensaje de "lleva tus documentos al IYEM"
+NO deben mostrarse al momento de enviar la solicitud. El flujo correcto es:
+
+### Al presionar "Enviar solicitud" (ciudadano):
+- Cambiar `estatus` a `Enviada`
+- Mostrar pantalla/mensaje: "**Tu solicitud fue enviada correctamente.**
+  El equipo de CREA está revisando tu información. Te notificaremos cuando
+  haya una actualización. Puedes consultar el estado de tu solicitud en
+  cualquier momento desde este portal."
+- La solicitud queda en modo lectura (no editable) mientras está en
+  `Enviada` o `En_Revision`
+- Si el operativo regresa la solicitud como `Documentacion_Incompleta`, el
+  formulario se desbloquea solo en la sección de documentos (o en los campos
+  observados) para que el ciudadano corrija y vuelva a enviar
+
+### Cuando el operativo aprueba la solicitud (`estatus = 'Aprobada'`):
+- El sistema genera automáticamente el ZIP con los PDFs llenados (trigger en
+  el evento/observer de cambio de estatus, o el controller del panel operativo
+  que cambia el estatus llama al servicio de generación de PDF)
+- El ciudadano recibe una notificación (ver punto 7)
+- En el portal ciudadano, la pantalla de la solicitud aprobada muestra:
+  - Mensaje: **"¡Felicidades! Tu solicitud fue aprobada y va a pasar a
+    Comité."**
+  - Botón "Descargar formatos (ZIP)" → ruta autenticada de descarga
+  - Instrucciones: "Descarga tus formatos, fírmalos y entrégalos en las
+    oficinas del Instituto Yucateco de Emprendedores (IYEM)."
+  - Dirección y mapa del IYEM (mismo embed de Google Maps ya implementado
+    en la sección de Contacto de la landing)
+
+---
+
+## 7. NOTIFICACIONES — CAMPANITA FUNCIONAL
+
+La campanita de notificaciones en el header del portal debe funcionar
+completamente:
+
+### Backend
+- Revisar el modelo de notificaciones que ya existe (probablemente
+  `AnuncioCiudadano` o similar, o notificaciones de Laravel con
+  `DatabaseNotification`). Si ya existe un sistema de notificaciones en BD,
+  reutilizarlo. Si no, implementar usando las **Database Notifications** de
+  Laravel:
+  ```bash
+  php artisan notifications:table
+  php artisan migrate
+  ```
+- Crear notificaciones para los siguientes eventos del ciclo de la solicitud:
+  - `SolicitudEnviada` → "Tu solicitud de crédito fue recibida correctamente."
+  - `SolicitudEnRevision` → "El equipo de CREA está revisando tu solicitud."
+  - `DocumentacionIncompleta` → "Tu solicitud requiere correcciones. Revisa
+    los comentarios del equipo CREA." (incluir `observaciones` del registro)
+  - `SolicitudAprobada` → "¡Tu solicitud fue aprobada! Ya puedes descargar
+    tus formatos."
+  - `SolicitudRechazada` → "Tu solicitud fue rechazada. " +
+    `motivo_rechazo`
+  - Disparar estas notificaciones desde los controllers/observers que cambian
+    el `estatus` de `SolicitudCredito`
+
+### Frontend — campanita en el header
+- El ícono de campana (SVG) en el header del portal debe mostrar un badge rojo
+  con el conteo de notificaciones NO LEÍDAS (integer, actualizado al cargar la
+  página vía prop de Inertia o petición fetch/axios a un endpoint ligero)
+- Al hacer clic en la campana, abrir un dropdown/panel (no una página nueva)
+  que liste las últimas 10-15 notificaciones con:
+  - Ícono o color diferente para "No leída" vs "Leída"
+  - Texto de la notificación y tiempo relativo ("hace 5 minutos", "ayer",
+    usando la función de formato que ya se use en el proyecto o `date-fns`)
+  - Al hacer clic en una notificación individual, marcarla como leída
+    (PATCH al endpoint de marcar como leída) y redirigir si aplica (ej.
+    click en "solicitud aprobada" lleva a `portal.solicitud`)
+  - Botón "Marcar todas como leídas" en el header del dropdown
+- Nuevo endpoint API (o ruta Inertia) para marcar como leída:
+  `PATCH /mi-portal/notificaciones/{id}/leer` y
+  `PATCH /mi-portal/notificaciones/leer-todas`
+- El conteo del badge debe actualizarse tras marcar como leídas (reactivo en
+  Vue, sin recargar la página)
+
+---
+
+## 8. RESPONSIVIDAD — IPHONE, IPAD Y DESKTOP
+
+Revisar y corregir responsividad en TODO el portal ciudadano para que se vea
+y funcione perfectamente en:
+
+- **iPhone** (375px-430px): la prioridad. El formulario de solicitud es extenso
+  — verificar que:
+  - Ningún campo se desborde horizontalmente (overflow-x: hidden en el contenedor)
+  - Los inputs sean lo suficientemente altos para el touch (min 44px)
+  - Las tablas de datos repetibles (conceptos de destino, proveedores, clientes,
+    ingresos/egresos) colapsen en cards apiladas verticales (no tablas con scroll
+    horizontal, que es terrible en móvil)
+  - El botón "Guardar borrador" / "Enviar solicitud" sea sticky visible sin
+    tapar contenido (usar padding-bottom en el scroll container igual al alto
+    del sticky bar)
+  - El dropdown de notificaciones sea un sheet/modal que sube desde abajo en
+    móvil (mejor UX en touch) en lugar de dropdown flotante
+  - El sidebar del portal se convierte en menú hamburger o bottom navigation
+    en móvil
+- **iPad** (768px-1024px): layout de 2 columnas para los campos cortos, tablas
+  reales para los datos repetibles
+- **Desktop** (1024px+): layout multi-columna, sidebar visible, formulario
+  cómodo con espacio generoso
+
+Probar en DevTools con los viewports de iPhone SE (375px), iPhone 14 Pro
+(393px), iPad (768px), iPad Pro (1024px) y Desktop (1280px+).
+
+---
+
+## 9. MUNICIPIOS DE YUCATÁN Y REGÍMENES FISCALES DEL SAT
+
+### 9.1 Los 106 municipios de Yucatán
+
+Verificar que la lista de municipios en el formulario de solicitud (campo
+"Municipio de residencia" del solicitante, "Municipio del negocio", y los
+municipios del aval) contiene EXACTAMENTE los 106 municipios oficiales del
+Estado de Yucatán. La lista completa es:
+
+Abalá, Acanceh, Akil, Baca, Bokobá, Buctzotz, Calkiní (NO — ese es Campeche;
+verificar la lista exacta desde una fuente oficial), Cacalchén, Calotmul,
+Cansahcab, Cantamayec, Celestún, Cenotillo, Conkal, Cuncunul, Cuzamá,
+Chacsinkín, Chankom, Chapab, Chemax, Chichimilá, Chicxulub Pueblo,
+Chicxulub Puerto, Chikindzonot, Chocholá, Chumayel, Dzan, Dzemul, Dzidzantún,
+Dzilam de Bravo, Dzilam González, Dzitás, Dzoncauich, Espita, Halachó,
+Hocabá, Hoctún, Homún, Huhí, Hunucmá, Ixil, Izamal, Kanasín, Kantunil,
+Kaua, Kinchil, Kopomá, Mama, Maní, Maxcanú, Mayapán, Mérida, Mocochá,
+Motul, Muna, Muxupip, Opichén, Oxkutzcab, Panabá, Peto, Progreso,
+Quintana Roo (municipio de Yucatán), Río Lagartos, Sacalum, Samahil,
+Sanahcat, San Felipe, Santa Elena, Seyé, Sinanché, Sotuta, Sucilá, Sudzal,
+Suma, Tahdziú, Tahmek, Teabo, Tecoh, Tekal de Venegas, Tekantó, Tekax,
+Tekit, Tekom, Telchac Pueblo, Telchac Puerto, Temax, Temozón, Tepakán,
+Tetiz, Teya, Ticul, Timucuy, Tinum, Tixcacalcupul, Tixkokob, Tixmehuac,
+Tixpéhual, Tizimín, Tunkas, Tzucacab, Uayma, Ucu, Umán, Valladolid, Xocchel,
+Yaxcabá, Yaxkukul, Yobaín
+
+Buscar y corregir/confirmar la lista exacta de los 106 municipios consultando
+`https://www.inegi.org.mx` o el catálogo oficial de INEGI para Yucatán
+(clave de estado 31) — usar los nombres oficiales con acentos correctos.
+Guardar la lista en un array PHP en un helper/config o en la migración de
+seeders para que sea reutilizable en todo el sistema (validación backend y
+dropdown frontend).
+
+### 9.2 Regímenes fiscales del SAT (incluyendo "Público en General")
+
+El campo "Régimen Fiscal" en la sección de negocio/empresa debe incluir TODOS
+los regímenes vigentes del SAT, incluyendo "Público en General". La lista
+completa de regímenes vigentes en el SAT de México a 2026 es:
+
+```
+601 - General de Ley Personas Morales
+603 - Personas Morales con Fines no Lucrativos
+605 - Sueldos y Salarios e Ingresos Asimilados a Salarios
+606 - Arrendamiento
+607 - Régimen de Enajenación o Adquisición de Bienes
+608 - Demás Ingresos
+609 - Consolidación
+610 - Residentes en el Extranjero sin Establecimiento Permanente en México
+611 - Ingresos por Dividendos (socios y accionistas)
+612 - Personas Físicas con Actividades Empresariales y Profesionales
+614 - Ingresos por Intereses
+615 - Régimen de los ingresos por obtención de premios
+616 - Sin Obligaciones Fiscales
+620 - Sociedades Cooperativas de Producción que optan por diferir sus ingresos
+621 - Incorporación Fiscal (RESICO / ex-RIF)
+622 - Actividades Agrícolas, Ganaderas, Silvícolas y Pesqueras
+623 - Opcional para Grupos de Sociedades
+624 - Coordinados
+625 - Régimen de las Actividades Empresariales con ingresos a través de Plataformas Tecnológicas
+626 - Régimen Simplificado de Confianza (RESICO)
+628 - Hidrocarburos
+629 - De los Regímenes Fiscales Preferentes y de las Empresas Multinacionales
+630 - Enajenación de acciones en bolsa de valores
+```
+
+Además incluir:
+- **Público en General** (para quienes no están inscritos en el RFC o emiten
+  CFDI a Público en General — código SAT: suele estar asociado al RFC
+  XAXX010101000 pero listarlo como opción textual "Público en General")
+
+Guardar esta lista en un enum PHP o array de constantes en un helper/config
+reutilizable. Validar en backend que el valor enviado esté dentro de esta lista.
+
+---
+
+## 10. VERIFICACIÓN ANTES DEL DEPLOY
+
+1. `php artisan migrate` — nuevas columnas (`es_emprendimiento`,
+   `tipo_persona` si no existe, campos de garantía, `propiedad_posesion_negocio`
+   en tipos de documentos) sin pérdida de datos
+2. `npm run build` — sin errores
+3. `php artisan test` — deben pasar los tests existentes; agregar al menos:
+   - Footer aparece abajo en todas las vistas del portal
+   - Lógica de ingresos/egresos según `es_emprendimiento`
+   - Validación `importe_a_solicitar <= importe_total_proyecto`
+   - Notificación `SolicitudAprobada` dispara la generación del ZIP
+   - Notificación visible en el dropdown del header
+   - `propiedad_posesion_negocio` requerido antes de enviar
+4. Probar manualmente en Chrome DevTools los viewports: iPhone SE (375px),
+   iPhone 14 Pro (393px), iPad (768px), iPad Pro (1024px), Desktop (1440px)
+5. Verificar que la lista de municipios tiene exactamente 106 entradas y que
+   los regímenes fiscales incluyen "Público en General"
+6. Probar el ciclo completo de notificaciones: enviar solicitud → ver
+   notificación "En revisión" → cambiar estatus a Aprobada desde el panel
+   operativo → verificar que aparece la notificación y el botón de descarga
+   del ZIP
+
+---
+
+## 11. DEPLOY A PRODUCCIÓN (HOSTINGER)
+
+### Datos del servidor
+- IP: 195.35.38.222
+- Puerto SSH: 65002
+- Usuario: u489236361
+- Dominio: https://crea.iyemyucatan.com/
+- Ruta: `/home/u489236361/domains/crea.iyemyucatan.com/public_html`
+
+```bash
+# Local
+npm ci && npm run build
+composer install --optimize-autoloader --no-dev
+
+# Rsync
+rsync -avz --progress \
+  --exclude='.env' \
+  --exclude='node_modules/' \
+  --exclude='vendor/' \
+  --exclude='storage/logs/*' \
+  --exclude='.git/' \
+  --exclude='database/database.sqlite' \
+  -e "ssh -p 65002" \
+  ./ u489236361@195.35.38.222:/home/u489236361/domains/crea.iyemyucatan.com/public_html/
+
+# En el servidor
+ssh -p 65002 u489236361@195.35.38.222
+cd /home/u489236361/domains/crea.iyemyucatan.com/public_html
+composer install --optimize-autoloader --no-dev
+php artisan migrate --force
+php artisan config:clear && php artisan route:clear && php artisan view:clear
+php artisan config:cache && php artisan route:cache && php artisan view:cache
+chmod -R 775 storage bootstrap/cache
+```
+
+### Verificación post-deploy en https://crea.iyemyucatan.com/mi-portal
+
+- [ ] Footer pegado al fondo en todas las vistas, sin superponerse al contenido
+- [ ] Formulario de solicitud sin wizard/stepper, con secciones claras
+- [ ] La pregunta "¿Es emprendimiento?" muestra solo proyección (nuevo) o
+      historial + proyección (negocio en operación)
+- [ ] Los conceptos del destino del crédito son editables y el importe usa
+      formato de miles ($15,000.00)
+- [ ] El total de conceptos se actualiza automáticamente y coincide con el
+      importe a solicitar (validación activa)
+- [ ] El documento de propiedad/posesión del negocio aparece en la sección de
+      documentos y es requerido
+- [ ] Al enviar la solicitud, muestra mensaje "en revisión" (NO descarga ZIP)
+- [ ] Al aprobar desde el panel operativo (prueba manual), el ciudadano ve el
+      mensaje de felicitación con el botón de descarga del ZIP
+- [ ] La campanita muestra el badge de no leídas y el dropdown con las
+      notificaciones funciona (marcar como leída, marcar todas)
+- [ ] Responsivo en iPhone, iPad y Desktop
+- [ ] El selector de municipio tiene los 106 municipios de Yucatán
+- [ ] El selector de régimen fiscal incluye "Público en General" y todos los
+      regímenes del SAT
+- [ ] Sin errores en consola del navegador ni en `storage/logs/laravel.log`
