@@ -114,7 +114,8 @@ class PagoController extends Controller
                 // Mora sobre saldo insoluto vencido (RO Cláusula 7a)
                 $moraFila = 0;
                 if ($hoy->gt($vencimiento)) {
-                    $dias = (int) $hoy->diffInDays($vencimiento);
+                    // Carbon 3: diffInDays() es con signo. Usar $vencimiento->diffInDays($hoy) para obtener días positivos cuando está vencida.
+                    $dias = (int) $vencimiento->diffInDays($hoy);
                     if ($dias > 5) {
                         $saldoVencido = round(max(0, (float)$fila->saldo_insoluto - (float)$fila->capital_pagado), 2);
                         $moraFila = round($saldoVencido * $tasaDiaria * $dias, 2);
