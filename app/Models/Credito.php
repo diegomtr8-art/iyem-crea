@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Support\Carbon;
 
 class Credito extends Model
 {
@@ -105,8 +106,10 @@ class Credito extends Model
             ->first();
 
         if (!$cuotaVencida) return 0;
-
-        return (int) now()->diffInDays($cuotaVencida->fecha_vencimiento);
+        
+        // Carbon 3 devuelve negativo si se invierte el receptor. $vencimiento->diffInDays(now()) asegura días de mora positivos.
+        // Afecta semaforoRiesgo() e informeCobranza.
+        return (int) Carbon::parse($cuotaVencida->fecha_vencimiento)->diffInDays(now());
     }
 
     public function semaforoRiesgo(): string
