@@ -96,13 +96,14 @@ const docEstilo: Record<string, { bg: string; text: string; icon: any }> = {
                             <h2 class="text-lg font-black text-slate-900 dark:text-white">Datos Personales</h2>
                         </div>
                         <div class="p-6 grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-5">
-                            <div>
+                            <div class="sm:col-span-2">
                                 <p class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-1">Nombre Completo</p>
-                                <p class="font-semibold text-slate-900 dark:text-white">{{ solicitud.nombre_completo || '—' }}</p>
+                                <p class="font-semibold text-slate-900 dark:text-white break-words text-base">{{ solicitud.nombre_completo || '—' }}</p>
                             </div>
+                            
                             <div>
                                 <p class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-1">CURP</p>
-                                <p class="font-mono font-semibold text-slate-900 dark:text-white tracking-wider">{{ solicitud.curp || '—' }}</p>
+                                <p class="font-mono font-semibold text-slate-900 dark:text-white tracking-wider break-all">{{ solicitud.curp || '—' }}</p>
                             </div>
                             <div>
                                 <p class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-1">RFC</p>
@@ -154,42 +155,42 @@ const docEstilo: Record<string, { bg: string; text: string; icon: any }> = {
                     </div>
 
                     <!-- Datos del negocio -->
-                    <div class="bg-white dark:bg-zinc-900 rounded-3xl border border-slate-100 dark:border-zinc-800 overflow-hidden shadow-sm">
-                        <div class="px-6 py-5 border-b border-slate-100 dark:border-zinc-800 flex items-center gap-3">
-                            <div class="w-10 h-10 rounded-2xl bg-red-50 dark:bg-red-900/20 flex items-center justify-center text-red-700">
-                                <Briefcase size="20" />
-                            </div>
-                            <h2 class="text-lg font-black text-slate-900 dark:text-white">Datos del Proyecto / Negocio</h2>
-                        </div>
-                        <div class="p-6 grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-5">
-                            <div>
-                                <p class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-1">Modalidad</p>
-                                <p class="font-semibold text-slate-900 dark:text-white">{{ solicitud.modalidad || '—' }}</p>
-                            </div>
-                            <div>
-                                <p class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-1">Giro Comercial</p>
-                                <p class="font-semibold text-slate-900 dark:text-white">{{ solicitud.giro_comercial || '—' }}</p>
-                            </div>
-                            <div class="sm:col-span-2">
-                                <p class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-1">Destino del Crédito</p>
-                                <p class="font-semibold text-slate-900 dark:text-white">{{ solicitud.destino_credito || '—' }}</p>
-                            </div>
-                            <div class="sm:col-span-2">
-                                <p class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-1">Descripción del Negocio / Proyecto</p>
-                                <p class="font-semibold text-slate-900 dark:text-white leading-relaxed">{{ solicitud.descripcion_negocio || '—' }}</p>
-                            </div>
-                            <div>
-                                <p class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-1">Alta SAT</p>
-                                <span :class="['px-3 py-1.5 rounded-xl text-xs font-bold border', solicitud.alta_sat ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 border-emerald-200 dark:border-emerald-800/40' : 'bg-slate-100 dark:bg-zinc-800 text-slate-500 border-slate-200 dark:border-zinc-700']">
-                                    {{ solicitud.alta_sat ? '✓ Dado de alta en SAT' : 'No dado de alta en SAT' }}
-                                </span>
-                            </div>
-                            <div>
-                                <p class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-1">Solicitud registrada el</p>
-                                <p class="font-semibold text-slate-900 dark:text-white">{{ solicitud.created_at }}</p>
-                            </div>
-                        </div>
-                    </div>
+<div class="bg-white dark:bg-zinc-900 rounded-3xl border border-slate-100 dark:border-zinc-800 overflow-hidden shadow-sm">
+        <div class="px-6 py-5 border-b border-slate-100 dark:border-zinc-800 flex items-center gap-3">
+            <div class="w-10 h-10 rounded-2xl bg-red-50 dark:bg-red-900/20 flex items-center justify-center text-red-700">
+                <Briefcase size="20" />
+            </div>
+            <h2 class="text-lg font-black text-slate-900 dark:text-white">Datos del Proyecto / Negocio</h2>
+        </div>
+        <div class="p-6 grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-5">
+            <div>
+                <p class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-1">Modalidad</p>
+                <p class="font-semibold text-slate-900 dark:text-white break-words">{{ solicitud.modalidad || '—' }}</p>
+            </div>
+            <div>
+                <p class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-1">Giro Comercial</p>
+                <p class="font-semibold text-slate-900 dark:text-white break-words">{{ solicitud.giro_comercial || '—' }}</p>
+            </div>
+            <div class="sm:col-span-2">
+                <p class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-1">Destino del Crédito</p>
+                <p class="font-semibold text-slate-900 dark:text-white break-words">{{ solicitud.destino_credito || '—' }}</p>
+            </div>
+            <div class="sm:col-span-2">
+                <p class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-1">Descripción del Negocio / Proyecto</p>
+                <p class="font-semibold text-slate-900 dark:text-white leading-relaxed break-words">{{ solicitud.descripcion_negocio || '—' }}</p>
+            </div>
+            <div>
+                <p class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-1">Alta SAT</p>
+                <span :class="['px-3 py-1.5 rounded-xl text-xs font-bold border inline-block', solicitud.alta_sat ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 border-emerald-200 dark:border-emerald-800/40' : 'bg-slate-100 dark:bg-zinc-800 text-slate-500 border-slate-200 dark:border-zinc-700']">
+                    {{ solicitud.alta_sat ? '✓ Dado de alta en SAT' : 'No dado de alta en SAT' }}
+                </span>
+            </div>
+            <div>
+                <p class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-1">Solicitud registrada el</p>
+                <p class="font-semibold text-slate-900 dark:text-white break-words">{{ solicitud.created_at }}</p>
+            </div>
+        </div>
+    </div>
                 </div>
 
                 <!-- Columna derecha: Documentos -->
@@ -205,19 +206,19 @@ const docEstilo: Record<string, { bg: string; text: string; icon: any }> = {
                             <!-- Documentos subidos -->
                             <template v-if="documentos && documentos.length > 0">
                                 <div v-for="doc in documentos" :key="doc.id"
-                                    :class="['rounded-2xl border p-4 space-y-2', docEstilo[doc.estatus]?.bg ?? 'bg-slate-50 dark:bg-zinc-800 border-slate-200 dark:border-zinc-700']">
+                                    :class="['rounded-2xl border p-4 space-y-2', docEstilo[doc.estatus]?.bg || 'bg-slate-50 dark:bg-zinc-800 border-slate-200 dark:border-zinc-700']">
                                     <div class="flex items-center justify-between gap-2">
                                         <div class="flex items-center gap-2 min-w-0">
-                                            <component :is="docEstilo[doc.estatus]?.icon ?? Clock" :class="['size-4 shrink-0', docEstilo[doc.estatus]?.text]" />
+                                            <component :is="docEstilo[doc.estatus]?.icon || Clock" :class="['size-4 shrink-0', docEstilo[doc.estatus]?.text || 'text-slate-500']" />
                                             <p class="text-xs font-bold text-slate-900 dark:text-white truncate">{{ doc.label }}</p>
                                         </div>
-                                        <a :href="doc.url" target="_blank"
+                                        <a v-if="doc.url" :href="doc.url" target="_blank" rel="noopener noreferrer"
                                             class="shrink-0 p-1.5 rounded-lg bg-white dark:bg-zinc-800 text-slate-500 hover:text-red-700 border border-slate-200 dark:border-zinc-700 transition-colors">
                                             <ExternalLink size="12" />
                                         </a>
                                     </div>
                                     <p class="text-[10px] text-slate-500 dark:text-zinc-500 truncate">{{ doc.nombre_original }}</p>
-                                    <span :class="['text-[10px] font-bold px-2 py-0.5 rounded-full', docEstilo[doc.estatus]?.text]">
+                                    <span :class="['text-[10px] font-bold px-2 py-0.5 rounded-full inline-block', docEstilo[doc.estatus]?.text || 'text-slate-500']">
                                         {{ doc.estatus }}
                                     </span>
                                     <p v-if="doc.observacion && doc.estatus === 'Rechazado'"
@@ -229,7 +230,7 @@ const docEstilo: Record<string, { bg: string; text: string; icon: any }> = {
 
                             <!-- Documentos faltantes -->
                             <template v-for="(label, tipo) in tipos_documentos" :key="tipo">
-                                <div v-if="!documentos?.find(d => d.tipo_documento === tipo)"
+                                <div v-if="!documentos?.some(d => d.tipo_documento === tipo)"
                                     class="rounded-2xl border border-dashed border-slate-200 dark:border-zinc-700 p-4 flex items-center gap-3 opacity-60">
                                     <Clock size="16" class="text-slate-400 shrink-0" />
                                     <div class="min-w-0">
@@ -239,7 +240,7 @@ const docEstilo: Record<string, { bg: string; text: string; icon: any }> = {
                                 </div>
                             </template>
 
-                            <Link v-if="['Borrador','Documentacion_Incompleta'].includes(solicitud.estatus)"
+                            <Link v-if="solicitud && ['Borrador', 'Documentacion_Incompleta'].includes(solicitud.estatus)"
                                 :href="route('portal.solicitud.index')"
                                 class="flex items-center justify-center gap-2 w-full py-3 bg-red-700 hover:bg-red-800 text-white font-bold rounded-2xl transition-all text-sm mt-2">
                                 <FileText size="15" /> Gestionar Documentos

@@ -310,7 +310,7 @@ class WizardSolicitudController extends Controller
                     'datos.plazo_meses'      => 'required|in:' . implode(',', $plazosValidos),
                 ], $modo), [
                     'datos.monto_solicitado.min' => 'El monto mínimo para ' . ($modalidad?->nombre ?? 'esta modalidad') . ' es ' . number_format($montoMin, 0, '.', ',') . ' MXN.',
-                    'datos.monto_solicitado.max' => 'El monto máximo para ' . ($modalidad?->nombre ?? 'esta modalidad') . ' es ' . number_format($montoMax, 0, '.', ',') . ' MXN.',
+                    'datos.monto_solicitado.max' => 'El monto máximo para ' . ($modalidad?->nombre ?? 'esta modalidad') . ' es ' . number_format($montoMax, 100000000, '.', ',') . ' MXN.',
                 ]);
 
                 $solicitud->update([
