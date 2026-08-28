@@ -71,16 +71,25 @@ const estatusConfig: Record<string, { label: string; color: string; bg: string; 
         icon: CheckCircle2,
         desc: '¡Felicidades! Tu solicitud fue aprobada. Ya puedes consultar los detalles de tu crédito.',
     },
-    Rechazada: {
-        label: 'Solicitud Rechazada',
-        color: 'text-[#6B1938] dark:text-[#f4a8c4] dark:text-red-400',
-        bg: 'bg-[#6B1938]/5 dark:bg-[#6B1938]/10',
-        icon: XCircle,
-        desc: 'Tu solicitud no pudo ser aprobada en esta ocasión. Revisa las observaciones para más información.',
-    },
+Rechazada: {
+    label: 'Solicitud Rechazada',
+    color: 'text-[#6B1938] dark:text-[#f4a8c4]',
+    bg: 'bg-[#6B1938]/5 dark:bg-[#6B1938]/10',
+    icon: XCircle,
+    desc: 'Tu solicitud no pudo ser aprobada en esta ocasión. Revisa las observaciones para más información.',
+},
 };
 
-const cfg = computed(() => props.solicitud ? estatusConfig[props.solicitud.estatus] : null);
+const cfg = computed(() => {
+    if (!props.solicitud) return null;
+    return estatusConfig[props.solicitud.estatus] ?? {
+        label: props.solicitud.estatus,
+        color: 'text-slate-700 dark:text-zinc-300',
+        bg: 'bg-slate-100 dark:bg-zinc-800',
+        icon: Info,
+        desc: 'Tu solicitud se encuentra en proceso de revisión.',
+    };
+});
 
 const tipoAnuncio: Record<string, { color: string; icon: any }> = {
     info:   { color: 'bg-blue-50 dark:bg-blue-900/10 border-blue-200 dark:border-blue-800/40', icon: Info },
@@ -94,6 +103,7 @@ const tipoIconColor: Record<string, string> = {
     info: 'text-blue-600', alerta: 'text-amber-600', pago: 'text-emerald-600',
     exito: 'text-green-600', error: 'text-red-600',
 };
+const getIconColor = (tipo: string) => tipoIconColor[tipo] ?? 'text-slate-600 dark:text-zinc-400';
 
 const marcarLeido = (id: number) => router.post(route('portal.anuncios.leer', id), {}, { preserveScroll: true });
 const marcarTodos = () => router.post(route('portal.anuncios.leer-todos'), {}, { preserveScroll: true });
@@ -203,7 +213,7 @@ const today = new Date().toLocaleDateString('es-MX', { weekday: 'long', year: 'n
                             <span class="inline-block px-3 py-1 bg-white/20 rounded-full text-xs font-bold capitalize">{{ credito_activo.estatus }}</span>
                         </div>
                         <Link :href="route('portal.credito')"
-                            class="flex items-center gap-2 px-4 py-2.5 bg-white text-[#6B1938] dark:text-[#f4a8c4] font-bold rounded-xl hover:bg-red-50 transition-colors text-sm shrink-0">
+                            class="flex items-center gap-2 px-4 py-2.5 bg-white text-[#6B1938] font-bold rounded-xl hover:bg-rose-50 transition-colors text-sm shrink-0">
                             Ver detalle <ChevronRight size="16" />
                         </Link>
                     </div>
@@ -236,17 +246,17 @@ const today = new Date().toLocaleDateString('es-MX', { weekday: 'long', year: 'n
                             !anuncio.leido ? 'shadow-sm' : 'opacity-70'
                         ]">
                         <div class="flex items-start gap-3">
-                            <component :is="tipoAnuncio[anuncio.tipo]?.icon ?? Info" :class="['shrink-0 mt-0.5 size-4', tipoIconColor[anuncio.tipo]]" />
+                            <component :is="tipoAnuncio[anuncio.tipo]?.icon ?? Info" :class="['shrink-0 mt-0.5 size-4', getIconColor(anuncio.tipo)]" />
                             <div class="space-y-1 flex-1 min-w-0">
                                 <p class="text-sm font-bold text-slate-900 dark:text-white">{{ anuncio.titulo }}</p>
                                 <p class="text-xs text-slate-500 dark:text-zinc-400 leading-relaxed">{{ anuncio.mensaje }}</p>
                                 <div class="flex items-center justify-between pt-1">
                                     <span class="text-[10px] text-slate-400 dark:text-zinc-600">{{ anuncio.fecha }}</span>
                                     <div class="flex items-center gap-2">
-                                        <a v-if="anuncio.url_accion" :href="anuncio.url_accion"
+                                        <Link v-if="anuncio.url_accion" :href="anuncio.url_accion"
                                             class="text-[10px] font-bold text-[#6B1938] dark:text-[#f4a8c4] hover:underline">
                                             Ver más →
-                                        </a>
+                                    </Link>
                                         <button v-if="!anuncio.leido" @click="marcarLeido(anuncio.id)"
                                             class="text-[10px] font-bold text-slate-400 hover:text-slate-600 dark:hover:text-zinc-300 transition-colors">
                                             ✓ Leído

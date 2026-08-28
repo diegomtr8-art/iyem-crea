@@ -436,162 +436,250 @@ const enviarComprobacion = () => {
             </div>
 
             <!-- Modal Liquidación Anticipada -->
-            <div v-if="mostrarLiquidacion" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-                <div class="bg-white dark:bg-zinc-900 rounded-3xl max-w-md w-full p-8 shadow-2xl">
-                    <div class="flex items-center justify-between mb-6">
-                        <h3 class="font-black text-slate-900 dark:text-white flex items-center gap-2">
-                            <Calculator size="20" class="text-blue-600" /> Liquidación Anticipada
-                        </h3>
-                        <button @click="mostrarLiquidacion = false" class="text-slate-400 hover:text-slate-600 transition-colors">
-                            <X size="20" />
-                        </button>
-                    </div>
-
-                    <div v-if="cargandoLiquidacion" class="text-center py-8 text-slate-400">
-                        <div class="animate-spin w-8 h-8 border-2 border-blue-600 border-t-transparent rounded-full mx-auto mb-3"></div>
-                        <p class="text-sm">Calculando...</p>
-                    </div>
-
-                    <div v-else-if="liquidacion" class="space-y-4">
-                        <p class="text-xs text-slate-500 dark:text-zinc-400">Monto calculado al día de hoy ({{ liquidacion.fecha_calculo }})</p>
-
-                        <div class="space-y-2">
-                            <div class="flex justify-between py-2 border-b border-slate-100 dark:border-zinc-800">
-                                <span class="text-sm text-slate-600 dark:text-zinc-300">Capital pendiente</span>
-                                <span class="font-bold">${{ fmt(liquidacion.capital_pendiente) }}</span>
-                            </div>
-                            <div class="flex justify-between py-2 border-b border-slate-100 dark:border-zinc-800">
-                                <span class="text-sm text-slate-600 dark:text-zinc-300">Interés proyectado</span>
-                                <span class="font-bold text-amber-600">${{ fmt(liquidacion.interes_proyectado) }}</span>
-                            </div>
-                            <div class="flex justify-between py-2 border-b border-slate-100 dark:border-zinc-800">
-                                <span class="text-sm text-slate-600 dark:text-zinc-300">Mora acumulada</span>
-                                <span class="font-bold text-red-600">${{ fmt(liquidacion.mora_acumulada) }}</span>
-                            </div>
+            <Teleport to="body">
+                <div 
+                    v-if="mostrarLiquidacion" 
+                    class="fixed inset-0 z-[9999] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto"
+                >
+                    <div class="relative w-full max-w-md my-auto rounded-3xl bg-zinc-900 border border-zinc-800 p-6 shadow-2xl overflow-hidden flex flex-col max-h-[85vh]">
+                        
+                        <!-- Header Fijo -->
+                        <div class="flex items-center justify-between pb-4 mb-4 border-b border-zinc-800 shrink-0">
+                            <h3 class="font-black text-white flex items-center gap-2 text-base sm:text-lg">
+                                <Calculator size="20" class="text-blue-500" /> Liquidación Anticipada
+                            </h3>
+                            <button 
+                                @click="mostrarLiquidacion = false" 
+                                class="text-zinc-400 hover:text-white transition-colors p-1"
+                            >
+                                <X size="20" />
+                            </button>
                         </div>
 
-                        <div class="bg-slate-900 dark:bg-zinc-800 text-white rounded-2xl p-5 text-center">
-                            <p class="text-xs text-slate-400 uppercase tracking-wider mb-1">Total a Liquidar Hoy</p>
-                            <p class="text-3xl font-black">${{ fmt(liquidacion.total_liquidacion) }}</p>
-                            <p class="text-xs text-slate-400 mt-2">Este cálculo puede variar si no liquidas el mismo día.</p>
-                        </div>
+                        <!-- Cuerpos de datos con Scroll Interno -->
+                        <div class="overflow-y-auto pr-1 space-y-4">
+                            
+                            <div v-if="cargandoLiquidacion" class="text-center py-8 text-zinc-400">
+                                <div class="animate-spin w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full mx-auto mb-3"></div>
+                                <p class="text-sm">Calculando...</p>
+                            </div>
 
-                        <p class="text-xs text-center text-slate-400">Para liquidar, acude a nuestras oficinas o llama al <strong>999 941 2170</strong></p>
+                            <div v-else-if="liquidacion" class="space-y-4">
+                                <p class="text-xs text-zinc-400">Monto calculado al día de hoy ({{ liquidacion.fecha_calculo }})</p>
+
+                                <div class="space-y-1">
+                                    <div class="flex justify-between py-2 border-b border-zinc-800">
+                                        <span class="text-sm text-zinc-300">Capital pendiente</span>
+                                        <span class="font-bold text-white">${{ fmt(liquidacion.capital_pendiente) }}</span>
+                                    </div>
+                                    <div class="flex justify-between py-2 border-b border-zinc-800">
+                                        <span class="text-sm text-zinc-300">Interés proyectado</span>
+                                        <span class="font-bold text-amber-500">${{ fmt(liquidacion.interes_proyectado) }}</span>
+                                    </div>
+                                    <div class="flex justify-between py-2 border-b border-zinc-800">
+                                        <span class="text-sm text-zinc-300">Mora acumulada</span>
+                                        <span class="font-bold text-red-500">${{ fmt(liquidacion.mora_acumulada) }}</span>
+                                    </div>
+                                </div>
+
+                                <div class="bg-zinc-800/80 border border-zinc-700/50 text-white rounded-xl p-4 text-center">
+                                    <p class="text-[10px] text-zinc-400 uppercase tracking-wider mb-1">Total a Liquidar Hoy</p>
+                                    <p class="text-2xl sm:text-3xl font-black text-white">${{ fmt(liquidacion.total_liquidacion) }}</p>
+                                    <p class="text-[11px] text-zinc-400 mt-1">Este cálculo puede variar si no liquidas el mismo día.</p>
+                                </div>
+
+                                <p class="text-xs text-center text-zinc-400 pt-1">
+                                    Para liquidar, acude a nuestras oficinas o llama al <strong class="text-zinc-200">999 941 2170</strong>
+                                </p>
+                            </div>
+
+                        </div>
+                    </div>
+                </div>
+            </Teleport>
+
+<!-- Tabs -->
+<div class="bg-white dark:bg-zinc-900 rounded-3xl border border-slate-100 dark:border-zinc-800 overflow-hidden shadow-sm">
+    <div class="p-4 border-b border-slate-100 dark:border-zinc-800 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <h2 class="font-black text-slate-900 dark:text-white flex items-center gap-2">
+            <FileText size="20" class="text-red-700" /> Movimientos
+        </h2>
+        <div class="flex bg-slate-100 dark:bg-zinc-800 p-1 rounded-2xl gap-1 w-full sm:w-auto">
+            <button @click="activeTab = 'tabla'"
+                :class="['flex-1 sm:flex-none px-4 py-3 sm:py-2 rounded-xl text-sm font-bold transition-all min-h-[44px] flex items-center justify-center', activeTab === 'tabla' ? 'bg-white dark:bg-zinc-700 shadow-sm text-red-700 dark:text-white' : 'text-slate-500 dark:text-zinc-400']">
+                Tabla de Amortización
+            </button>
+            <button @click="activeTab = 'pagos'"
+                :class="['flex-1 sm:flex-none px-4 py-3 sm:py-2 rounded-xl text-sm font-bold transition-all min-h-[44px] flex items-center justify-center', activeTab === 'pagos' ? 'bg-white dark:bg-zinc-700 shadow-sm text-red-700 dark:text-white' : 'text-slate-500 dark:text-zinc-400']">
+                Pagos Realizados
+            </button>
+        </div>
+    </div>
+
+    <!-- TABLA DE AMORTIZACIÓN -->
+    <div v-if="activeTab === 'tabla'">
+        <div v-if="credito.tabla.length > 0">
+            <!-- VISTA MÓVIL: TARJETAS (< sm) -->
+            <div class="block sm:hidden divide-y divide-slate-100 dark:divide-zinc-800">
+                <div v-for="item in credito.tabla" :key="item.numero_cuota" 
+                     :class="['p-4 space-y-3', item.estado === 'Gracia' ? 'opacity-50 italic bg-slate-50/50 dark:bg-zinc-800/30' : '', estadoCuota(item).texto === 'VENCIDO' ? 'bg-red-50/30 dark:bg-red-900/10' : '']">
+                    
+                    <div class="flex justify-between items-center">
+                        <span class="font-bold text-xs text-slate-400 dark:text-zinc-500 uppercase tracking-wider">
+                            <span v-if="item.estado === 'Gracia'">Cuota de Gracia</span>
+                            <span v-else>Cuota #{{ item.numero_cuota }}</span>
+                        </span>
+                        <span :class="['px-2.5 py-1 rounded-full text-[10px] font-black', estadoCuota(item).clase]">
+                            {{ estadoCuota(item).texto }}
+                        </span>
+                    </div>
+
+                    <div class="flex justify-between items-baseline">
+                        <span class="text-xs text-slate-500 dark:text-zinc-400">Vencimiento: <strong class="text-slate-700 dark:text-zinc-200">{{ item.fecha_vencimiento }}</strong></span>
+                        <div class="text-right">
+                            <span class="text-xs text-slate-400 block">Total Cuota</span>
+                            <span class="text-base font-black text-slate-900 dark:text-white">
+                                ${{ fmt(Number(item.capital) + Number(item.ordinario) + Number(item.moratorio)) }}
+                            </span>
+                        </div>
+                    </div>
+
+                    <!-- Desglose de importes -->
+                    <div class="grid grid-cols-3 gap-2 pt-2 border-t border-slate-100 dark:border-zinc-800/60 text-xs">
+                        <div>
+                            <span class="text-slate-400 block text-[10px]">Capital</span>
+                            <span class="font-medium text-slate-700 dark:text-zinc-300">${{ fmt(item.capital) }}</span>
+                        </div>
+                        <div>
+                            <span class="text-slate-400 block text-[10px]">Interés Ord.</span>
+                            <span class="font-medium text-slate-700 dark:text-zinc-300">${{ fmt(item.ordinario) }}</span>
+                        </div>
+                        <div>
+                            <span class="text-slate-400 block text-[10px]">Mora</span>
+                            <span v-if="Number(item.moratorio) > 0" class="font-bold text-red-600">${{ fmt(item.moratorio) }}</span>
+                            <span v-else class="text-slate-300 dark:text-zinc-600">—</span>
+                        </div>
                     </div>
                 </div>
             </div>
 
-            <!-- Tabs -->
-            <div class="bg-white dark:bg-zinc-900 rounded-3xl border border-slate-100 dark:border-zinc-800 overflow-hidden shadow-sm">
-                <div class="p-4 border-b border-slate-100 dark:border-zinc-800 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                    <h2 class="font-black text-slate-900 dark:text-white flex items-center gap-2">
-                        <FileText size="20" class="text-red-700" /> Movimientos
-                    </h2>
-                    <div class="flex bg-slate-100 dark:bg-zinc-800 p-1 rounded-2xl gap-1 w-full sm:w-auto">
-                        <button @click="activeTab = 'tabla'"
-                            :class="['flex-1 sm:flex-none px-5 py-2 rounded-xl text-sm font-bold transition-all', activeTab === 'tabla' ? 'bg-white dark:bg-zinc-700 shadow-sm text-red-700 dark:text-white' : 'text-slate-500 dark:text-zinc-400']">
-                            Tabla de Amortización
-                        </button>
-                        <button @click="activeTab = 'pagos'"
-                            :class="['flex-1 sm:flex-none px-5 py-2 rounded-xl text-sm font-bold transition-all', activeTab === 'pagos' ? 'bg-white dark:bg-zinc-700 shadow-sm text-red-700 dark:text-white' : 'text-slate-500 dark:text-zinc-400']">
-                            Pagos Realizados
-                        </button>
-                    </div>
-                </div>
+            <!-- VISTA ESCRITORIO/TABLET: TABLA CON SCROLL (>= sm) -->
+            <div class="hidden sm:block overflow-x-auto">
+                <table class="w-full text-left border-collapse text-sm min-w-[640px]">
+                    <thead>
+                        <tr class="bg-slate-50/80 dark:bg-zinc-800/80 text-slate-400 dark:text-zinc-500 text-[11px] uppercase tracking-widest font-bold">
+                            <th class="px-5 py-4">No.</th>
+                            <th class="px-5 py-4">Vencimiento</th>
+                            <th class="px-5 py-4 text-right">Capital</th>
+                            <th class="px-5 py-4 text-right">Interés Ord.</th>
+                            <th class="px-5 py-4 text-right">Mora</th>
+                            <th class="px-5 py-4 text-right">Total Cuota</th>
+                            <th class="px-5 py-4 text-center">Estado</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-50 dark:divide-zinc-800">
+                        <tr v-for="item in credito.tabla" :key="item.numero_cuota"
+                            :class="['hover:bg-slate-50/50 dark:hover:bg-zinc-800/50 transition-colors',
+                                item.estado === 'Gracia' ? 'opacity-50 italic' : '',
+                                estadoCuota(item).texto === 'VENCIDO' ? 'bg-red-50/30 dark:bg-red-900/5' : '']">
+                            <td class="px-5 py-4 font-bold text-slate-500 dark:text-zinc-500">
+                                <span v-if="item.estado === 'Gracia'" class="text-xs text-slate-400">Gracia</span>
+                                <span v-else>#{{ item.numero_cuota }}</span>
+                            </td>
+                            <td class="px-5 py-4 font-medium">{{ item.fecha_vencimiento }}</td>
+                            <td class="px-5 py-4 text-right">${{ fmt(item.capital) }}</td>
+                            <td class="px-5 py-4 text-right">${{ fmt(item.ordinario) }}</td>
+                            <td class="px-5 py-4 text-right">
+                                <span v-if="Number(item.moratorio) > 0" class="text-red-600">${{ fmt(item.moratorio) }}</span>
+                                <Minus v-else size="14" class="mx-auto text-slate-300" />
+                            </td>
+                            <td class="px-5 py-4 text-right font-bold">
+                                ${{ fmt(Number(item.capital) + Number(item.ordinario) + Number(item.moratorio)) }}
+                            </td>
+                            <td class="px-5 py-4 text-center">
+                                <span :class="['px-2.5 py-1 rounded-full text-[10px] font-black', estadoCuota(item).clase]">
+                                    {{ estadoCuota(item).texto }}
+                                </span>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
 
-                <!-- Tabla de amortización -->
-                <div v-if="activeTab === 'tabla'" class="overflow-x-auto">
-                    <table v-if="credito.tabla.length > 0" class="w-full min-w-[560px] text-left border-collapse text-sm">
-                        <thead>
-                            <tr class="bg-slate-50/80 dark:bg-zinc-800/80 text-slate-400 dark:text-zinc-500 text-[11px] uppercase tracking-widest font-bold">
-                                <th class="px-5 py-4">No.</th>
-                                <th class="px-5 py-4">Vencimiento</th>
-                                <th class="px-5 py-4 text-right">Capital</th>
-                                <th class="px-5 py-4 text-right">Interés Ord.</th>
-                                <th class="px-5 py-4 text-right">Mora</th>
-                                <th class="px-5 py-4 text-right">Total Cuota</th>
-                                <th class="px-5 py-4 text-center">Estado</th>
-                            </tr>
-                        </thead>
-                        <tbody class="divide-y divide-slate-50 dark:divide-zinc-800">
-                            <tr v-for="item in credito.tabla" :key="item.numero_cuota"
-                                :class="['hover:bg-slate-50/50 dark:hover:bg-zinc-800/50 transition-colors',
-                                    item.estado === 'Gracia' ? 'opacity-50 italic' : '',
-                                    estadoCuota(item).texto === 'VENCIDO' ? 'bg-red-50/30 dark:bg-red-900/5' : '']">
-                                <td class="px-5 py-4 font-bold text-slate-500 dark:text-zinc-500">
-                                    <span v-if="item.estado === 'Gracia'" class="text-xs text-slate-400">Gracia</span>
-                                    <span v-else>#{{ item.numero_cuota }}</span>
-                                </td>
-                                <td class="px-5 py-4 font-medium">{{ item.fecha_vencimiento }}</td>
-                                <td class="px-5 py-4 text-right">${{ fmt(item.capital) }}</td>
-                                <td class="px-5 py-4 text-right">${{ fmt(item.ordinario) }}</td>
-                                <td class="px-5 py-4 text-right">
-                                    <span v-if="Number(item.moratorio) > 0" class="text-red-600">${{ fmt(item.moratorio) }}</span>
-                                    <Minus v-else size="14" class="mx-auto text-slate-300" />
-                                </td>
-                                <td class="px-5 py-4 text-right font-bold">
-                                    ${{ fmt(Number(item.capital) + Number(item.ordinario) + Number(item.moratorio)) }}
-                                </td>
-                                <td class="px-5 py-4 text-center">
-                                    <span :class="['px-2.5 py-1 rounded-full text-[10px] font-black', estadoCuota(item).clase]">
-                                        {{ estadoCuota(item).texto }}
-                                    </span>
-                                </td>
-                            </tr>
-                        </tbody>
-                    </table>
-                    <div v-else class="p-16 text-center space-y-3">
-                        <CalendarDays size="40" class="mx-auto text-slate-300 dark:text-zinc-700" />
-                        <p class="text-slate-500 dark:text-zinc-400 font-medium">No hay tabla de amortización disponible.</p>
-                    </div>
-                </div>
+        <div v-else class="p-12 sm:p-16 text-center space-y-3">
+            <CalendarDays size="40" class="mx-auto text-slate-300 dark:text-zinc-700" />
+            <p class="text-slate-500 dark:text-zinc-400 font-medium">No hay tabla de amortización disponible.</p>
+        </div>
+    </div>
 
-                <!-- Historial de pagos -->
-                <div v-if="activeTab === 'pagos'" class="overflow-x-auto">
-                    <table v-if="credito.pagos.length > 0" class="w-full min-w-[420px] text-left border-collapse text-sm">
-                        <thead>
-                            <tr class="bg-slate-50/80 dark:bg-zinc-800/80 text-slate-400 dark:text-zinc-500 text-[11px] uppercase tracking-widest font-bold">
-                                <th class="px-5 py-4">Folio</th>
-                                <th class="px-5 py-4">Fecha</th>
-                                <th class="px-5 py-4 text-right">Monto</th>
-                                <th class="px-5 py-4">Forma de Pago</th>
-                            </tr>
-                        </thead>
-                        <tbody class="divide-y divide-slate-50 dark:divide-zinc-800">
-                            <tr v-for="pago in credito.pagos" :key="pago.id"
-                                class="hover:bg-slate-50/50 dark:hover:bg-zinc-800/50 transition-colors">
-                                <td class="px-5 py-4">
-                                    <span class="font-mono text-xs bg-slate-100 dark:bg-zinc-800 px-2 py-1 rounded-lg">
-                                        {{ pago.folio ?? `#${pago.id}` }}
-                                    </span>
-                                </td>
-                                <td class="px-5 py-4 font-medium">{{ pago.fecha_pago }}</td>
-                                <td class="px-5 py-4 text-right font-bold text-emerald-600">${{ fmt(pago.monto_recibido) }}</td>
-                                <td class="px-5 py-4 text-slate-500 dark:text-zinc-400 capitalize">{{ pago.forma_pago ?? '—' }}</td>
-                            </tr>
-                        </tbody>
-                    </table>
-                    <div v-else class="p-16 text-center space-y-4">
-                        <div class="w-20 h-20 rounded-3xl bg-slate-100 dark:bg-zinc-800 flex items-center justify-center mx-auto text-slate-400">
-                            <CreditCard size="36" />
-                        </div>
-                        <div class="space-y-2 max-w-xs mx-auto">
-                            <h4 class="font-black text-slate-900 dark:text-white">Sin pagos registrados</h4>
-                            <p class="text-slate-500 dark:text-zinc-400 text-sm leading-relaxed">
-                                Tu historial de pagos se actualizará automáticamente conforme realices tus aportaciones en ventanilla o transferencia.
-                            </p>
-                        </div>
+    <!-- HISTORIAL DE PAGOS -->
+    <div v-if="activeTab === 'pagos'">
+        <div v-if="credito.pagos.length > 0">
+            <!-- VISTA MÓVIL: TARJETAS (< sm) -->
+            <div class="block sm:hidden divide-y divide-slate-100 dark:divide-zinc-800">
+                <div v-for="pago in credito.pagos" :key="pago.id" class="p-4 space-y-2">
+                    <div class="flex justify-between items-center">
+                        <span class="font-mono text-xs bg-slate-100 dark:bg-zinc-800 px-2.5 py-1 rounded-lg font-bold">
+                            {{ pago.folio ?? `#${pago.id}` }}
+                        </span>
+                        <span class="text-sm font-black text-emerald-600">${{ fmt(pago.monto_recibido) }}</span>
                     </div>
-                </div>
-
-                <!-- Nota informativa -->
-                <div class="border-t border-slate-100 dark:border-zinc-800 px-6 py-4 bg-slate-50 dark:bg-zinc-800/50">
-                    <p class="text-xs text-slate-400 dark:text-zinc-500 text-center">
-                        Para realizar tus pagos visita nuestras oficinas o comunícate al <strong class="text-slate-600 dark:text-zinc-300">999 941 2170</strong>.
-                        Los pagos se reflejan en 24-48 horas hábiles.
-                    </p>
+                    <div class="flex justify-between text-xs text-slate-500 dark:text-zinc-400 pt-1">
+                        <span>Fecha: <strong class="text-slate-700 dark:text-zinc-300">{{ pago.fecha_pago }}</strong></span>
+                        <span class="capitalize">{{ pago.forma_pago ?? '—' }}</span>
+                    </div>
                 </div>
             </div>
+
+            <!-- VISTA ESCRITORIO/TABLET: TABLA CON SCROLL (>= sm) -->
+            <div class="hidden sm:block overflow-x-auto">
+                <table class="w-full text-left border-collapse text-sm min-w-[480px]">
+                    <thead>
+                        <tr class="bg-slate-50/80 dark:bg-zinc-800/80 text-slate-400 dark:text-zinc-500 text-[11px] uppercase tracking-widest font-bold">
+                            <th class="px-5 py-4">Folio</th>
+                            <th class="px-5 py-4">Fecha</th>
+                            <th class="px-5 py-4 text-right">Monto</th>
+                            <th class="px-5 py-4">Forma de Pago</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-50 dark:divide-zinc-800">
+                        <tr v-for="pago in credito.pagos" :key="pago.id" class="hover:bg-slate-50/50 dark:hover:bg-zinc-800/50 transition-colors">
+                            <td class="px-5 py-4">
+                                <span class="font-mono text-xs bg-slate-100 dark:bg-zinc-800 px-2 py-1 rounded-lg">
+                                    {{ pago.folio ?? `#${pago.id}` }}
+                                </span>
+                            </td>
+                            <td class="px-5 py-4 font-medium">{{ pago.fecha_pago }}</td>
+                            <td class="px-5 py-4 text-right font-bold text-emerald-600">${{ fmt(pago.monto_recibido) }}</td>
+                            <td class="px-5 py-4 text-slate-500 dark:text-zinc-400 capitalize">{{ pago.forma_pago ?? '—' }}</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div v-else class="p-12 sm:p-16 text-center space-y-4">
+            <div class="w-16 h-16 sm:w-20 sm:h-20 rounded-3xl bg-slate-100 dark:bg-zinc-800 flex items-center justify-center mx-auto text-slate-400">
+                <CreditCard size="32" />
+            </div>
+            <div class="space-y-2 max-w-xs mx-auto">
+                <h4 class="font-black text-slate-900 dark:text-white">Sin pagos registrados</h4>
+                <p class="text-slate-500 dark:text-zinc-400 text-sm leading-relaxed">
+                    Tu historial de pagos se actualizará automáticamente conforme realices tus aportaciones en ventanilla o transferencia.
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Nota informativa -->
+    <div class="border-t border-slate-100 dark:border-zinc-800 px-6 py-4 bg-slate-50 dark:bg-zinc-800/50">
+        <p class="text-xs text-slate-400 dark:text-zinc-500 text-center">
+            Para realizar tus pagos visita nuestras oficinas o comunícate al <strong class="text-slate-600 dark:text-zinc-300">999 941 2170</strong>.
+            Los pagos se reflejan en 24-48 horas hábiles.
+        </p>
+    </div>
+</div>  
         </div>
     </BeneficiarioLayout>
 </template>
