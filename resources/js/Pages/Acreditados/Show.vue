@@ -7,7 +7,7 @@ import {
     ArrowLeft, DollarSign, Scale, CheckCircle2,
     Calendar, AlertCircle, Timer, TrendingUp, Clock,
     XOctagon, Award, FolderOpen, RefreshCw, FileCheck,
-    Banknote, Receipt, RotateCcw, FileX, MoreVertical
+    Banknote, Receipt, RotateCcw, FileX, MoreVertical, Pencil
 } from 'lucide-vue-next';
 import { useForm } from '@inertiajs/vue3';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger, DropdownMenuItem, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
@@ -186,6 +186,12 @@ const desglosePago = computed(() => {
                             </button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end" class="w-64">
+                            <!--Boton de editar datos personales-->
+                            <DropdownMenuItem as-child>
+                                <button @click="() => router.visit(route('acreditados.edit', acreditado.id))" class="w-full">
+                                    <Pencil :size="15" class="text-yellow-600" /> Editar Acreditado
+                                </button>
+                            </DropdownMenuItem>
                             <DropdownMenuItem as-child>
                                 <button @click="() => router.visit(route('acreditados.expediente', acreditado.id))" class="w-full">
                                     <FolderOpen :size="15" class="text-indigo-600" /> Expediente Digital
