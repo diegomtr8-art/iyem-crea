@@ -270,7 +270,7 @@ const enviarComprobacion = () => {
             <!-- Barra de progreso -->
             <div class="bg-white dark:bg-zinc-900 rounded-3xl border border-slate-100 dark:border-zinc-800 p-6 shadow-sm">
                 <p class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-4">Progreso del Crédito</p>
-                <div class="grid grid-cols-3 gap-4 mb-4">
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                     <div class="text-center">
                         <p class="text-2xl font-black text-green-600">{{ cuotasPagadas }}</p>
                         <p class="text-xs text-slate-500 dark:text-zinc-400 mt-1">Cuotas pagadas</p>
