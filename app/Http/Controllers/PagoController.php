@@ -69,7 +69,7 @@ class PagoController extends Controller
             'monto_recibido' => 'required|numeric|min:0.01',
             'fecha_pago'     => 'required|date|before_or_equal:today',
             'forma_pago'     => 'required|in:Efectivo,Transferencia,Cheque,Tarjeta',
-            'tipo_abono'     => 'nullable|in:Reducir Cuota,Reducir Plazo',
+            'tipo_abono'     => 'nullable|in:Adelantado,Reducir Cuota,Reducir Plazo',
             'referencia'     => 'nullable|string|max:255',
             'observaciones'  => 'nullable|string|max:1000',
         ]);
@@ -126,6 +126,33 @@ class PagoController extends Controller
                         'monto_recibido' => 'El crédito tiene mora. Primero debe ponerse al día cubriendo '
                             . 'las cuotas vencidas ($' . number_format($costoEstarAlDia, 2) . ').',
                     ]);
+                }
+            }
+
+            // Ruteo del sobrante (Ticket 4.3): detecta si el pago, tras cubrir la cuota
+            // corriente, deja un sobrante de 1 cuota completa o más (requiere elección).
+            $tipoAbono         = $validated['tipo_abono'] ?? null;
+            $hayEscenario      = false;
+            $detenerEnCorriente = false;
+            $primera           = $cuotas->first();
+
+            if (!$esLiquidacionTotal && $resumen['moraTotal'] <= 0.01 && $primera) {
+                $costoPrimera          = round((float) $primera->pago_restante, 2);
+                $sobranteTrasCorriente = round($montoRestante - $costoPrimera, 2);
+                $siguiente             = $cuotas->get(1);
+
+                if ($siguiente && $sobranteTrasCorriente >= (round((float) $siguiente->pago_restante, 2) - 0.01)) {
+                    $hayEscenario = true;
+                    $opciones     = ['Adelantado', 'Reducir Cuota', 'Reducir Plazo'];
+
+                    if (!in_array($tipoAbono, $opciones, true)) {
+                        throw ValidationException::withMessages([
+                            'tipo_abono' => 'El pago deja un sobrante de 1 cuota o más. '
+                                . 'Seleccione cómo aplicarlo: Adelantado / Reducir cuota / Reducir plazo.',
+                        ]);
+                    }
+
+                    $detenerEnCorriente = in_array($tipoAbono, ['Reducir Cuota', 'Reducir Plazo'], true);
                 }
             }
 
@@ -220,11 +247,19 @@ class PagoController extends Controller
                         'mor'   => $pagoMora,
                     ];
                 }
+
+                // Reducir cuota/plazo: no se pre-pagan cuotas siguientes; el sobrante
+                // queda disponible para abonarse a capital tras la cuota corriente.
+                if ($detenerEnCorriente && $fila->numero_cuota === $primera->numero_cuota) {
+                    break;
+                }
             }
 
-            // Aplicar sobrante a capital (pago anticipado)
-            if ($montoRestante > 0.01 && !$esLiquidacionTotal) {
-                $this->aplicarAbonoCapital($credito, $montoRestante, $validated['tipo_abono'] ?? 'Reducir Cuota', $hoy);
+            // Aplicar sobrante a capital (pago anticipado) cuando el operativo eligió
+            // Reducir cuota / Reducir plazo. (Provisional: el Commit 3/4 reemplaza la
+            // matemática interna de aplicarAbonoCapital.)
+            if ($montoRestante > 0.01 && $detenerEnCorriente) {
+                $this->aplicarAbonoCapital($credito, $montoRestante, $tipoAbono, $hoy);
                 $totalAplicadoCapital += $montoRestante;
             }
 
