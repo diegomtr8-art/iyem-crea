@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Carbon\Carbon;
+use EstadoCredito;
 
 class CreditoController extends Controller
 {
@@ -71,7 +72,7 @@ class CreditoController extends Controller
                 'registrado_por'     => Auth::id(),
             ]);
 
-            $credito->update(['estatus' => 'Liquidado']);
+            $credito->update([EstadoCredito::LIQUIDADO]);
         });
 
         return redirect()->route('acreditados.show', $credito->acreditado_id)

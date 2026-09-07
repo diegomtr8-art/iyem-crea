@@ -11,6 +11,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Inertia\Response;
+use EstadoCredito;
 
 class ReestructuracionController extends Controller
 {
@@ -122,7 +123,7 @@ class ReestructuracionController extends Controller
                 $saldo -= $capital;
             }
 
-            $credito->update(['estatus' => 'Activo']);
+            $credito->update([EstadoCredito::ACTIVO]);
 
             AuditoriaLog::registrar(
                 'Credito',

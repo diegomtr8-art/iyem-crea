@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\AuditoriaLog;
 use App\Models\CondonacionFormal;
 use App\Models\Credito;
+use EstadoCredito;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -74,7 +75,7 @@ class CondonacionFormalController extends Controller
                 $credito->amortizaciones()
                     ->whereNotIn('estado', ['Pagado', 'Condonado', 'Reestructurada', 'Gracia'])
                     ->update(['estado' => 'Condonado', 'pago_restante' => 0, 'moratorio_acumulado' => 0]);
-                $credito->update(['estatus' => 'Liquidado']);
+                $credito->update([EstadoCredito::LIQUIDADO]);
             }
 
             $montoTotal = ($data['monto_condonado_capital'] ?? 0)

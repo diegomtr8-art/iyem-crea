@@ -14,6 +14,7 @@ use App\Models\SolicitudCredito;
 use App\Models\SolicitudEstatusHistorial;
 use App\Services\FormatosService;
 use Carbon\Carbon;
+use EstadoCredito;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -452,7 +453,7 @@ class SolicitudOperativoController extends Controller
                 'fecha_contrato'         => $data['fecha_contrato'] ?? $data['fecha_entrega'],
                 'tasa_interes_ordinario' => $tasaOrdinaria,
                 'tasa_interes_moratorio' => $tasaMoratoria,
-                'estatus'                => 'Activo',
+                EstadoCredito::ACTIVO,
             ]);
 
             // Generar tabla de amortización (incluye período de gracia Sustentable)
