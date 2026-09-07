@@ -785,7 +785,7 @@ const sIcon= 'w-9 h-9 rounded-xl flex items-center justify-center shrink-0 bg-[#
                 </div>
                 <div>
                     <label :class="lbl">Tipo de garantía *</label>
-                    <div class="grid grid-cols-3 gap-2 mt-1">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 mt-1">
                         <button v-for="g in ['aval','prendaria','hipotecaria']" :key="g" type="button"
                             :disabled="g === 'hipotecaria' && !modalidadActual?.nombre?.toLowerCase().includes('sustentable')"
                             @click="datos.tipo_garantia = g"
@@ -1050,7 +1050,7 @@ const sIcon= 'w-9 h-9 rounded-xl flex items-center justify-center shrink-0 bg-[#
                     <div v-for="(p, i) in proveedores" :key="i" class="bg-slate-50 dark:bg-zinc-800 rounded-xl p-3 space-y-2">
                         <div class="flex justify-between"><span class="text-xs font-bold text-slate-500">Proveedor {{ i+1 }}</span>
                             <button v-if="proveedores.length > 1" @click="removeRow(proveedores,i)" class="text-red-500 p-1 rounded-lg hover:bg-red-50"><Trash2 size="14" /></button></div>
-                        <div class="grid grid-cols-2 gap-2">
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
                             <div><label :class="lbl">Nombre</label><input v-model="p.nombre" type="text" :class="inp" /></div>
                             <div><label :class="lbl">Antigüedad</label><input v-model="p.antiguedad" type="text" placeholder="1 año" :class="inp" /></div>
                             <div><label :class="lbl">Insumo</label><input v-model="p.insumo" type="text" :class="inp" /></div>
@@ -1093,7 +1093,7 @@ const sIcon= 'w-9 h-9 rounded-xl flex items-center justify-center shrink-0 bg-[#
                     <div v-for="(c, i) in clientes" :key="i" class="bg-slate-50 dark:bg-zinc-800 rounded-xl p-3 space-y-2">
                         <div class="flex justify-between"><span class="text-xs font-bold text-slate-500">Cliente {{ i+1 }}</span>
                             <button v-if="clientes.length > 1" @click="removeRow(clientes,i)" class="text-red-500 p-1 rounded-lg hover:bg-red-50"><Trash2 size="14" /></button></div>
-                        <div class="grid grid-cols-2 gap-2">
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
                             <div><label :class="lbl">Nombre</label><input v-model="c.nombre" type="text" :class="inp" /></div>
                             <div><label :class="lbl">Sector</label><input v-model="c.sector" type="text" :class="inp" /></div>
                             <div><label :class="lbl">Ventas/mes $</label><input v-model="c.ventas_mensuales" type="number" min="0" :class="inp" /></div>
@@ -1165,7 +1165,7 @@ const sIcon= 'w-9 h-9 rounded-xl flex items-center justify-center shrink-0 bg-[#
                         <span class="text-xs font-black uppercase tracking-wider text-slate-600 dark:text-zinc-300">Historial — últimos 6 meses</span>
                     </div>
                     <div class="p-4 space-y-4">
-                        <div class="grid grid-cols-2 gap-2 sm:gap-4">
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-4">
                             <div><label :class="lbl">Periodo del</label><input v-model="ieHistorico.periodo_del" type="date" :max="hoy" :class="inp" /></div>
                             <div><label :class="lbl">al</label><input v-model="ieHistorico.periodo_al" type="date" :max="hoy" :class="inp" /></div>
                         </div>
@@ -1208,7 +1208,7 @@ const sIcon= 'w-9 h-9 rounded-xl flex items-center justify-center shrink-0 bg-[#
                     <span class="text-xs font-black uppercase tracking-wider text-[#6B1938] dark:text-[#f4a8c4]">Proyección — próximos 6 meses</span>
                 </div>
                 <div class="p-4 space-y-4">
-                    <div class="grid grid-cols-2 gap-2 sm:gap-4">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-4">
                         <div><label :class="lbl">Periodo del</label><input v-model="ieProyeccion.periodo_del" type="date" :class="inp" /></div>
                         <div><label :class="lbl">al</label><input v-model="ieProyeccion.periodo_al" type="date" :class="inp" /></div>
                     </div>
