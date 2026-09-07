@@ -99,6 +99,25 @@ class PagoController extends Controller
                 ->orderBy('numero_cuota', 'asc')
                 ->get();
 
+            // Snapshot del estado previo de las cuotas pendientes (único conjunto
+            // que este pago puede modificar) para permitir una reversión exacta al cancelar.
+            $snapshotAmortizaciones = $cuotas->map(fn($c) => $c->only([
+                'id',
+                'numero_cuota',
+                'capital_esperado',
+                'interes_ordinario_esperado',
+                'cuota_fija',
+                'saldo_insoluto',
+                'capital_pagado',
+                'interes_ordinario_pagado',
+                'interes_moratorio_pagado',
+                'interes_moratorio_generado',
+                'moratorio_acumulado',
+                'pago_restante',
+                'estado',
+                'fecha_ultimo_pago',
+            ]))->values();
+
             foreach ($cuotas as $fila) {
                 if ($montoRestante < 0.01) break;
 
@@ -196,6 +215,7 @@ class PagoController extends Controller
                 'fecha_pago'         => $validated['fecha_pago'],
                 'observaciones'      => ($validated['observaciones'] ?? 'Pago registrado') . $notaCondonacion,
                 'cuotas_cubiertas'   => $detallesAuditoria,
+                'snapshot_amortizaciones' => $snapshotAmortizaciones,
                 'registrado_por'     => Auth::id(),
             ]);
 
@@ -319,38 +339,69 @@ class PagoController extends Controller
         abort_if($pago->cancelado, 422, 'Este pago ya fue cancelado.');
 
         DB::transaction(function () use ($pago, $validated) {
-            $cuotas = collect($pago->cuotas_cubiertas ?? []);
+            $snapshot = collect($pago->snapshot_amortizaciones ?? []);
 
-            foreach ($cuotas as $detalle) {
-                $amortizacion = Amortizacion::where('credito_id', $pago->credito_id)
-                    ->where('numero_cuota', $detalle['cuota'])
-                    ->lockForUpdate()
-                    ->first();
+            if ($snapshot->isNotEmpty()) {
+                // Restauración exacta: devuelve cada cuota a su estado previo al pago
+                // (necesario cuando el pago reescribió la tabla: Reducir Cuota/Plazo o liquidación).
+                foreach ($snapshot as $fila) {
+                    $amortizacion = Amortizacion::where('credito_id', $pago->credito_id)
+                        ->whereKey($fila['id'])
+                        ->lockForUpdate()
+                        ->first();
 
-                if (!$amortizacion) continue;
+                    if (!$amortizacion) continue;
 
-                $capRevertir = (float)($detalle['cap'] ?? 0);
-                $ordRevertir = (float)($detalle['int'] ?? 0);
-                $morRevertir = (float)($detalle['mor'] ?? 0);
+                    $amortizacion->update([
+                        'capital_esperado'           => $fila['capital_esperado'],
+                        'interes_ordinario_esperado' => $fila['interes_ordinario_esperado'],
+                        'cuota_fija'                 => $fila['cuota_fija'],
+                        'saldo_insoluto'             => $fila['saldo_insoluto'],
+                        'capital_pagado'             => $fila['capital_pagado'],
+                        'interes_ordinario_pagado'   => $fila['interes_ordinario_pagado'],
+                        'interes_moratorio_pagado'   => $fila['interes_moratorio_pagado'],
+                        'interes_moratorio_generado' => $fila['interes_moratorio_generado'],
+                        'moratorio_acumulado'        => $fila['moratorio_acumulado'],
+                        'pago_restante'              => $fila['pago_restante'],
+                        'estado'                     => $fila['estado'],
+                        'fecha_ultimo_pago'          => $fila['fecha_ultimo_pago'] ?? null,
+                    ]);
+                }
+            } else {
+                // Fallback para pagos históricos sin snapshot: reversión incremental
+                $cuotas = collect($pago->cuotas_cubiertas ?? []);
 
-                $nuevoCapPagado = max(0, round((float)$amortizacion->capital_pagado - $capRevertir, 2));
-                $nuevoOrdPagado = max(0, round((float)$amortizacion->interes_ordinario_pagado - $ordRevertir, 2));
-                $nuevoMorPagado = max(0, round((float)$amortizacion->interes_moratorio_pagado - $morRevertir, 2));
-                $nuevoSaldoInsoluto = round((float)$amortizacion->saldo_insoluto + $capRevertir, 2);
+                foreach ($cuotas as $detalle) {
+                    $amortizacion = Amortizacion::where('credito_id', $pago->credito_id)
+                        ->where('numero_cuota', $detalle['cuota'])
+                        ->lockForUpdate()
+                        ->first();
 
-                $amortizacion->update([
-                    'capital_pagado'           => $nuevoCapPagado,
-                    'interes_ordinario_pagado' => $nuevoOrdPagado,
-                    'interes_moratorio_pagado' => $nuevoMorPagado,
-                    'saldo_insoluto'           => $nuevoSaldoInsoluto,
-                    'pago_restante'            => round(
-                        ((float)$amortizacion->capital_esperado + (float)$amortizacion->interes_ordinario_esperado)
-                        - ($nuevoCapPagado + $nuevoOrdPagado),
-                        2
-                    ),
-                    'estado'            => ($nuevoCapPagado <= 0 && $nuevoOrdPagado <= 0) ? 'Pendiente' : 'Parcial',
-                    'fecha_ultimo_pago' => null,
-                ]);
+                    if (!$amortizacion) continue;
+
+                    $capRevertir = (float)($detalle['cap'] ?? 0);
+                    $ordRevertir = (float)($detalle['int'] ?? 0);
+                    $morRevertir = (float)($detalle['mor'] ?? 0);
+
+                    $nuevoCapPagado = max(0, round((float)$amortizacion->capital_pagado - $capRevertir, 2));
+                    $nuevoOrdPagado = max(0, round((float)$amortizacion->interes_ordinario_pagado - $ordRevertir, 2));
+                    $nuevoMorPagado = max(0, round((float)$amortizacion->interes_moratorio_pagado - $morRevertir, 2));
+                    $nuevoSaldoInsoluto = round((float)$amortizacion->saldo_insoluto + $capRevertir, 2);
+
+                    $amortizacion->update([
+                        'capital_pagado'           => $nuevoCapPagado,
+                        'interes_ordinario_pagado' => $nuevoOrdPagado,
+                        'interes_moratorio_pagado' => $nuevoMorPagado,
+                        'saldo_insoluto'           => $nuevoSaldoInsoluto,
+                        'pago_restante'            => round(
+                            ((float)$amortizacion->capital_esperado + (float)$amortizacion->interes_ordinario_esperado)
+                            - ($nuevoCapPagado + $nuevoOrdPagado),
+                            2
+                        ),
+                        'estado'            => ($nuevoCapPagado <= 0 && $nuevoOrdPagado <= 0) ? 'Pendiente' : 'Parcial',
+                        'fecha_ultimo_pago' => null,
+                    ]);
+                }
             }
 
             $pago->update([

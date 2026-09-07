@@ -21,6 +21,7 @@ class Pago extends Model
         'aplicado_ordinario',
         'aplicado_capital',
         'cuotas_cubiertas',
+        'snapshot_amortizaciones',
         'referencia',
         'forma_pago',
         'fecha_pago',
@@ -34,6 +35,7 @@ class Pago extends Model
 
     protected $casts = [
         'cuotas_cubiertas'   => 'array',
+        'snapshot_amortizaciones' => 'array',
         'fecha_pago'         => 'date',
         'monto_recibido'     => 'decimal:2',
         'aplicado_mora'      => 'decimal:2',
