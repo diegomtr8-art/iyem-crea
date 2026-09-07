@@ -12,6 +12,7 @@ use Illuminate\Support\Collection;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Carbon\Carbon;
+use EstadoCredito;
 
 class PagoController extends Controller
 {
@@ -308,11 +309,11 @@ class PagoController extends Controller
                 ->whereNotIn('estado', ['Pagado', 'Condonado', 'Reestructurada', 'Gracia']);
 
             if ($activasQuery()->count() === 0) {
-                $credito->update(['estatus' => 'Liquidado']);
+                $credito->update([EstadoCredito::LIQUIDADO]);
             } elseif ($activasQuery()->where('fecha_vencimiento', '<', now())->exists()) {
-                $credito->update(['estatus' => 'Moroso']);
+                $credito->update([EstadoCredito::MOROSO]);
             } else {
-                $credito->update(['estatus' => 'Activo']);
+                $credito->update([EstadoCredito::ACTIVO]);
             }
 
             return $pago->id;
@@ -584,11 +585,11 @@ class PagoController extends Controller
                 ->whereNotIn('estado', ['Pagado', 'Condonado', 'Reestructurada', 'Gracia']);
 
             if ($activasQuery()->count() === 0) {
-                $credito->update(['estatus' => 'Liquidado']);
+                $credito->update([EstadoCredito::LIQUIDADO]);
             } elseif ($activasQuery()->where('fecha_vencimiento', '<', now())->exists()) {
-                $credito->update(['estatus' => 'Moroso']);
+                $credito->update([EstadoCredito::MOROSO]);
             } else {
-                $credito->update(['estatus' => 'Activo']);
+                $credito->update([EstadoCredito::ACTIVO]);
             }
         });
 

@@ -13,6 +13,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Carbon\Carbon;
+use EstadoCredito;
 
 class AcreditadoController extends Controller
 {
@@ -154,7 +155,7 @@ class AcreditadoController extends Controller
                 'fecha_entrega'          => $validated['fecha_entrega'],
                 'tasa_interes_ordinario' => $tasaOrdinaria,
                 'tasa_interes_moratorio' => $tasaMoratoria,
-                'estatus'                => 'Activo',
+                EstadoCredito::ACTIVO,
             ]);
 
             $monto        = (float) $validated['monto_otorgado'];
