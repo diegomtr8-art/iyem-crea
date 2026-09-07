@@ -8,6 +8,8 @@ use App\Models\Amortizacion;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Collection;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Carbon\Carbon;
 
@@ -98,6 +100,34 @@ class PagoController extends Controller
                 ->lockForUpdate()
                 ->orderBy('numero_cuota', 'asc')
                 ->get();
+
+            // Resumen de lo vencido para las validaciones previas (Ticket 4.3)
+            $resumen = $this->resumenVencido($cuotas, $hoy, $tasaDiaria);
+            $maxLegal = round(
+                $resumen['capitalPendiente'] + $resumen['interesVencido'] + $resumen['moraTotal'],
+                2
+            );
+
+            // Gate 1 — Exceso: nunca puede cobrarse más de capital + intereses vencidos + mora.
+            if ($montoRestante > $maxLegal + 0.01) {
+                throw ValidationException::withMessages([
+                    'monto_recibido' => 'El importe excede el máximo a pagar ($'
+                        . number_format($maxLegal, 2)
+                        . '). El máximo es capital pendiente + intereses vencidos + mora.',
+                ]);
+            }
+
+            // Gate 2 — Mora: primero ponerse al día (cubrir cuotas vencidas).
+            // Mientras exista mora no se permite adelantar, abonar a capital ni liquidar.
+            if ($resumen['moraTotal'] > 0.01) {
+                $costoEstarAlDia = round($resumen['costoEstarAlDia'], 2);
+                if ($montoRestante > $costoEstarAlDia + 0.01) {
+                    throw ValidationException::withMessages([
+                        'monto_recibido' => 'El crédito tiene mora. Primero debe ponerse al día cubriendo '
+                            . 'las cuotas vencidas ($' . number_format($costoEstarAlDia, 2) . ').',
+                    ]);
+                }
+            }
 
             // Snapshot del estado previo de las cuotas pendientes (único conjunto
             // que este pago puede modificar) para permitir una reversión exacta al cancelar.
@@ -468,5 +498,61 @@ class PagoController extends Controller
         $pdf->loadView('pdf.recibo-pago', ['pago' => $pago]);
         $pdf->setPaper('letter', 'portrait');
         return $pdf->download("Recibo_{$pago->folio}.pdf");
+    }
+
+    /**
+     * Mora real de una cuota vencida (RO Cláusula 7a): días > 5 sobre saldo vencido.
+     */
+    private function moraFilaPara(Carbon $hoy, Carbon $vencimiento, float $saldoVencido, float $tasaDiaria): float
+    {
+        if ($hoy->gt($vencimiento)) {
+            // Carbon 3: diffInDays() con signo; vencimiento como receptor da días positivos.
+            $dias = (int) $vencimiento->diffInDays($hoy);
+            if ($dias > 5) {
+                return round($saldoVencido * $tasaDiaria * $dias, 2);
+            }
+        }
+        return 0.0;
+    }
+
+    /**
+     * Resumen de lo vencido sobre las cuotas pendientes para validar el pago.
+     * - moraTotal: mora real (días > 5) de cuotas vencidas.
+     * - interesVencido: interés pendiente de cuotas con vencimiento <= hoy.
+     * - capitalPendiente: capital pendiente de todas las cuotas activas.
+     * - costoEstarAlDia: mora + interés + capital de las cuotas vencidas.
+     */
+    private function resumenVencido(Collection $cuotas, Carbon $hoy, float $tasaDiaria): array
+    {
+        $moraTotal       = 0.0;
+        $interesVencido  = 0.0;
+        $capitalPendiente = 0.0;
+        $costoEstarAlDia = 0.0;
+
+        foreach ($cuotas as $cuota) {
+            $capitalPend = round((float) $cuota->capital_esperado - (float) $cuota->capital_pagado, 2);
+            $interesPend = round(
+                (float) $cuota->interes_ordinario_esperado - (float) $cuota->interes_ordinario_pagado,
+                2
+            );
+            $capitalPendiente += $capitalPend;
+
+            $vencimiento = Carbon::parse($cuota->fecha_vencimiento)->startOfDay();
+            if ($vencimiento->lte($hoy)) {
+                $saldoVencido = round(max(0, (float) $cuota->saldo_insoluto - (float) $cuota->capital_pagado), 2);
+                $mora         = $this->moraFilaPara($hoy, $vencimiento, $saldoVencido, $tasaDiaria);
+
+                $moraTotal       += $mora;
+                $interesVencido  += $interesPend;
+                $costoEstarAlDia += $mora + $interesPend + $capitalPend;
+            }
+        }
+
+        return [
+            'moraTotal'        => round($moraTotal, 2),
+            'interesVencido'   => round($interesVencido, 2),
+            'capitalPendiente' => round($capitalPendiente, 2),
+            'costoEstarAlDia'  => round($costoEstarAlDia, 2),
+        ];
     }
 }
