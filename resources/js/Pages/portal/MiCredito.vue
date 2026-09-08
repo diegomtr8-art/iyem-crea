@@ -441,16 +441,16 @@ const enviarComprobacion = () => {
                     v-if="mostrarLiquidacion" 
                     class="fixed inset-0 z-[9999] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto"
                 >
-                    <div class="relative w-full max-w-md my-auto rounded-3xl bg-zinc-900 border border-zinc-800 p-6 shadow-2xl overflow-hidden flex flex-col max-h-[85vh]">
+                    <div class="relative w-full max-w-md my-auto rounded-3xl bg-white dark:bg-zinc-900 border border-slate-100 dark:border-zinc-800 p-6 shadow-2xl overflow-hidden flex flex-col max-h-[85vh]">
                         
                         <!-- Header Fijo -->
-                        <div class="flex items-center justify-between pb-4 mb-4 border-b border-zinc-800 shrink-0">
-                            <h3 class="font-black text-white flex items-center gap-2 text-base sm:text-lg">
+                        <div class="flex items-center justify-between pb-4 mb-4 border-b border-slate-100 dark:border-zinc-800 shrink-0">
+                            <h3 class="font-black text-slate-900 dark:text-white flex items-center gap-2 text-base sm:text-lg">
                                 <Calculator size="20" class="text-blue-500" /> Liquidación Anticipada
                             </h3>
                             <button 
                                 @click="mostrarLiquidacion = false" 
-                                class="text-zinc-400 hover:text-white transition-colors p-1"
+                                class="text-slate-400 dark:text-zinc-400 hover:text-slate-700 dark:hover:text-white transition-colors p-1"
                             >
                                 <X size="20" />
                             </button>
@@ -459,37 +459,37 @@ const enviarComprobacion = () => {
                         <!-- Cuerpos de datos con Scroll Interno -->
                         <div class="overflow-y-auto pr-1 space-y-4">
                             
-                            <div v-if="cargandoLiquidacion" class="text-center py-8 text-zinc-400">
+                            <div v-if="cargandoLiquidacion" class="text-center py-8 text-slate-500 dark:text-zinc-400">
                                 <div class="animate-spin w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full mx-auto mb-3"></div>
                                 <p class="text-sm">Calculando...</p>
                             </div>
 
                             <div v-else-if="liquidacion" class="space-y-4">
-                                <p class="text-xs text-zinc-400">Monto calculado al día de hoy ({{ liquidacion.fecha_calculo }})</p>
+                                <p class="text-xs text-slate-500 dark:text-zinc-400">Monto calculado al día de hoy ({{ liquidacion.fecha_calculo }})</p>
 
                                 <div class="space-y-1">
-                                    <div class="flex justify-between py-2 border-b border-zinc-800">
-                                        <span class="text-sm text-zinc-300">Capital pendiente</span>
-                                        <span class="font-bold text-white">${{ fmt(liquidacion.capital_pendiente) }}</span>
+                                    <div class="flex justify-between py-2 border-b border-slate-100 dark:border-zinc-800">
+                                        <span class="text-sm text-slate-600 dark:text-zinc-300">Capital pendiente</span>
+                                        <span class="font-bold text-slate-900 dark:text-white">${{ fmt(liquidacion.capital_pendiente) }}</span>
                                     </div>
-                                    <div class="flex justify-between py-2 border-b border-zinc-800">
-                                        <span class="text-sm text-zinc-300">Interés proyectado</span>
+                                    <div class="flex justify-between py-2 border-b border-slate-100 dark:border-zinc-800">
+                                        <span class="text-sm text-slate-600 dark:text-zinc-300">Interés proyectado</span>
                                         <span class="font-bold text-amber-500">${{ fmt(liquidacion.interes_proyectado) }}</span>
                                     </div>
-                                    <div class="flex justify-between py-2 border-b border-zinc-800">
-                                        <span class="text-sm text-zinc-300">Mora acumulada</span>
+                                    <div class="flex justify-between py-2 border-b border-slate-100 dark:border-zinc-800">
+                                        <span class="text-sm text-slate-600 dark:text-zinc-300">Mora acumulada</span>
                                         <span class="font-bold text-red-500">${{ fmt(liquidacion.mora_acumulada) }}</span>
                                     </div>
                                 </div>
 
-                                <div class="bg-zinc-800/80 border border-zinc-700/50 text-white rounded-xl p-4 text-center">
-                                    <p class="text-[10px] text-zinc-400 uppercase tracking-wider mb-1">Total a Liquidar Hoy</p>
+                                <div class="bg-slate-900 dark:bg-zinc-800 border border-slate-800 dark:border-zinc-700/50 text-white rounded-xl p-4 text-center">
+                                    <p class="text-[10px] text-slate-400 dark:text-zinc-400 uppercase tracking-wider mb-1">Total a Liquidar Hoy</p>
                                     <p class="text-2xl sm:text-3xl font-black text-white">${{ fmt(liquidacion.total_liquidacion) }}</p>
-                                    <p class="text-[11px] text-zinc-400 mt-1">Este cálculo puede variar si no liquidas el mismo día.</p>
+                                    <p class="text-[11px] text-slate-400 dark:text-zinc-400 mt-1">Este cálculo puede variar si no liquidas el mismo día.</p>
                                 </div>
 
-                                <p class="text-xs text-center text-zinc-400 pt-1">
-                                    Para liquidar, acude a nuestras oficinas o llama al <strong class="text-zinc-200">999 941 2170</strong>
+                                <p class="text-xs text-center text-slate-500 dark:text-zinc-400 pt-1">
+                                    Para liquidar, acude a nuestras oficinas o llama al <strong class="text-slate-800 dark:text-zinc-200">999 941 2170</strong>
                                 </p>
                             </div>
 
