@@ -264,15 +264,24 @@ class AcreditadoController extends Controller
 
     public function edit(Acreditado $acreditado)
     {
-        $modalidades = ModalidadCrea::orderBy('nombre')->get(['id', 'nombre']);
+        //Se añaden solicitud (para campo teléfono) y regimenes sat
+        $solicitud = SolicitudCredito::where('acreditado_id', $acreditado->id)
+            ->with(['user'])
+            ->first();
+        $credito = $acreditado->creditos->first();
         return Inertia::render('Acreditados/Edit', [
             'acreditado'  => $acreditado->load('creditos'),
-            'modalidades' => $modalidades,
+            'solicitud' => $solicitud,
+            'regimenes_sat' => $this->regimenesFiscalesSat(),
         ]);
     }
 
     public function update(Request $request, Acreditado $acreditado)
     {
+        //Se define solicitud para el campo de telefono
+        $solicitud = SolicitudCredito::where('acreditado_id', $acreditado->id)
+            ->with(['user']);
+
         $validated = $request->validate([
             'nombre_completo'  => 'required|string|max:255',
             'municipio'        => 'required|string',
@@ -283,19 +292,29 @@ class AcreditadoController extends Controller
             'domicilio_fiscal' => 'nullable|string|max:500',
             'regimen_fiscal'   => 'nullable|string',
             'clave_pago'       => 'nullable|string',
+            'telefono'         => 'nullable|string|max:20',
         ]);
-
-        $acreditado->update([
-            'nombre_completo'     => $validated['nombre_completo'],
-            'rfc'                 => strtoupper($validated['rfc'] ?? ''),
-            'curp'                => strtoupper($validated['curp'] ?? ''),
-            'municipio'           => $validated['municipio'],
-            'sexo'                => $validated['sexo'],
-            'direccion_fiscal'    => $validated['domicilio_fiscal'],
-            'correo'              => $validated['correo'],
-            'regimen'             => $validated['regimen_fiscal'],
-            'clave_personalizada' => $validated['clave_pago'],
-        ]);
+        
+        //Se envuelven los updates de ambas tablas en un DB::transaction para poder actualizar ambas
+        DB::transaction(function () use ($validated, $acreditado, $solicitud) {
+            $acreditado->update([
+                'nombre_completo'     => $validated['nombre_completo'],
+                'rfc'                 => strtoupper($validated['rfc'] ?? ''),
+                'curp'                => strtoupper($validated['curp'] ?? ''),
+                'municipio'           => $validated['municipio'],
+                'sexo'                => $validated['sexo'],
+                'direccion_fiscal'    => $validated['domicilio_fiscal'],
+                'correo'              => $validated['correo'],
+                'regimen'             => $validated['regimen_fiscal'],
+                'clave_personalizada' => $validated['clave_pago'],
+            ]);
+            
+            // Se actualiza telefono en la tabla de update
+            $solicitud->update([
+                'telefono' => $validated['telefono'],    
+            ]);
+        });
+        
 
         return redirect()->route('acreditados.show', $acreditado->id)
             ->with('success', 'Expediente actualizado.');

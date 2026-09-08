@@ -262,8 +262,9 @@ const enviarComprobacion = () => {
                         <TrendingUp size="18" class="text-red-700" />
                         <p class="text-xs font-bold uppercase tracking-wider text-slate-400">Tasa Ordinaria</p>
                     </div>
+                    <!--Tasa corregida-->
                     <p class="text-3xl font-black text-slate-900 dark:text-white">{{ credito.tasa_interes_ordinario }}%</p>
-                    <p class="text-slate-500 dark:text-zinc-400 text-sm mt-1">mensual</p>
+                    <p class="text-slate-500 dark:text-zinc-400 text-sm mt-1">anual</p>
                 </div>
             </div>
 

@@ -101,6 +101,9 @@ Route::middleware(['auth', 'verified', 'operativo'])->group(function () {
     Route::resource('acreditados', AcreditadoController::class);
     Route::get('acreditados/{acreditado}/expediente', [AcreditadoController::class, 'expediente'])->name('acreditados.expediente');
     Route::get('acreditados/{acreditado}/operaciones', [OperacionesController::class, 'index'])->name('operaciones.index');
+    Route::get('acreditados/{acreditado}/edit', [AcreditadoController::class,'edit'])->name('acreditados.edit');
+    Route::put('acreditados/{acreditado}', [AcreditadoController::class,'update'])->name('acreditados.update');
+    
 
     // CONDONACIÓN, DICTAMEN Y NUEVOS DOCUMENTOS PDF
     Route::post('creditos/{credito}/condonar', [CreditoController::class, 'condonar'])->name('creditos.condonar');
