@@ -316,9 +316,10 @@ class PagoController extends Controller
     }
 
     /**
-     * Aplica sobrante directamente al capital de las cuotas pendientes.
-     * Reducir Cuota: recalcula cuota fija con mismo plazo.
-     * Reducir Plazo: elimina cuotas desde el final hasta agotar el sobrante.
+     * Aplica el sobrante directamente al capital de las cuotas pendientes (Ticket 4.3).
+     * Reducir Cuota: recalcula la tabla con una cuota fija uniforme y mismo plazo.
+     * Reducir Plazo: mantiene la cuota vigente y acorta el plazo con la fórmula
+     * n' = -ln(1 - S'·i/C) / ln(1 + i); las cuotas fuera del nuevo término se eliminan.
      */
     private function aplicarAbonoCapital(Credito $credito, float $sobrante, string $tipo, Carbon $hoy): void
     {
@@ -342,37 +343,91 @@ class PagoController extends Controller
         $numCuotas   = $pendientes->count();
 
         if ($tipo === 'Reducir Plazo') {
-            // Eliminar cuotas desde el final hasta agotar el sobrante
-            $resto = $sobrante;
-            foreach ($pendientes->reverse() as $cuota) {
-                if ($resto < 0.01) break;
+            // Reducir Plazo (Ticket 4.3): el abono se aplica a capital y se mantiene la
+            // cuota fija vigente, por lo que el crédito termina antes.
+            // n' = -ln(1 - S'·i/C) / ln(1 + i)
+            $S = $nuevoCapitalTotal;
+            $C = round((float) $pendientes->first()->cuota_fija, 2);
+            if ($C <= 0) return;
 
-                $capitalCuota = round((float)$cuota->capital_esperado - (float)$cuota->capital_pagado, 2);
-                if ($resto >= $capitalCuota) {
-                    $resto -= $capitalCuota;
+            $mesesTeoricos = $tasaMensual > 0
+                ? -log(1 - $S * $tasaMensual / $C) / log(1 + $tasaMensual)
+                : $S / $C;
+
+            // Cuotas completas que se siguen pagando a la cuota vigente.
+            $cuotasCompletas = max(0, (int) floor($mesesTeoricos + 1e-9));
+
+            // Remanente real (sin redondeo mensual) tras las cuotas completas y su
+            // cuota final con un mes de interés, tal como en el documento.
+            $cuotaFinalObjetivo = null;
+            if ($tasaMensual > 0) {
+                $remanenteReal = $S * pow(1 + $tasaMensual, $cuotasCompletas)
+                    - $C * ((pow(1 + $tasaMensual, $cuotasCompletas) - 1) / $tasaMensual);
+                $cuotaFinalObjetivo = round($remanenteReal * (1 + $tasaMensual), 2);
+            }
+
+            $remanente = $S;
+            $indice    = 0;
+
+            foreach ($pendientes as $cuota) {
+                $indice++;
+
+                // Cuotas fuera del nuevo término: se eliminan de la obligación.
+                if ($indice > $cuotasCompletas && $remanente < 0.01) {
                     $cuota->update([
-                        'capital_pagado'           => $cuota->capital_esperado,
-                        'interes_ordinario_pagado' => $cuota->interes_ordinario_esperado,
-                        'pago_restante'            => 0,
-                        'estado'                   => 'Pagado',
-                        'fecha_ultimo_pago'        => $hoy,
-                        'observaciones'            => 'Liquidada por abono anticipado a capital',
+                        'saldo_insoluto'             => 0,
+                        'capital_esperado'           => 0,
+                        'interes_ordinario_esperado' => 0,
+                        'cuota_fija'                 => 0,
+                        'pago_restante'              => 0,
+                        'estado'                     => 'Pagado',
+                        'fecha_ultimo_pago'          => null,
+                        'observaciones'              => 'Cuota eliminada por reducción de plazo',
                     ]);
-                } else {
-                    // Abono parcial a esta cuota
-                    $nuevoCapPagado = round((float)$cuota->capital_pagado + $resto, 2);
-                    $cuota->update([
-                        'capital_pagado' => $nuevoCapPagado,
-                        'saldo_insoluto' => round(max(0, (float)$cuota->saldo_insoluto - $resto), 2),
-                        'pago_restante'  => max(0, round(
-                            ((float)$cuota->capital_esperado + (float)$cuota->interes_ordinario_esperado)
-                            - ($nuevoCapPagado + (float)$cuota->interes_ordinario_pagado),
-                            2
-                        )),
-                        'estado' => 'Parcial',
-                    ]);
-                    $resto = 0;
+                    continue;
                 }
+
+                if ($indice <= $cuotasCompletas) {
+                    // Cuota completa: se conserva la cuota fija vigente.
+                    $interes = $tasaMensual > 0 ? round($remanente * $tasaMensual, 2) : 0;
+                    $capital = $C - $interes;
+
+                    // Por redondeo el remanente puede no alcanzar para una cuota completa.
+                    if ($capital <= 0 || $capital > round($remanente, 2)) {
+                        $capital  = round($remanente, 2);
+                        $interes  = $tasaMensual > 0 ? round($remanente * $tasaMensual, 2) : 0;
+                        $cuotaFija = round($capital + $interes, 2);
+                    } else {
+                        $cuotaFija = $C;
+                    }
+                } else {
+                    // Cuota final: absorbe el remanente. Se usa la cuota final del
+                    // documento (remanente real + un mes de interés) para que cuadren
+                    // los totales de la spec.
+                    $capital = round($remanente, 2);
+                    if ($cuotaFinalObjetivo !== null && $cuotaFinalObjetivo >= $capital) {
+                        $cuotaFija = $cuotaFinalObjetivo;
+                        $interes   = $cuotaFija - $capital;
+                    } else {
+                        $interes   = $tasaMensual > 0 ? round($capital * $tasaMensual, 2) : 0;
+                        $cuotaFija = round($capital + $interes, 2);
+                    }
+                }
+
+                $cuota->update([
+                    'saldo_insoluto'             => round($remanente, 2),
+                    'capital_esperado'           => round($capital, 2),
+                    'interes_ordinario_esperado' => round($interes, 2),
+                    'cuota_fija'                 => round($cuotaFija, 2),
+                    'pago_restante'              => max(0, round(
+                        $cuotaFija
+                        - ((float) $cuota->capital_pagado + (float) $cuota->interes_ordinario_pagado),
+                        2
+                    )),
+                    // Preservar capital_pagado e interes_ordinario_pagado existentes
+                ]);
+
+                $remanente -= $capital;
             }
         } else {
             // Reducir Cuota (Ticket 4.3): recalcular con el saldo nuevo y mismo plazo.
