@@ -38,4 +38,24 @@ class Amortizacion extends Model
     {
         return $this->belongsTo(Credito::class);
     }
+
+    //Método de casts
+    protected function casts(): array 
+    {
+        return [
+            'fecha_vencimiento' => 'date:d/m/Y', //se específica el formato de las fechas
+            'saldo_insoluto' => 'decimal:2',
+            'capital_esperado' => 'decimal:2',
+            'interes_ordinario_esperado' => 'decimal:2',
+            'cuota_fija' => 'decimal:2',
+            'capital_pagado' => 'decimal:2',
+            'interes_ordinario_pagado' => 'decimal:2',
+            'interes_moratorio_pagado' => 'decimal:2',
+            'interes_moratorio_generado' => 'decimal:2',
+            'comision_pagada' => 'decimal:2',
+            'moratorio_acumulado' => 'decimal:2',
+            'pago_restante' => 'decimal:2',
+            'fecha_ultimo_pago' => 'date:d/m/Y',
+        ];
+    }   
 }
