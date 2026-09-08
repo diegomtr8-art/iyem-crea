@@ -375,28 +375,56 @@ class PagoController extends Controller
                 }
             }
         } else {
-            // Reducir Cuota: nueva cuota fija con el capital restante y mismos períodos
-            $nuevaCuotaFija = ($tasaMensual > 0 && $numCuotas > 0)
-                ? $nuevoCapitalTotal * ($tasaMensual / (1 - pow(1 + $tasaMensual, -$numCuotas)))
-                : ($numCuotas > 0 ? $nuevoCapitalTotal / $numCuotas : 0);
+            // Reducir Cuota (Ticket 4.3): recalcular con el saldo nuevo y mismo plazo.
+            // S' = nuevoCapitalTotal, n' = numCuotas.
+            $cuotaUniforme = ($tasaMensual > 0 && $numCuotas > 0)
+                ? round($nuevoCapitalTotal * ($tasaMensual / (1 - pow(1 + $tasaMensual, -$numCuotas))), 2)
+                : round($nuevoCapitalTotal / $numCuotas, 2);
 
             $saldoRestante = $nuevoCapitalTotal;
+            $indiceFinal   = $pendientes->count() - 1;
 
             foreach ($pendientes as $i => $cuota) {
-                $esFinal    = ($i === $pendientes->count() - 1);
-                $interesMes = round($saldoRestante * $tasaMensual, 2);
-                $capitalMes = $esFinal
-                    ? round($saldoRestante, 2)
-                    : round($nuevaCuotaFija - $interesMes, 2);
+                $esFinal = ($i === $indiceFinal);
+
+                if ($tasaMensual > 0) {
+                    // Amortización francesa con cuota uniforme: la última fila absorbe
+                    // el remanente de capital pero conserva la misma cuota.
+                    if ($esFinal) {
+                        $capitalMes  = round($saldoRestante, 2);
+                        $interesMes  = $cuotaUniforme - $capitalMes;
+                        $cuotaFijaMes = $cuotaUniforme;
+                        // Redondeo atípico: si el remanente excediera la cuota, se cae a
+                        // interés normal (no debería ocurrir con el número correcto de meses).
+                        if ($interesMes < 0) {
+                            $interesMes  = round($saldoRestante * $tasaMensual, 2);
+                            $cuotaFijaMes = round($capitalMes + $interesMes, 2);
+                        }
+                    } else {
+                        $interesMes  = round($saldoRestante * $tasaMensual, 2);
+                        $capitalMes  = $cuotaUniforme - $interesMes;
+                        $cuotaFijaMes = $cuotaUniforme;
+                    }
+                } else {
+                    // Sin interés (Artesanal): capital en partes iguales; la última
+                    // absorbe el residuo de centavos. Interés siempre $0.
+                    $interesMes = 0;
+                    if ($esFinal) {
+                        $capitalMes = round($saldoRestante, 2);
+                    } else {
+                        $capitalMes = $cuotaUniforme;
+                    }
+                    $cuotaFijaMes = round($capitalMes, 2);
+                }
 
                 $cuota->update([
                     'saldo_insoluto'             => round($saldoRestante, 2),
-                    'capital_esperado'           => $capitalMes,
-                    'interes_ordinario_esperado' => $interesMes,
-                    'cuota_fija'                 => round($capitalMes + $interesMes, 2),
+                    'capital_esperado'           => round($capitalMes, 2),
+                    'interes_ordinario_esperado' => round($interesMes, 2),
+                    'cuota_fija'                 => round($cuotaFijaMes, 2),
                     'pago_restante'              => max(0, round(
-                        ($capitalMes + $interesMes)
-                        - ((float)$cuota->capital_pagado + (float)$cuota->interes_ordinario_pagado),
+                        $cuotaFijaMes
+                        - ((float) $cuota->capital_pagado + (float) $cuota->interes_ordinario_pagado),
                         2
                     )),
                     // Preservar capital_pagado e interes_ordinario_pagado existentes
