@@ -82,10 +82,10 @@ class PagoController extends Controller
             $montoRestante = (float) $validated['monto_recibido'];
             $tasaDiaria    = ($credito->tasaMoratoriaEfectiva() / 100) / 360;
 
-            $capitalPendienteTotal = $credito->amortizaciones()
+            $capitalPendienteTotal = round((float) $credito->amortizaciones()
                 ->whereNotIn('estado', ['Pagado', 'Condonado', 'Reestructurada', 'Gracia'])
                 ->lockForUpdate()
-                ->sum(DB::raw('capital_esperado - capital_pagado'));
+                ->sum(DB::raw('capital_esperado - capital_pagado')), 2);
 
             $esLiquidacionTotal = ($montoRestante >= ($capitalPendienteTotal - 0.01));
             $interesCondonado   = 0;
@@ -108,8 +108,19 @@ class PagoController extends Controller
                 2
             );
 
-            // Gate 1 — Exceso: nunca puede cobrarse más de capital + intereses vencidos + mora.
-            if ($montoRestante > $maxLegal + 0.01) {
+            // Gate 1 — Exceso. Dos topes según el tipo de pago:
+            //  - Liquidación: capital pendiente + mora (el interés futuro se condona).
+            //  - Pago normal: capital pendiente + intereses vencidos + mora.
+            if ($esLiquidacionTotal) {
+                $topeLiquidacion = round($resumen['capitalPendiente'] + $resumen['moraTotal'], 2);
+                if ($montoRestante > $topeLiquidacion + 0.01) {
+                    throw ValidationException::withMessages([
+                        'monto_recibido' => 'El importe excede el monto de liquidación ($'
+                            . number_format($topeLiquidacion, 2)
+                            . '). En liquidación el tope es capital pendiente + mora (el interés futuro se condona).',
+                    ]);
+                }
+            } elseif ($montoRestante > $maxLegal + 0.01) {
                 throw ValidationException::withMessages([
                     'monto_recibido' => 'El importe excede el máximo a pagar ($'
                         . number_format($maxLegal, 2)
