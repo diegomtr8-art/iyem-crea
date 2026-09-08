@@ -291,6 +291,13 @@ const submit = () => {
                                 </div>
                             </div>
 
+                            <div v-if="Object.keys(form.errors).length" class="mt-6 space-y-2">
+                                <p v-for="(msg, campo) in form.errors" :key="campo"
+                                    class="text-xs font-bold text-red-300 bg-red-600/15 border border-red-500/40 rounded-xl px-3 py-2">
+                                    {{ msg }}
+                                </p>
+                            </div>
+
                             <button @click="submit" :disabled="form.monto_recibido <= 0 || form.processing"
                                 class="w-full mt-10 py-5 bg-red-600 hover:bg-red-700 disabled:bg-zinc-800 text-white rounded-2xl font-black uppercase text-xs tracking-widest transition-all active:scale-95 shadow-xl shadow-red-600/20">
                                 {{ form.processing ? 'Procesando...' : 'Confirmar Registro' }}

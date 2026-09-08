@@ -115,16 +115,16 @@ class PagoController extends Controller
                 $topeLiquidacion = round($resumen['capitalPendiente'] + $resumen['moraTotal'], 2);
                 if ($montoRestante > $topeLiquidacion + 0.01) {
                     throw ValidationException::withMessages([
-                        'monto_recibido' => 'El importe excede el monto de liquidación ($'
+                        'monto_recibido' => 'El importe excede el monto de liquidación del crédito ($'
                             . number_format($topeLiquidacion, 2)
-                            . '). En liquidación el tope es capital pendiente + mora (el interés futuro se condona).',
+                            . '). Verifique la cantidad: no se puede cobrar más de lo que adeuda el ciudadano.',
                     ]);
                 }
             } elseif ($montoRestante > $maxLegal + 0.01) {
                 throw ValidationException::withMessages([
-                    'monto_recibido' => 'El importe excede el máximo a pagar ($'
+                    'monto_recibido' => 'El importe excede lo máximo que se puede recibir en este pago ($'
                         . number_format($maxLegal, 2)
-                        . '). El máximo es capital pendiente + intereses vencidos + mora.',
+                        . '). Verifique la cantidad.',
                 ]);
             }
 
@@ -134,8 +134,9 @@ class PagoController extends Controller
                 $costoEstarAlDia = round($resumen['costoEstarAlDia'], 2);
                 if ($montoRestante > $costoEstarAlDia + 0.01) {
                     throw ValidationException::withMessages([
-                        'monto_recibido' => 'El crédito tiene mora. Primero debe ponerse al día cubriendo '
-                            . 'las cuotas vencidas ($' . number_format($costoEstarAlDia, 2) . ').',
+                        'monto_recibido' => 'El crédito tiene mora. Primero debe cubrir las cuotas vencidas ($'
+                            . number_format($costoEstarAlDia, 2)
+                            . ') para ponerse al día; después podrá abonar a capital o liquidar.',
                     ]);
                 }
             }
@@ -158,8 +159,8 @@ class PagoController extends Controller
 
                     if (!in_array($tipoAbono, $opciones, true)) {
                         throw ValidationException::withMessages([
-                            'tipo_abono' => 'El pago deja un sobrante de 1 cuota o más. '
-                                . 'Seleccione cómo aplicarlo: Adelantado / Reducir cuota / Reducir plazo.',
+                            'tipo_abono' => 'El pago deja un sobrante de una cuota o más. '
+                                . 'Seleccione cómo aplicarlo: Adelantado, Reducir cuota o Reducir plazo.',
                         ]);
                     }
 
