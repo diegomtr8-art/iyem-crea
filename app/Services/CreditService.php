@@ -16,7 +16,7 @@ class CreditService
     public function generarTablaAmortizacion(
         Credito $credito,
         float $monto,
-        int $plazo,
+        int $plazo, 
         float $tasaOrdinariaAnual,
         Carbon $fechaInicial,
         string $modalidadNombre
@@ -81,7 +81,8 @@ class CreditService
         $tasaMoratoriaAnual = $fila->credito->tasa_interes_moratorio;
 
         if ($hoy->gt($vencimiento)) {
-            $diasAtraso = $hoy->diffInDays($vencimiento);
+            // Fix Carbon 3 signed diff: vencimiento como receptor da valor positivo para cuotas vencidas (referencia UpdateMoratorio:29).
+            $diasAtraso = $vencimiento->diffInDays($hoy);
 
             // Regla de los 5 días de gracia
             if ($diasAtraso > 5) {

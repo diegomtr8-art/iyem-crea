@@ -7,6 +7,7 @@ use App\Models\ComprobacionUso;
 use App\Models\Credito;
 use Inertia\Inertia;
 use Inertia\Response;
+use Illuminate\Support\Carbon;
 
 class MiCreditoController extends Controller
 {
@@ -35,7 +36,8 @@ class MiCreditoController extends Controller
         $diasMora = 0;
         $mora = 0.0;
         if ($proxima && $proxima->fecha_vencimiento < $hoy) {
-            $diasMora = now()->diffInDays($proxima->fecha_vencimiento);
+            // Portal ciudadano: mismo fix de signo que PagoController. Mantener consistencia con AcreditadoController:238 y UpdateMoratorio:29.
+            $diasMora = (int) Carbon::parse($proxima->fecha_vencimiento)->diffInDays(now());
             if ($diasMora > 5) {
                 $tasaDiaria = ($credito->tasaMoratoriaEfectiva() / 100) / 360;
                 $mora = round((float) $proxima->saldo_insoluto * $tasaDiaria * $diasMora, 2);
