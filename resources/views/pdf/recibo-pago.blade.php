@@ -105,6 +105,32 @@
         </div>
     </div>
 
+    @if(!empty($pago->tipo_abono))
+    <div class="section">
+        <div class="section-title">Opción de Sobrepago</div>
+        <div style="font-size:11px;font-weight:bold;margin-bottom:6px">
+            {{ $pago->tipo_abono }}
+        </div>
+        @if($pago->sobrante_aplicado)
+        <div style="font-size:10px;margin-bottom:4px">
+            Sobrante aplicado a capital: <strong>${{ number_format((float)$pago->sobrante_aplicado, 2) }}</strong>
+        </div>
+        @endif
+        @if($pago->tipo_abono === 'Reducir Cuota' && !empty($resultado_abono['cuota_nueva']))
+        <div style="font-size:10px">
+            Nueva cuota: <strong>${{ number_format((float)$resultado_abono['cuota_nueva'], 2) }}</strong>
+        </div>
+        @elseif($pago->tipo_abono === 'Reducir Plazo' && array_key_exists('cuotas_completas', $resultado_abono ?? []))
+        <div style="font-size:10px">
+            Quedan <strong>{{ $resultado_abono['cuotas_completas'] }}</strong> cuotas
+            @if(!empty($resultado_abono['cuota_final']))
+                y una final de <strong>${{ number_format((float)$resultado_abono['cuota_final'], 2) }}</strong>
+            @endif
+        </div>
+        @endif
+    </div>
+    @endif
+
     @if(!empty($pago->cuotas_cubiertas))
     <div class="section">
         <div class="section-title">Cuotas Afectadas</div>

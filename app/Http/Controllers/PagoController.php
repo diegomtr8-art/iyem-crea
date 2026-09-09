@@ -610,6 +610,9 @@ class PagoController extends Controller
                 'aplicado_mora'      => (float)$pago->aplicado_mora,
                 'aplicado_ordinario' => (float)$pago->aplicado_ordinario,
                 'aplicado_capital'   => (float)$pago->aplicado_capital,
+                'tipo_abono'         => $pago->tipo_abono,
+                'sobrante_aplicado'  => $pago->sobrante_aplicado !== null ? (float)$pago->sobrante_aplicado : null,
+                'resultado_abono'    => $this->resumenAbonoPago($pago),
                 'cuotas_cubiertas'   => $pago->cuotas_cubiertas ?? [],
                 'observaciones'      => $pago->observaciones,
                 'registrado_por'     => $pago->cajero?->name ?? 'Sistema',
@@ -632,9 +635,51 @@ class PagoController extends Controller
     {
         $pago->load(['acreditado', 'cajero', 'credito.modalidad']);
         $pdf = app('dompdf.wrapper');
-        $pdf->loadView('pdf.recibo-pago', ['pago' => $pago]);
+        $pdf->loadView('pdf.recibo-pago', [
+            'pago'            => $pago,
+            'resultado_abono' => $this->resumenAbonoPago($pago),
+        ]);
         $pdf->setPaper('letter', 'portrait');
         return $pdf->download("Recibo_{$pago->folio}.pdf");
+    }
+
+    /**
+     * Resultado de un abono a capital (B/C) para mostrarlo en el comprobante,
+     * leído de las amortizaciones pendientes del crédito tras el pago.
+     */
+    private function resumenAbonoPago(Pago $pago): array
+    {
+        if (!in_array($pago->tipo_abono, ['Reducir Cuota', 'Reducir Plazo'], true)) {
+            return [];
+        }
+
+        $pendientes = $pago->credito?->amortizaciones()
+            ->whereNotIn('estado', ['Pagado', 'Condonado', 'Reestructurada', 'Gracia'])
+            ->orderBy('numero_cuota', 'asc')
+            ->get();
+
+        if ($pendientes === null || $pendientes->isEmpty()) {
+            return [];
+        }
+
+        $cuotaVigente = round((float) $pendientes->first()->cuota_fija, 2);
+
+        if ($pago->tipo_abono === 'Reducir Cuota') {
+            // Con Reducir cuota todas las pendientes conservan la misma cuota.
+            return ['cuota_nueva' => $cuotaVigente];
+        }
+
+        // Reducir plazo: primeras cuotas a la cuota vigente + una final más chica.
+        $completas = $pendientes->filter(fn($c) => abs((float) $c->cuota_fija - $cuotaVigente) < 0.005)->count();
+        $final     = $pendientes->last();
+        $cuotaFinal = ($final && abs((float) $final->cuota_fija - $cuotaVigente) >= 0.005)
+            ? round((float) $final->cuota_fija, 2)
+            : null;
+
+        return [
+            'cuotas_completas' => $completas,
+            'cuota_final'      => $cuotaFinal,
+        ];
     }
 
     /**

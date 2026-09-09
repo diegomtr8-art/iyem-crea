@@ -64,53 +64,6 @@ const simulacion = computed(() => {
     // Un pago se considera liquidación si cubre el capital pendiente (con margen de error de 1 centavo)
     const esLiquidacionTotal = fondo >= (resumen.capitalPendienteRestante - 0.01);
 
-    props.cuotas_pendientes.forEach(c => {
-        // Si no hay dinero y no es liquidación total (donde el interés se vuelve 0), saltamos
-        if (fondo <= 0 && !esLiquidacionTotal) return;
-
-        const vencimiento = new Date(c.fecha_vencimiento + 'T00:00:00');
-        
-        // 1. Cálculo de Mora (sobre saldo insoluto vencido, RO Cláusula Séptima)
-        let moraFila = 0;
-        if (fechaValor > vencimiento) {
-            const dias = Math.floor((fechaValor - vencimiento) / (1000 * 60 * 60 * 24));
-            if (dias > 5) {
-                const saldoVencido = Math.max(0, parseFloat(c.saldo_vencido) || 0);
-                moraFila = Math.round(saldoVencido * tasaDiaria * dias * 100) / 100;
-            }
-        }
-
-        // 2. Interés (Condonar si es liquidación total y la cuota no ha vencido)
-        let interesFila = parseFloat(c.interes_pendiente) || 0;
-        if (esLiquidacionTotal && vencimiento > fechaValor) {
-            interesFila = 0; 
-        }
-
-        // 3. Aplicación en Cascada (Consumiendo el "fondo")
-        let pMora = Math.min(fondo, moraFila);
-        fondo = Math.max(0, fondo - pMora);
-        
-        let pOrd = Math.min(fondo, interesFila);
-        fondo = Math.max(0, fondo - pOrd);
-        
-        let pCap = Math.min(fondo, parseFloat(c.capital_pendiente) || 0);
-        fondo = Math.max(0, fondo - pCap);
-
-        // Registrar solo si hubo movimiento o si la cuota fue alterada por la liquidación
-        if (pMora > 0 || pOrd > 0 || pCap > 0 || (esLiquidacionTotal && vencimiento > fechaValor)) {
-            resumen.cuotasAfectadas.push({
-                n: c.numero_cuota,
-                mora: pMora,
-                ordinario: pOrd,
-                capital: pCap,
-                liquidada: (pOrd + pCap) >= (interesFila + (parseFloat(c.capital_pendiente) || 0))
-            });
-            resumen.moraTotal += pMora;
-            resumen.ordinarioTotal += pOrd;
-            resumen.capitalTotal += pCap;
-        }
-    });
-
     // --- Reglas de sobrepago (espejo del backend, Ticket 4.3) ---
     const round2 = (v) => Math.round((v + Number.EPSILON) * 100) / 100;
     const montoRecibido = parseFloat(form.monto_recibido) || 0;
@@ -135,6 +88,62 @@ const simulacion = computed(() => {
     const sobranteParcial = !!corriente && !!siguiente
         && !tieneMora && !esLiquidacionTotal
         && sobranteCorriente > 0.01 && sobranteCorriente < siguienteCosto - 0.01;
+
+    // Reducir cuota/plazo: igual que el backend, la cascada se detiene en la cuota
+    // corriente y el sobrante queda disponible como abono a capital.
+    const modoAbono = hayEscenario
+        && (form.tipo_abono === 'Reducir Cuota' || form.tipo_abono === 'Reducir Plazo');
+    const numCorriente = corriente ? corriente.numero_cuota : null;
+
+    for (const c of props.cuotas_pendientes) {
+        // Si no hay dinero y no es liquidación total (donde el interés se vuelve 0), saltamos
+        if (fondo <= 0 && !esLiquidacionTotal) break;
+
+        const vencimiento = new Date(c.fecha_vencimiento + 'T00:00:00');
+
+        // 1. Cálculo de Mora (sobre saldo insoluto vencido, RO Cláusula Séptima)
+        let moraFila = 0;
+        if (fechaValor > vencimiento) {
+            const dias = Math.floor((fechaValor - vencimiento) / (1000 * 60 * 60 * 24));
+            if (dias > 5) {
+                const saldoVencido = Math.max(0, parseFloat(c.saldo_vencido) || 0);
+                moraFila = Math.round(saldoVencido * tasaDiaria * dias * 100) / 100;
+            }
+        }
+
+        // 2. Interés (Condonar si es liquidación total y la cuota no ha vencido)
+        let interesFila = parseFloat(c.interes_pendiente) || 0;
+        if (esLiquidacionTotal && vencimiento > fechaValor) {
+            interesFila = 0;
+        }
+
+        // 3. Aplicación en Cascada (Consumiendo el "fondo")
+        let pMora = Math.min(fondo, moraFila);
+        fondo = Math.max(0, fondo - pMora);
+
+        let pOrd = Math.min(fondo, interesFila);
+        fondo = Math.max(0, fondo - pOrd);
+
+        let pCap = Math.min(fondo, parseFloat(c.capital_pendiente) || 0);
+        fondo = Math.max(0, fondo - pCap);
+
+        // Registrar solo si hubo movimiento o si la cuota fue alterada por la liquidación
+        if (pMora > 0 || pOrd > 0 || pCap > 0 || (esLiquidacionTotal && vencimiento > fechaValor)) {
+            resumen.cuotasAfectadas.push({
+                n: c.numero_cuota,
+                mora: pMora,
+                ordinario: pOrd,
+                capital: pCap,
+                liquidada: (pOrd + pCap) >= (interesFila + (parseFloat(c.capital_pendiente) || 0))
+            });
+            resumen.moraTotal += pMora;
+            resumen.ordinarioTotal += pOrd;
+            resumen.capitalTotal += pCap;
+        }
+
+        // En Reducir cuota/plazo no se pre-pagan cuotas siguientes.
+        if (modoAbono && numCorriente !== null && c.numero_cuota === numCorriente) break;
+    }
 
     // Preview de las opciones B/C (orientativo; el backend es la fuente de verdad)
     const preview = { reducirCuota: null, plazoFull: null, plazoFinal: null };
@@ -165,26 +174,17 @@ const simulacion = computed(() => {
         }
     }
 
-    // Modo abono (B/C): el sobrante se aplica a capital, no se pre-pagan cuotas futuras.
-    // El desglose debe reflejar solo la cuota corriente + el sobrante a capital.
-    const modoAbono = hayEscenario
-        && (form.tipo_abono === 'Reducir Cuota' || form.tipo_abono === 'Reducir Plazo');
+    // En Reducir cuota/plazo el sobrante que quedó (fondo) va a capital.
+    const sobranteACapital = modoAbono ? Math.max(0, round2(fondo)) : 0;
 
-    const numCorriente = corriente ? corriente.numero_cuota : null;
-    const desgloseItems = (modoAbono && numCorriente !== null)
-        ? resumen.cuotasAfectadas.filter((it) => it.n === numCorriente)
-        : resumen.cuotasAfectadas;
+    // El desglose ya contiene solo la cuota corriente en modo abono (el bucle se detiene ahí).
+    const desgloseItems = resumen.cuotasAfectadas;
 
-    const baseDesglose = desgloseItems.reduce(
-        (acc, it) => ({ mora: acc.mora + it.mora, ord: acc.ordinario + it.ordinario, cap: acc.capital + it.capital }),
-        { mora: 0, ord: 0, cap: 0 }
-    );
-
-    const sobranteACapital = modoAbono ? sobranteCorriente : 0;
-
-    const displayCapital  = modoAbono ? round2(baseDesglose.cap + sobranteACapital) : resumen.capitalTotal;
-    const displayOrdinario = modoAbono ? baseDesglose.ord : resumen.ordinarioTotal;
-    const displayMora     = modoAbono ? baseDesglose.mora : resumen.moraTotal;
+    // Totales: en modo abono el "sobrante a capital" se suma al capital aplicado.
+    const displayCapital  = modoAbono ? round2(resumen.capitalTotal + sobranteACapital) : resumen.capitalTotal;
+    const displayOrdinario = resumen.ordinarioTotal;
+    const displayMora     = resumen.moraTotal;
+    const displayBase     = modoAbono ? round2(resumen.capitalTotal + resumen.ordinarioTotal) : round2(displayCapital + displayOrdinario);
 
     return { 
         ...resumen, 
@@ -194,7 +194,7 @@ const simulacion = computed(() => {
         preview,
         modoAbono, sobranteACapital,
         desgloseItems,
-        displayCapital, displayOrdinario, displayMora,
+        displayCapital, displayOrdinario, displayMora, displayBase,
         esLiquidacion: esLiquidacionTotal 
     };
 });
@@ -404,7 +404,11 @@ const submit = () => {
                             <div class="mt-12 pt-8 border-t border-zinc-800 space-y-4">
                                 <div class="flex justify-between text-xs font-medium opacity-50">
                                     <span>Base (Cap + Int)</span>
-                                    <span>{{ money(simulacion.displayCapital + simulacion.displayOrdinario) }}</span>
+                                    <span>{{ money(simulacion.displayBase) }}</span>
+                                </div>
+                                <div v-if="simulacion.modoAbono && simulacion.sobranteACapital > 0" class="flex justify-between text-xs font-bold text-amber-400">
+                                    <span>Sobrante a capital</span>
+                                    <span>+ {{ money(simulacion.sobranteACapital) }}</span>
                                 </div>
                                 <div class="flex justify-between text-xs font-medium text-orange-400">
                                     <span>Total Mora</span>
@@ -431,7 +435,7 @@ const submit = () => {
                             </button>
                         </div>
 
-                        <div v-if="simulacion.cambio > 0.01" class="bg-blue-600 p-8 rounded-[2rem] text-white shadow-xl shadow-blue-600/20 animate-in fade-in slide-in-from-bottom-4">
+                        <div v-if="simulacion.cambio > 0.01 && !simulacion.modoAbono" class="bg-blue-600 p-8 rounded-[2rem] text-white shadow-xl shadow-blue-600/20 animate-in fade-in slide-in-from-bottom-4">
                             <p class="text-[10px] font-black uppercase opacity-60 tracking-widest">
                                 {{ simulacion.hayEscenario ? 'Sobrante a aplicar' : (simulacion.sobranteParcial ? 'Se aplicará a la siguiente cuota' : 'Sobrante / Cambio') }}
                             </p>
