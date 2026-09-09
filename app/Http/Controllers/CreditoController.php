@@ -72,7 +72,7 @@ class CreditoController extends Controller
                 'registrado_por'     => Auth::id(),
             ]);
 
-            $credito->update([EstadoCredito::LIQUIDADO]);
+            $credito->update(['estatus' => EstadoCredito::LIQUIDADO]);
         });
 
         return redirect()->route('acreditados.show', $credito->acreditado_id)
