@@ -1,4 +1,7 @@
 <?php
+
+namespace App\Enums;
+
 class EstadoCredito
 {
     const ACTIVO = 'Activo';

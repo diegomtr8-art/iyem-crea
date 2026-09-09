@@ -11,7 +11,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Inertia\Response;
-use EstadoCredito;
+use App\Enums\EstadoCredito;
 
 class ReestructuracionController extends Controller
 {

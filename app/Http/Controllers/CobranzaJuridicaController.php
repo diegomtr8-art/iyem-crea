@@ -13,7 +13,7 @@ use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Inertia\Response;
 
-use EstadoCredito;
+use App\Enums\EstadoCredito;
 
 
 class CobranzaJuridicaController extends Controller

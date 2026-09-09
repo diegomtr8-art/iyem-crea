@@ -12,7 +12,7 @@ use Illuminate\Support\Collection;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Carbon\Carbon;
-use EstadoCredito;
+use App\Enums\EstadoCredito;
 
 class PagoController extends Controller
 {

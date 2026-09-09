@@ -13,7 +13,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Carbon\Carbon;
-use EstadoCredito;
+use App\Enums\EstadoCredito;
 
 class AcreditadoController extends Controller
 {
