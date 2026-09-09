@@ -82,7 +82,7 @@ class CreditService
 
         if ($hoy->gt($vencimiento)) {
             // Fix Carbon 3 signed diff: vencimiento como receptor da valor positivo para cuotas vencidas (referencia UpdateMoratorio:29).
-            $diasAtraso = $vencimiento->diffInDays($hoy);
+            $diasAtraso = (int) $vencimiento->diffInDays($hoy);
 
             // Regla de los 5 días de gracia
             if ($diasAtraso > 5) {
