@@ -46,7 +46,7 @@ class MiCreditoController extends Controller
 
         $proximaCuota = $proxima ? [
             'numero'            => $proxima->numero_cuota,
-            'fecha_vencimiento' => $proxima->fecha_vencimiento,
+            'fecha_vencimiento' => $proxima->fecha_vencimiento?->format('d/m/Y'), //se pasa el formato para que lo respete MiCredito.vue
             'capital'           => round((float) $proxima->capital_esperado - (float) $proxima->capital_pagado, 2),
             'interes'           => round((float) $proxima->interes_ordinario_esperado - (float) $proxima->interes_ordinario_pagado, 2),
             'mora'              => $mora,
@@ -99,7 +99,7 @@ class MiCreditoController extends Controller
                 ],
                 'tabla' => $credito->amortizaciones->map(fn($a) => [
                     'numero_cuota'   => $a->numero_cuota,
-                    'fecha_vencimiento' => $a->fecha_vencimiento,
+                    'fecha_vencimiento' => $a->fecha_vencimiento?->format('d/m/Y'), //se cambia el formato para que lo respete MiCredito.vue
                     'saldo_insoluto' => $a->saldo_insoluto,
                     'capital'        => $a->capital_esperado,
                     'ordinario'      => $a->interes_ordinario_esperado,
