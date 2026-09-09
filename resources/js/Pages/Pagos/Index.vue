@@ -1,6 +1,6 @@
 <script setup>
 import AppLayout from '@/layouts/app/AppSidebarLayout.vue';
-import { ref, computed } from 'vue';
+import { ref, computed, watch } from 'vue';
 import { useForm, Head } from '@inertiajs/vue3';
 
 const props = defineProps({
@@ -15,7 +15,7 @@ const form = useForm({
     monto_recibido: 0,
     fecha_pago: new Date().toISOString().substr(0, 10),
     forma_pago: 'Efectivo',
-    tipo_abono: 'Reducir Cuota',
+    tipo_abono: '',
     referencia: '',
     observaciones: ''
 });
@@ -111,13 +111,98 @@ const simulacion = computed(() => {
         }
     });
 
+    // --- Reglas de sobrepago (espejo del backend, Ticket 4.3) ---
+    const round2 = (v) => Math.round((v + Number.EPSILON) * 100) / 100;
+    const montoRecibido = parseFloat(form.monto_recibido) || 0;
+    const cuotas = props.cuotas_pendientes || [];
+
+    const moraReal  = cuotas.reduce((acc, c) => acc + (parseFloat(c.mora_al_dia) || 0), 0);
+    const tieneMora = moraReal > 0.01;
+    const maximo    = round2(resumen.capitalPendienteRestante + moraReal);
+    const exceso    = montoRecibido > maximo + 0.01;
+
+    const corriente = cuotas[0];
+    const siguiente = cuotas[1];
+    const sobranteCorriente = corriente
+        ? round2(montoRecibido - (parseFloat(corriente.pago_restante) || 0))
+        : 0;
+    const siguienteCosto = siguiente ? round2(parseFloat(siguiente.pago_restante) || 0) : 0;
+
+    const hayEscenario = !!corriente && !!siguiente
+        && !tieneMora && !esLiquidacionTotal
+        && sobranteCorriente >= siguienteCosto - 0.01;
+
+    const sobranteParcial = !!corriente && !!siguiente
+        && !tieneMora && !esLiquidacionTotal
+        && sobranteCorriente > 0.01 && sobranteCorriente < siguienteCosto - 0.01;
+
+    // Preview de las opciones B/C (orientativo; el backend es la fuente de verdad)
+    const preview = { reducirCuota: null, plazoFull: null, plazoFinal: null };
+    if (hayEscenario) {
+        const tasaOrd = (parseFloat(props.credito?.tasa_interes_ordinario) || 0) / 100 / 12;
+        const C       = round2(parseFloat(corriente.pago_restante) || 0);
+        const capitalRestante = resumen.capitalPendienteRestante - (parseFloat(corriente.capital_pendiente) || 0);
+        const S       = round2(capitalRestante - sobranteCorriente);
+        const n       = Math.max(1, cuotas.length - 1);
+
+        if (S > 0 && C > 0) {
+            preview.reducirCuota = round2(
+                tasaOrd > 0
+                    ? S * (tasaOrd / (1 - Math.pow(1 + tasaOrd, -n)))
+                    : S / n
+            );
+
+            if (tasaOrd > 0 && (1 - S * tasaOrd / C) > 1e-9) {
+                const meses = -Math.log(1 - S * tasaOrd / C) / Math.log(1 + tasaOrd);
+                preview.plazoFull = Math.floor(meses + 1e-9);
+                const rem = S * Math.pow(1 + tasaOrd, preview.plazoFull)
+                    - C * ((Math.pow(1 + tasaOrd, preview.plazoFull) - 1) / tasaOrd);
+                preview.plazoFinal = round2(rem * (1 + tasaOrd));
+            } else {
+                preview.plazoFull  = Math.floor(S / C + 1e-9);
+                preview.plazoFinal = round2(S - preview.plazoFull * C);
+            }
+        }
+    }
+
+    // Modo abono (B/C): el sobrante se aplica a capital, no se pre-pagan cuotas futuras.
+    // El desglose debe reflejar solo la cuota corriente + el sobrante a capital.
+    const modoAbono = hayEscenario
+        && (form.tipo_abono === 'Reducir Cuota' || form.tipo_abono === 'Reducir Plazo');
+
+    const numCorriente = corriente ? corriente.numero_cuota : null;
+    const desgloseItems = (modoAbono && numCorriente !== null)
+        ? resumen.cuotasAfectadas.filter((it) => it.n === numCorriente)
+        : resumen.cuotasAfectadas;
+
+    const baseDesglose = desgloseItems.reduce(
+        (acc, it) => ({ mora: acc.mora + it.mora, ord: acc.ordinario + it.ordinario, cap: acc.capital + it.capital }),
+        { mora: 0, ord: 0, cap: 0 }
+    );
+
+    const sobranteACapital = modoAbono ? sobranteCorriente : 0;
+
+    const displayCapital  = modoAbono ? round2(baseDesglose.cap + sobranteACapital) : resumen.capitalTotal;
+    const displayOrdinario = modoAbono ? baseDesglose.ord : resumen.ordinarioTotal;
+    const displayMora     = modoAbono ? baseDesglose.mora : resumen.moraTotal;
+
     return { 
         ...resumen, 
-        cambio: fondo, 
-        esLiquidacion: esLiquidacionTotal,
-        // Es abono a capital si sobra dinero después de cubrir las cuotas vencidas y actuales
-        esAbonoCapital: fondo > 0.01 && !esLiquidacionTotal 
+        cambio: fondo,
+        moraReal, tieneMora, maximo, exceso,
+        hayEscenario, sobranteParcial, sobranteCorriente,
+        preview,
+        modoAbono, sobranteACapital,
+        desgloseItems,
+        displayCapital, displayOrdinario, displayMora,
+        esLiquidacion: esLiquidacionTotal 
     };
+});
+
+// Si el sobrepago deja de calificar como escenario (cambió el monto/cuota), se limpia
+// la opción elegida para no enviar un tipo_abono obsoleto al backend.
+watch(() => simulacion.value.hayEscenario, (activo) => {
+    if (!activo) form.tipo_abono = '';
 });
 
 const submit = () => {
@@ -177,20 +262,36 @@ const submit = () => {
                         </div>
 
                         <div class="mt-8 flex flex-col gap-3">
-                            <div v-if="simulacion.esLiquidacion" class="bg-green-600 text-white px-6 py-3 rounded-2xl flex items-center gap-3 animate-bounce shadow-lg shadow-green-600/20">
+                            <div v-if="simulacion.exceso" class="bg-red-600 text-white px-6 py-3 rounded-2xl shadow-lg shadow-red-600/20">
+                                <p class="text-xs font-black uppercase tracking-widest">
+                                    El importe excede el máximo a pagar ({{ money(simulacion.maximo) }}). Verifique la cantidad.
+                                </p>
+                            </div>
+
+                            <div v-if="simulacion.tieneMora" class="bg-orange-50 dark:bg-orange-900/20 border border-orange-300 dark:border-orange-700 rounded-2xl px-4 py-3">
+                                <p class="text-xs font-bold text-orange-700 dark:text-orange-400">
+                                    El crédito tiene mora. Primero debe cubrir las cuotas vencidas para ponerse al día.
+                                </p>
+                            </div>
+
+                            <div v-if="simulacion.esLiquidacion && !simulacion.exceso" class="bg-green-600 text-white px-6 py-3 rounded-2xl flex items-center gap-3 animate-bounce shadow-lg shadow-green-600/20">
                                 <span class="text-xs font-black uppercase tracking-widest">✓ Liquidación Total — Interés futuro condonado (RO)</span>
                             </div>
 
-                            <div v-if="simulacion.esAbonoCapital" class="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-2xl p-4">
+                            <div v-if="simulacion.hayEscenario" class="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-2xl p-4">
                                 <p class="text-xs font-black uppercase text-amber-700 dark:text-amber-400 tracking-widest mb-1">
-                                    Abono Anticipado a Capital Detectado
+                                    Sobrepago de una cuota o más detectado
                                 </p>
                                 <p class="text-[11px] text-amber-600 dark:text-amber-500 mb-3">
-                                    El importe cubre todas las cuotas vigentes y hay un sobrante de
-                                    <strong>{{ money(simulacion.cambio) }}</strong> que se aplicará directamente al capital.
-                                    Elige cómo restructurar la tabla:
+                                    Después de cubrir la cuota corriente hay un sobrante de
+                                    <strong>{{ money(simulacion.sobranteCorriente) }}</strong>. Seleccione cómo aplicarlo:
                                 </p>
-                                <div class="bg-white dark:bg-zinc-800 p-1.5 rounded-xl flex items-center border border-amber-200 dark:border-amber-800 w-fit">
+                                <div class="bg-white dark:bg-zinc-800 p-1.5 rounded-xl flex items-center border border-amber-200 dark:border-amber-800 w-fit flex-wrap gap-1">
+                                    <button @click="form.tipo_abono = 'Adelantado'"
+                                        :class="form.tipo_abono === 'Adelantado' ? 'bg-red-600 text-white' : 'text-slate-400'"
+                                        class="px-4 py-2 rounded-lg text-[10px] font-bold uppercase transition-all">
+                                        Adelantado
+                                    </button>
                                     <button @click="form.tipo_abono = 'Reducir Cuota'"
                                         :class="form.tipo_abono === 'Reducir Cuota' ? 'bg-red-600 text-white' : 'text-slate-400'"
                                         class="px-4 py-2 rounded-lg text-[10px] font-bold uppercase transition-all">
@@ -202,9 +303,26 @@ const submit = () => {
                                         Reducir Plazo
                                     </button>
                                 </div>
+                                <div v-if="form.tipo_abono === 'Reducir Cuota' && simulacion.preview.reducirCuota" class="mt-3 text-[11px] text-amber-700 dark:text-amber-400">
+                                    La nueva cuota sería de aproximadamente <strong>{{ money(simulacion.preview.reducirCuota) }}</strong>.
+                                </div>
+                                <div v-else-if="form.tipo_abono === 'Reducir Plazo' && simulacion.preview.plazoFull !== null" class="mt-3 text-[11px] text-amber-700 dark:text-amber-400">
+                                    Te quedarían <strong>{{ simulacion.preview.plazoFull }}</strong> cuotas completas
+                                    <template v-if="simulacion.preview.plazoFinal">más una final de {{ money(simulacion.preview.plazoFinal) }}</template>.
+                                </div>
                                 <p class="text-[10px] text-amber-500 mt-2">
-                                    <strong>Reducir Cuota:</strong> mismo plazo, cuota mensual más baja. |
-                                    <strong>Reducir Plazo:</strong> misma cuota, terminas antes (se eliminan cuotas del final).
+                                    <strong>Adelantado:</strong> cubre cuotas siguientes, no cambia tu cuota. |
+                                    <strong>Reducir Cuota:</strong> mismo plazo, cuota más baja. |
+                                    <strong>Reducir Plazo:</strong> misma cuota, terminas antes.
+                                </p>
+                                <p v-if="!form.tipo_abono" class="mt-2 text-xs font-black text-red-600">
+                                    Seleccione una opción para el sobrante antes de confirmar.
+                                </p>
+                            </div>
+
+                            <div v-else-if="simulacion.sobranteParcial" class="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-2xl px-4 py-3">
+                                <p class="text-[11px] text-blue-700 dark:text-blue-400">
+                                    El sobrante ({{ money(simulacion.sobranteCorriente) }}) se aplicará automáticamente a la siguiente cuota.
                                 </p>
                             </div>
                         </div>
@@ -231,7 +349,7 @@ const submit = () => {
                                 <tr v-for="c in cuotas_pendientes" :key="c.id"
                                     class="cursor-pointer hover:bg-red-50/40 dark:hover:bg-red-900/10 transition-colors"
                                     :class="[
-                                        simulacion.cuotasAfectadas.find(s => s.n === c.numero_cuota) ? 'bg-red-50/50 dark:bg-red-900/10' : '',
+                                        simulacion.desgloseItems.find(s => s.n === c.numero_cuota) ? 'bg-red-50/50 dark:bg-red-900/10' : '',
                                         cuotaSeleccionada === c.numero_cuota ? 'ring-2 ring-inset ring-red-500' : ''
                                     ]"
                                     @click="seleccionarCuota(c)">
@@ -239,7 +357,7 @@ const submit = () => {
                                     <td class="p-6 text-xs text-slate-500">{{ c.fecha_vencimiento }}</td>
                                     <td class="p-6 text-xs font-bold">{{ money(c.pago_restante) }}</td>
                                     <td class="p-6 text-xs font-black text-orange-500">
-                                        {{ money(simulacion.cuotasAfectadas.find(s => s.n === c.numero_cuota)?.mora || c.mora_al_dia || 0) }}
+                                        {{ money(simulacion.desgloseItems.find(s => s.n === c.numero_cuota)?.mora || c.mora_al_dia || 0) }}
                                     </td>
                                     <td class="p-6 text-right font-black text-sm dark:text-white">
                                         {{ money(c.total_a_pagar) }}
@@ -258,7 +376,7 @@ const submit = () => {
                             <h2 class="text-[10px] font-black uppercase tracking-[0.3em] text-red-500 mb-10">Desglose de Aplicación</h2>
                             
                             <div class="space-y-6 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
-                                <div v-for="item in simulacion.cuotasAfectadas" :key="item.n" class="border-b border-zinc-800 pb-4">
+                                <div v-for="item in simulacion.desgloseItems" :key="item.n" class="border-b border-zinc-800 pb-4">
                                     <div class="flex justify-between items-center mb-2">
                                         <span class="text-xs font-bold">Cuota #{{ item.n }}</span>
                                         <span v-if="item.liquidada" class="text-[8px] bg-red-600 px-2 py-0.5 rounded-full uppercase font-black">Liquidada</span>
@@ -269,7 +387,16 @@ const submit = () => {
                                         <span class="text-red-400 font-bold">Mor: {{ money(item.mora) }}</span>
                                     </div>
                                 </div>
-                                <div v-if="simulacion.cuotasAfectadas.length === 0" class="py-10 text-center opacity-20">
+                                <div v-if="simulacion.modoAbono && simulacion.sobranteACapital > 0" class="border-b border-zinc-800 pb-4 pt-2">
+                                    <div class="flex justify-between items-center mb-2">
+                                        <span class="text-xs font-bold text-amber-400">Abono a capital</span>
+                                        <span class="text-[8px] bg-amber-500/20 px-2 py-0.5 rounded-full uppercase font-black text-amber-300">Sobrante</span>
+                                    </div>
+                                    <div class="flex flex-wrap gap-x-4 gap-y-1 opacity-70 text-[10px] italic">
+                                        <span class="text-amber-300">Cap: {{ money(simulacion.sobranteACapital) }}</span>
+                                    </div>
+                                </div>
+                                <div v-if="simulacion.desgloseItems.length === 0" class="py-10 text-center opacity-20">
                                     <p class="text-xs uppercase font-black tracking-widest text-white">Esperando Monto...</p>
                                 </div>
                             </div>
@@ -277,16 +404,16 @@ const submit = () => {
                             <div class="mt-12 pt-8 border-t border-zinc-800 space-y-4">
                                 <div class="flex justify-between text-xs font-medium opacity-50">
                                     <span>Base (Cap + Int)</span>
-                                    <span>{{ money(simulacion.capitalTotal + simulacion.ordinarioTotal) }}</span>
+                                    <span>{{ money(simulacion.displayCapital + simulacion.displayOrdinario) }}</span>
                                 </div>
                                 <div class="flex justify-between text-xs font-medium text-orange-400">
                                     <span>Total Mora</span>
-                                    <span>+ {{ money(simulacion.moraTotal) }}</span>
+                                    <span>+ {{ money(simulacion.displayMora) }}</span>
                                 </div>
                                 <div class="flex justify-between items-end pt-4">
                                     <span class="text-xs font-black uppercase tracking-widest">Total Aplicado</span>
                                     <span class="text-4xl font-black text-red-500 tracking-tighter">
-                                        {{ money(simulacion.capitalTotal + simulacion.ordinarioTotal + simulacion.moraTotal) }}
+                                        {{ money(simulacion.displayCapital + simulacion.displayOrdinario + simulacion.displayMora) }}
                                     </span>
                                 </div>
                             </div>
@@ -298,14 +425,16 @@ const submit = () => {
                                 </p>
                             </div>
 
-                            <button @click="submit" :disabled="form.monto_recibido <= 0 || form.processing"
+                            <button @click="submit" :disabled="form.monto_recibido <= 0 || form.processing || simulacion.exceso || (simulacion.hayEscenario && !form.tipo_abono)"
                                 class="w-full mt-10 py-5 bg-red-600 hover:bg-red-700 disabled:bg-zinc-800 text-white rounded-2xl font-black uppercase text-xs tracking-widest transition-all active:scale-95 shadow-xl shadow-red-600/20">
                                 {{ form.processing ? 'Procesando...' : 'Confirmar Registro' }}
                             </button>
                         </div>
 
                         <div v-if="simulacion.cambio > 0.01" class="bg-blue-600 p-8 rounded-[2rem] text-white shadow-xl shadow-blue-600/20 animate-in fade-in slide-in-from-bottom-4">
-                            <p class="text-[10px] font-black uppercase opacity-60 tracking-widest">Sobrante / Cambio</p>
+                            <p class="text-[10px] font-black uppercase opacity-60 tracking-widest">
+                                {{ simulacion.hayEscenario ? 'Sobrante a aplicar' : (simulacion.sobranteParcial ? 'Se aplicará a la siguiente cuota' : 'Sobrante / Cambio') }}
+                            </p>
                             <p class="text-4xl font-black tracking-tighter">{{ money(simulacion.cambio) }}</p>
                         </div>
                     </div>
