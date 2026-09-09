@@ -127,6 +127,10 @@ test('caso 2: sobrante de 3,000 con pago adelantado cubre cuota 2 y parcial de c
     // Plazo y cuota intactos (sin recálculo)
     expect((float) $cuota3->cuota_fija)->toBe(2000.0);
     expect((float) cuotaDe($credito, 4)->cuota_fija)->toBe(2000.0);
+
+    $pago = Pago::where('credito_id', $credito->id)->first();
+    expect($pago->tipo_abono)->toBe('Adelantado');
+    expect($pago->sobrante_aplicado)->toBeNull();
 });
 
 /**
@@ -153,6 +157,10 @@ test('caso 3: sobrante de 3,000 con reducir cuota deja 23 cuotas de 1,860.24', f
     }
 
     expect(round($sumaCapital, 2))->toBe(39930.78);
+
+    $pago = Pago::where('credito_id', $credito->id)->first();
+    expect($pago->tipo_abono)->toBe('Reducir Cuota');
+    expect((float) $pago->sobrante_aplicado)->toBe(3000.0);
 });
 
 /**
@@ -192,6 +200,10 @@ test('caso 4: sobrante de 3,000 con reducir plazo deja 21 cuotas de 2,000 y fina
         $sumaCapital += (float) cuotaDe($credito, $n)->capital_esperado;
     }
     expect(round($sumaCapital, 2))->toBe(39930.78);
+
+    $pago = Pago::where('credito_id', $credito->id)->first();
+    expect($pago->tipo_abono)->toBe('Reducir Plazo');
+    expect((float) $pago->sobrante_aplicado)->toBe(3000.0);
 });
 
 /**

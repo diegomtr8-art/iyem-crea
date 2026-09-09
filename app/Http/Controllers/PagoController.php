@@ -148,6 +148,10 @@ class PagoController extends Controller
             $detenerEnCorriente = false;
             $primera           = $cuotas->first();
 
+            // Para registrar en el pago qué se hizo con el sobrante (Ticket 4.3)
+            $tipoAbonoGuardar  = null;
+            $sobranteAplicado  = null;
+
             if (!$esLiquidacionTotal && $resumen['moraTotal'] <= 0.01 && $primera) {
                 $costoPrimera          = round((float) $primera->pago_restante, 2);
                 $sobranteTrasCorriente = round($montoRestante - $costoPrimera, 2);
@@ -165,6 +169,7 @@ class PagoController extends Controller
                     }
 
                     $detenerEnCorriente = in_array($tipoAbono, ['Reducir Cuota', 'Reducir Plazo'], true);
+                    $tipoAbonoGuardar   = $tipoAbono;
                 }
             }
 
@@ -268,9 +273,9 @@ class PagoController extends Controller
             }
 
             // Aplicar sobrante a capital (pago anticipado) cuando el operativo eligió
-            // Reducir cuota / Reducir plazo. (Provisional: el Commit 3/4 reemplaza la
-            // matemática interna de aplicarAbonoCapital.)
+            // Reducir cuota / Reducir plazo.
             if ($montoRestante > 0.01 && $detenerEnCorriente) {
+                $sobranteAplicado = round($montoRestante, 2);
                 $this->aplicarAbonoCapital($credito, $montoRestante, $tipoAbono, $hoy);
                 $totalAplicadoCapital += $montoRestante;
             }
@@ -287,6 +292,8 @@ class PagoController extends Controller
                 'aplicado_mora'      => round($totalAplicadoMora, 2),
                 'aplicado_ordinario' => round($totalAplicadoOrdinario, 2),
                 'aplicado_capital'   => round($totalAplicadoCapital, 2),
+                'tipo_abono'         => $tipoAbonoGuardar,
+                'sobrante_aplicado'  => $sobranteAplicado,
                 'forma_pago'         => $validated['forma_pago'],
                 'referencia'         => $validated['referencia'] ?? null,
                 'fecha_pago'         => $validated['fecha_pago'],

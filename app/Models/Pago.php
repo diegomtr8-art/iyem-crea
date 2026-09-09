@@ -20,6 +20,8 @@ class Pago extends Model
         'aplicado_mora',
         'aplicado_ordinario',
         'aplicado_capital',
+        'tipo_abono',
+        'sobrante_aplicado',
         'cuotas_cubiertas',
         'snapshot_amortizaciones',
         'referencia',
@@ -41,6 +43,7 @@ class Pago extends Model
         'aplicado_mora'      => 'decimal:2',
         'aplicado_ordinario' => 'decimal:2',
         'aplicado_capital'   => 'decimal:2',
+        'sobrante_aplicado'  => 'decimal:2',
         'cancelado'          => 'boolean',
         'cancelado_at'       => 'datetime',
     ];
