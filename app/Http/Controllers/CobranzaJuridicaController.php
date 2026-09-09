@@ -136,7 +136,7 @@ class CobranzaJuridicaController extends Controller
             ]);
 
             if ($data['estatus'] === 'Recuperada') {
-                $juridico->credito->update([EstadoCredito::ACTIVO]);
+                $juridico->credito->update(['estatus' => EstadoCredito::ACTIVO]);
             }
 
             if ($data['estatus'] === 'Reestructurada') {

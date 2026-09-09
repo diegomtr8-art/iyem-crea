@@ -75,7 +75,7 @@ class CondonacionFormalController extends Controller
                 $credito->amortizaciones()
                     ->whereNotIn('estado', ['Pagado', 'Condonado', 'Reestructurada', 'Gracia'])
                     ->update(['estado' => 'Condonado', 'pago_restante' => 0, 'moratorio_acumulado' => 0]);
-                $credito->update([EstadoCredito::LIQUIDADO]);
+                $credito->update(['estatus' => EstadoCredito::LIQUIDADO]);
             }
 
             $montoTotal = ($data['monto_condonado_capital'] ?? 0)

@@ -205,11 +205,11 @@ class PagoController extends Controller
                 ->whereNotIn('estado', ['Pagado', 'Condonado', 'Reestructurada', 'Gracia']);
 
             if ($activasQuery()->count() === 0) {
-                $credito->update([EstadoCredito::LIQUIDADO]);
+                $credito->update(['estatus' => EstadoCredito::LIQUIDADO]);
             } elseif ($activasQuery()->where('fecha_vencimiento', '<', now())->exists()) {
-                $credito->update([EstadoCredito::MOROSO]);
+                $credito->update(['estatus' => EstadoCredito::MOROSO]);
             } else {
-                $credito->update([EstadoCredito::ACTIVO]);
+                $credito->update(['estatus' => EstadoCredito::ACTIVO]);
             }
 
             return $pago->id;
@@ -367,11 +367,11 @@ class PagoController extends Controller
                 ->whereNotIn('estado', ['Pagado', 'Condonado', 'Reestructurada', 'Gracia']);
 
             if ($activasQuery()->count() === 0) {
-                $credito->update([EstadoCredito::LIQUIDADO]);
+                $credito->update(['estatus' => EstadoCredito::LIQUIDADO]);
             } elseif ($activasQuery()->where('fecha_vencimiento', '<', now())->exists()) {
-                $credito->update([EstadoCredito::MOROSO]);
+                $credito->update(['estatus' => EstadoCredito::MOROSO]);
             } else {
-                $credito->update([EstadoCredito::ACTIVO]);
+                $credito->update(['estatus' => EstadoCredito::ACTIVO]);
             }
         });
 

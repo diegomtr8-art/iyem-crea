@@ -123,7 +123,7 @@ class ReestructuracionController extends Controller
                 $saldo -= $capital;
             }
 
-            $credito->update([EstadoCredito::ACTIVO]);
+            $credito->update(['estatus' => EstadoCredito::ACTIVO]);
 
             AuditoriaLog::registrar(
                 'Credito',
