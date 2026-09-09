@@ -43,7 +43,7 @@ class PagoController extends Controller
                 return [
                     'id'                => $cuota->id,
                     'numero_cuota'      => $cuota->numero_cuota,
-                    'fecha_vencimiento' => $cuota->fecha_vencimiento,
+                    'fecha_vencimiento' => $cuota->fecha_vencimiento?->format('d/m/Y'), //se pone el formato de la fecha aquí, de lo contrario el pagos/index.vue muestra el fromato iso
                     'capital_pendiente' => round((float)$cuota->capital_esperado - (float)$cuota->capital_pagado, 2),
                     'interes_pendiente' => round((float)$cuota->interes_ordinario_esperado - (float)$cuota->interes_ordinario_pagado, 2),
                     'saldo_vencido'     => round(max(0, (float)$cuota->saldo_insoluto - (float)$cuota->capital_pagado), 2),
