@@ -10,7 +10,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Carbon\Carbon;
-use EstadoCredito;
+use App\Enums\EstadoCredito;
 
 class PagoController extends Controller
 {

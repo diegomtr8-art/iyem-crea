@@ -14,7 +14,7 @@ use App\Models\SolicitudCredito;
 use App\Models\SolicitudEstatusHistorial;
 use App\Services\FormatosService;
 use Carbon\Carbon;
-use EstadoCredito;
+use App\Enums\EstadoCredito;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;

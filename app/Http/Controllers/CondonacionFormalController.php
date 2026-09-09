@@ -5,7 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\AuditoriaLog;
 use App\Models\CondonacionFormal;
 use App\Models\Credito;
-use EstadoCredito;
+use App\Enums\EstadoCredito;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
