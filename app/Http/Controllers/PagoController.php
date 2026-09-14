@@ -8,6 +8,8 @@ use App\Models\Amortizacion;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Collection;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Carbon\Carbon;
 
@@ -67,7 +69,7 @@ class PagoController extends Controller
             'monto_recibido' => 'required|numeric|min:0.01',
             'fecha_pago'     => 'required|date|before_or_equal:today',
             'forma_pago'     => 'required|in:Efectivo,Transferencia,Cheque,Tarjeta',
-            'tipo_abono'     => 'nullable|in:Reducir Cuota,Reducir Plazo',
+            'tipo_abono'     => 'nullable|in:Adelantado,Reducir Cuota,Reducir Plazo',
             'referencia'     => 'nullable|string|max:255',
             'observaciones'  => 'nullable|string|max:1000',
         ]);
@@ -80,10 +82,10 @@ class PagoController extends Controller
             $montoRestante = (float) $validated['monto_recibido'];
             $tasaDiaria    = ($credito->tasaMoratoriaEfectiva() / 100) / 360;
 
-            $capitalPendienteTotal = $credito->amortizaciones()
+            $capitalPendienteTotal = round((float) $credito->amortizaciones()
                 ->whereNotIn('estado', ['Pagado', 'Condonado', 'Reestructurada', 'Gracia'])
                 ->lockForUpdate()
-                ->sum(DB::raw('capital_esperado - capital_pagado'));
+                ->sum(DB::raw('capital_esperado - capital_pagado')), 2);
 
             $esLiquidacionTotal = ($montoRestante >= ($capitalPendienteTotal - 0.01));
             $interesCondonado   = 0;
@@ -98,6 +100,97 @@ class PagoController extends Controller
                 ->lockForUpdate()
                 ->orderBy('numero_cuota', 'asc')
                 ->get();
+
+            // Resumen de lo vencido para las validaciones previas (Ticket 4.3)
+            $resumen = $this->resumenVencido($cuotas, $hoy, $tasaDiaria);
+            $maxLegal = round(
+                $resumen['capitalPendiente'] + $resumen['interesVencido'] + $resumen['moraTotal'],
+                2
+            );
+
+            // Gate 1 — Exceso. Dos topes según el tipo de pago:
+            //  - Liquidación: capital pendiente + mora (el interés futuro se condona).
+            //  - Pago normal: capital pendiente + intereses vencidos + mora.
+            if ($esLiquidacionTotal) {
+                $topeLiquidacion = round($resumen['capitalPendiente'] + $resumen['moraTotal'], 2);
+                if ($montoRestante > $topeLiquidacion + 0.01) {
+                    throw ValidationException::withMessages([
+                        'monto_recibido' => 'El importe excede el monto de liquidación del crédito ($'
+                            . number_format($topeLiquidacion, 2)
+                            . '). Verifique la cantidad: no se puede cobrar más de lo que adeuda el ciudadano.',
+                    ]);
+                }
+            } elseif ($montoRestante > $maxLegal + 0.01) {
+                throw ValidationException::withMessages([
+                    'monto_recibido' => 'El importe excede lo máximo que se puede recibir en este pago ($'
+                        . number_format($maxLegal, 2)
+                        . '). Verifique la cantidad.',
+                ]);
+            }
+
+            // Gate 2 — Mora: primero ponerse al día (cubrir cuotas vencidas).
+            // Mientras exista mora no se permite adelantar, abonar a capital ni liquidar.
+            if ($resumen['moraTotal'] > 0.01) {
+                $costoEstarAlDia = round($resumen['costoEstarAlDia'], 2);
+                if ($montoRestante > $costoEstarAlDia + 0.01) {
+                    throw ValidationException::withMessages([
+                        'monto_recibido' => 'El crédito tiene mora. Primero debe cubrir las cuotas vencidas ($'
+                            . number_format($costoEstarAlDia, 2)
+                            . ') para ponerse al día; después podrá abonar a capital o liquidar.',
+                    ]);
+                }
+            }
+
+            // Ruteo del sobrante (Ticket 4.3): detecta si el pago, tras cubrir la cuota
+            // corriente, deja un sobrante de 1 cuota completa o más (requiere elección).
+            $tipoAbono         = $validated['tipo_abono'] ?? null;
+            $hayEscenario      = false;
+            $detenerEnCorriente = false;
+            $primera           = $cuotas->first();
+
+            // Para registrar en el pago qué se hizo con el sobrante (Ticket 4.3)
+            $tipoAbonoGuardar  = null;
+            $sobranteAplicado  = null;
+
+            if (!$esLiquidacionTotal && $resumen['moraTotal'] <= 0.01 && $primera) {
+                $costoPrimera          = round((float) $primera->pago_restante, 2);
+                $sobranteTrasCorriente = round($montoRestante - $costoPrimera, 2);
+                $siguiente             = $cuotas->get(1);
+
+                if ($siguiente && $sobranteTrasCorriente >= (round((float) $siguiente->pago_restante, 2) - 0.01)) {
+                    $hayEscenario = true;
+                    $opciones     = ['Adelantado', 'Reducir Cuota', 'Reducir Plazo'];
+
+                    if (!in_array($tipoAbono, $opciones, true)) {
+                        throw ValidationException::withMessages([
+                            'tipo_abono' => 'El pago deja un sobrante de una cuota o más. '
+                                . 'Seleccione cómo aplicarlo: Adelantado, Reducir cuota o Reducir plazo.',
+                        ]);
+                    }
+
+                    $detenerEnCorriente = in_array($tipoAbono, ['Reducir Cuota', 'Reducir Plazo'], true);
+                    $tipoAbonoGuardar   = $tipoAbono;
+                }
+            }
+
+            // Snapshot del estado previo de las cuotas pendientes (único conjunto
+            // que este pago puede modificar) para permitir una reversión exacta al cancelar.
+            $snapshotAmortizaciones = $cuotas->map(fn($c) => $c->only([
+                'id',
+                'numero_cuota',
+                'capital_esperado',
+                'interes_ordinario_esperado',
+                'cuota_fija',
+                'saldo_insoluto',
+                'capital_pagado',
+                'interes_ordinario_pagado',
+                'interes_moratorio_pagado',
+                'interes_moratorio_generado',
+                'moratorio_acumulado',
+                'pago_restante',
+                'estado',
+                'fecha_ultimo_pago',
+            ]))->values();
 
             foreach ($cuotas as $fila) {
                 if ($montoRestante < 0.01) break;
@@ -171,11 +264,19 @@ class PagoController extends Controller
                         'mor'   => $pagoMora,
                     ];
                 }
+
+                // Reducir cuota/plazo: no se pre-pagan cuotas siguientes; el sobrante
+                // queda disponible para abonarse a capital tras la cuota corriente.
+                if ($detenerEnCorriente && $fila->numero_cuota === $primera->numero_cuota) {
+                    break;
+                }
             }
 
-            // Aplicar sobrante a capital (pago anticipado)
-            if ($montoRestante > 0.01 && !$esLiquidacionTotal) {
-                $this->aplicarAbonoCapital($credito, $montoRestante, $validated['tipo_abono'] ?? 'Reducir Cuota', $hoy);
+            // Aplicar sobrante a capital (pago anticipado) cuando el operativo eligió
+            // Reducir cuota / Reducir plazo.
+            if ($montoRestante > 0.01 && $detenerEnCorriente) {
+                $sobranteAplicado = round($montoRestante, 2);
+                $this->aplicarAbonoCapital($credito, $montoRestante, $tipoAbono, $hoy);
                 $totalAplicadoCapital += $montoRestante;
             }
 
@@ -191,11 +292,14 @@ class PagoController extends Controller
                 'aplicado_mora'      => round($totalAplicadoMora, 2),
                 'aplicado_ordinario' => round($totalAplicadoOrdinario, 2),
                 'aplicado_capital'   => round($totalAplicadoCapital, 2),
+                'tipo_abono'         => $tipoAbonoGuardar,
+                'sobrante_aplicado'  => $sobranteAplicado,
                 'forma_pago'         => $validated['forma_pago'],
                 'referencia'         => $validated['referencia'] ?? null,
                 'fecha_pago'         => $validated['fecha_pago'],
                 'observaciones'      => ($validated['observaciones'] ?? 'Pago registrado') . $notaCondonacion,
                 'cuotas_cubiertas'   => $detallesAuditoria,
+                'snapshot_amortizaciones' => $snapshotAmortizaciones,
                 'registrado_por'     => Auth::id(),
             ]);
 
@@ -219,9 +323,10 @@ class PagoController extends Controller
     }
 
     /**
-     * Aplica sobrante directamente al capital de las cuotas pendientes.
-     * Reducir Cuota: recalcula cuota fija con mismo plazo.
-     * Reducir Plazo: elimina cuotas desde el final hasta agotar el sobrante.
+     * Aplica el sobrante directamente al capital de las cuotas pendientes (Ticket 4.3).
+     * Reducir Cuota: recalcula la tabla con una cuota fija uniforme y mismo plazo.
+     * Reducir Plazo: mantiene la cuota vigente y acorta el plazo con la fórmula
+     * n' = -ln(1 - S'·i/C) / ln(1 + i); las cuotas fuera del nuevo término se eliminan.
      */
     private function aplicarAbonoCapital(Credito $credito, float $sobrante, string $tipo, Carbon $hoy): void
     {
@@ -245,61 +350,143 @@ class PagoController extends Controller
         $numCuotas   = $pendientes->count();
 
         if ($tipo === 'Reducir Plazo') {
-            // Eliminar cuotas desde el final hasta agotar el sobrante
-            $resto = $sobrante;
-            foreach ($pendientes->reverse() as $cuota) {
-                if ($resto < 0.01) break;
+            // Reducir Plazo (Ticket 4.3): el abono se aplica a capital y se mantiene la
+            // cuota fija vigente, por lo que el crédito termina antes.
+            // n' = -ln(1 - S'·i/C) / ln(1 + i)
+            $S = $nuevoCapitalTotal;
+            $C = round((float) $pendientes->first()->cuota_fija, 2);
+            if ($C <= 0) return;
 
-                $capitalCuota = round((float)$cuota->capital_esperado - (float)$cuota->capital_pagado, 2);
-                if ($resto >= $capitalCuota) {
-                    $resto -= $capitalCuota;
+            $mesesTeoricos = $tasaMensual > 0
+                ? -log(1 - $S * $tasaMensual / $C) / log(1 + $tasaMensual)
+                : $S / $C;
+
+            // Cuotas completas que se siguen pagando a la cuota vigente.
+            $cuotasCompletas = max(0, (int) floor($mesesTeoricos + 1e-9));
+
+            // Remanente real (sin redondeo mensual) tras las cuotas completas y su
+            // cuota final con un mes de interés, tal como en el documento.
+            $cuotaFinalObjetivo = null;
+            if ($tasaMensual > 0) {
+                $remanenteReal = $S * pow(1 + $tasaMensual, $cuotasCompletas)
+                    - $C * ((pow(1 + $tasaMensual, $cuotasCompletas) - 1) / $tasaMensual);
+                $cuotaFinalObjetivo = round($remanenteReal * (1 + $tasaMensual), 2);
+            }
+
+            $remanente = $S;
+            $indice    = 0;
+
+            foreach ($pendientes as $cuota) {
+                $indice++;
+
+                // Cuotas fuera del nuevo término: se eliminan de la obligación.
+                if ($indice > $cuotasCompletas && $remanente < 0.01) {
                     $cuota->update([
-                        'capital_pagado'           => $cuota->capital_esperado,
-                        'interes_ordinario_pagado' => $cuota->interes_ordinario_esperado,
-                        'pago_restante'            => 0,
-                        'estado'                   => 'Pagado',
-                        'fecha_ultimo_pago'        => $hoy,
-                        'observaciones'            => 'Liquidada por abono anticipado a capital',
+                        'saldo_insoluto'             => 0,
+                        'capital_esperado'           => 0,
+                        'interes_ordinario_esperado' => 0,
+                        'cuota_fija'                 => 0,
+                        'pago_restante'              => 0,
+                        'estado'                     => 'Pagado',
+                        'fecha_ultimo_pago'          => null,
+                        'observaciones'              => 'Cuota eliminada por reducción de plazo',
                     ]);
-                } else {
-                    // Abono parcial a esta cuota
-                    $nuevoCapPagado = round((float)$cuota->capital_pagado + $resto, 2);
-                    $cuota->update([
-                        'capital_pagado' => $nuevoCapPagado,
-                        'saldo_insoluto' => round(max(0, (float)$cuota->saldo_insoluto - $resto), 2),
-                        'pago_restante'  => max(0, round(
-                            ((float)$cuota->capital_esperado + (float)$cuota->interes_ordinario_esperado)
-                            - ($nuevoCapPagado + (float)$cuota->interes_ordinario_pagado),
-                            2
-                        )),
-                        'estado' => 'Parcial',
-                    ]);
-                    $resto = 0;
+                    continue;
                 }
+
+                if ($indice <= $cuotasCompletas) {
+                    // Cuota completa: se conserva la cuota fija vigente.
+                    $interes = $tasaMensual > 0 ? round($remanente * $tasaMensual, 2) : 0;
+                    $capital = $C - $interes;
+
+                    // Por redondeo el remanente puede no alcanzar para una cuota completa.
+                    if ($capital <= 0 || $capital > round($remanente, 2)) {
+                        $capital  = round($remanente, 2);
+                        $interes  = $tasaMensual > 0 ? round($remanente * $tasaMensual, 2) : 0;
+                        $cuotaFija = round($capital + $interes, 2);
+                    } else {
+                        $cuotaFija = $C;
+                    }
+                } else {
+                    // Cuota final: absorbe el remanente. Se usa la cuota final del
+                    // documento (remanente real + un mes de interés) para que cuadren
+                    // los totales de la spec.
+                    $capital = round($remanente, 2);
+                    if ($cuotaFinalObjetivo !== null && $cuotaFinalObjetivo >= $capital) {
+                        $cuotaFija = $cuotaFinalObjetivo;
+                        $interes   = $cuotaFija - $capital;
+                    } else {
+                        $interes   = $tasaMensual > 0 ? round($capital * $tasaMensual, 2) : 0;
+                        $cuotaFija = round($capital + $interes, 2);
+                    }
+                }
+
+                $cuota->update([
+                    'saldo_insoluto'             => round($remanente, 2),
+                    'capital_esperado'           => round($capital, 2),
+                    'interes_ordinario_esperado' => round($interes, 2),
+                    'cuota_fija'                 => round($cuotaFija, 2),
+                    'pago_restante'              => max(0, round(
+                        $cuotaFija
+                        - ((float) $cuota->capital_pagado + (float) $cuota->interes_ordinario_pagado),
+                        2
+                    )),
+                    // Preservar capital_pagado e interes_ordinario_pagado existentes
+                ]);
+
+                $remanente -= $capital;
             }
         } else {
-            // Reducir Cuota: nueva cuota fija con el capital restante y mismos períodos
-            $nuevaCuotaFija = ($tasaMensual > 0 && $numCuotas > 0)
-                ? $nuevoCapitalTotal * ($tasaMensual / (1 - pow(1 + $tasaMensual, -$numCuotas)))
-                : ($numCuotas > 0 ? $nuevoCapitalTotal / $numCuotas : 0);
+            // Reducir Cuota (Ticket 4.3): recalcular con el saldo nuevo y mismo plazo.
+            // S' = nuevoCapitalTotal, n' = numCuotas.
+            $cuotaUniforme = ($tasaMensual > 0 && $numCuotas > 0)
+                ? round($nuevoCapitalTotal * ($tasaMensual / (1 - pow(1 + $tasaMensual, -$numCuotas))), 2)
+                : round($nuevoCapitalTotal / $numCuotas, 2);
 
             $saldoRestante = $nuevoCapitalTotal;
+            $indiceFinal   = $pendientes->count() - 1;
 
             foreach ($pendientes as $i => $cuota) {
-                $esFinal    = ($i === $pendientes->count() - 1);
-                $interesMes = round($saldoRestante * $tasaMensual, 2);
-                $capitalMes = $esFinal
-                    ? round($saldoRestante, 2)
-                    : round($nuevaCuotaFija - $interesMes, 2);
+                $esFinal = ($i === $indiceFinal);
+
+                if ($tasaMensual > 0) {
+                    // Amortización francesa con cuota uniforme: la última fila absorbe
+                    // el remanente de capital pero conserva la misma cuota.
+                    if ($esFinal) {
+                        $capitalMes  = round($saldoRestante, 2);
+                        $interesMes  = $cuotaUniforme - $capitalMes;
+                        $cuotaFijaMes = $cuotaUniforme;
+                        // Redondeo atípico: si el remanente excediera la cuota, se cae a
+                        // interés normal (no debería ocurrir con el número correcto de meses).
+                        if ($interesMes < 0) {
+                            $interesMes  = round($saldoRestante * $tasaMensual, 2);
+                            $cuotaFijaMes = round($capitalMes + $interesMes, 2);
+                        }
+                    } else {
+                        $interesMes  = round($saldoRestante * $tasaMensual, 2);
+                        $capitalMes  = $cuotaUniforme - $interesMes;
+                        $cuotaFijaMes = $cuotaUniforme;
+                    }
+                } else {
+                    // Sin interés (Artesanal): capital en partes iguales; la última
+                    // absorbe el residuo de centavos. Interés siempre $0.
+                    $interesMes = 0;
+                    if ($esFinal) {
+                        $capitalMes = round($saldoRestante, 2);
+                    } else {
+                        $capitalMes = $cuotaUniforme;
+                    }
+                    $cuotaFijaMes = round($capitalMes, 2);
+                }
 
                 $cuota->update([
                     'saldo_insoluto'             => round($saldoRestante, 2),
-                    'capital_esperado'           => $capitalMes,
-                    'interes_ordinario_esperado' => $interesMes,
-                    'cuota_fija'                 => round($capitalMes + $interesMes, 2),
+                    'capital_esperado'           => round($capitalMes, 2),
+                    'interes_ordinario_esperado' => round($interesMes, 2),
+                    'cuota_fija'                 => round($cuotaFijaMes, 2),
                     'pago_restante'              => max(0, round(
-                        ($capitalMes + $interesMes)
-                        - ((float)$cuota->capital_pagado + (float)$cuota->interes_ordinario_pagado),
+                        $cuotaFijaMes
+                        - ((float) $cuota->capital_pagado + (float) $cuota->interes_ordinario_pagado),
                         2
                     )),
                     // Preservar capital_pagado e interes_ordinario_pagado existentes
@@ -319,38 +506,69 @@ class PagoController extends Controller
         abort_if($pago->cancelado, 422, 'Este pago ya fue cancelado.');
 
         DB::transaction(function () use ($pago, $validated) {
-            $cuotas = collect($pago->cuotas_cubiertas ?? []);
+            $snapshot = collect($pago->snapshot_amortizaciones ?? []);
 
-            foreach ($cuotas as $detalle) {
-                $amortizacion = Amortizacion::where('credito_id', $pago->credito_id)
-                    ->where('numero_cuota', $detalle['cuota'])
-                    ->lockForUpdate()
-                    ->first();
+            if ($snapshot->isNotEmpty()) {
+                // Restauración exacta: devuelve cada cuota a su estado previo al pago
+                // (necesario cuando el pago reescribió la tabla: Reducir Cuota/Plazo o liquidación).
+                foreach ($snapshot as $fila) {
+                    $amortizacion = Amortizacion::where('credito_id', $pago->credito_id)
+                        ->whereKey($fila['id'])
+                        ->lockForUpdate()
+                        ->first();
 
-                if (!$amortizacion) continue;
+                    if (!$amortizacion) continue;
 
-                $capRevertir = (float)($detalle['cap'] ?? 0);
-                $ordRevertir = (float)($detalle['int'] ?? 0);
-                $morRevertir = (float)($detalle['mor'] ?? 0);
+                    $amortizacion->update([
+                        'capital_esperado'           => $fila['capital_esperado'],
+                        'interes_ordinario_esperado' => $fila['interes_ordinario_esperado'],
+                        'cuota_fija'                 => $fila['cuota_fija'],
+                        'saldo_insoluto'             => $fila['saldo_insoluto'],
+                        'capital_pagado'             => $fila['capital_pagado'],
+                        'interes_ordinario_pagado'   => $fila['interes_ordinario_pagado'],
+                        'interes_moratorio_pagado'   => $fila['interes_moratorio_pagado'],
+                        'interes_moratorio_generado' => $fila['interes_moratorio_generado'],
+                        'moratorio_acumulado'        => $fila['moratorio_acumulado'],
+                        'pago_restante'              => $fila['pago_restante'],
+                        'estado'                     => $fila['estado'],
+                        'fecha_ultimo_pago'          => $fila['fecha_ultimo_pago'] ?? null,
+                    ]);
+                }
+            } else {
+                // Fallback para pagos históricos sin snapshot: reversión incremental
+                $cuotas = collect($pago->cuotas_cubiertas ?? []);
 
-                $nuevoCapPagado = max(0, round((float)$amortizacion->capital_pagado - $capRevertir, 2));
-                $nuevoOrdPagado = max(0, round((float)$amortizacion->interes_ordinario_pagado - $ordRevertir, 2));
-                $nuevoMorPagado = max(0, round((float)$amortizacion->interes_moratorio_pagado - $morRevertir, 2));
-                $nuevoSaldoInsoluto = round((float)$amortizacion->saldo_insoluto + $capRevertir, 2);
+                foreach ($cuotas as $detalle) {
+                    $amortizacion = Amortizacion::where('credito_id', $pago->credito_id)
+                        ->where('numero_cuota', $detalle['cuota'])
+                        ->lockForUpdate()
+                        ->first();
 
-                $amortizacion->update([
-                    'capital_pagado'           => $nuevoCapPagado,
-                    'interes_ordinario_pagado' => $nuevoOrdPagado,
-                    'interes_moratorio_pagado' => $nuevoMorPagado,
-                    'saldo_insoluto'           => $nuevoSaldoInsoluto,
-                    'pago_restante'            => round(
-                        ((float)$amortizacion->capital_esperado + (float)$amortizacion->interes_ordinario_esperado)
-                        - ($nuevoCapPagado + $nuevoOrdPagado),
-                        2
-                    ),
-                    'estado'            => ($nuevoCapPagado <= 0 && $nuevoOrdPagado <= 0) ? 'Pendiente' : 'Parcial',
-                    'fecha_ultimo_pago' => null,
-                ]);
+                    if (!$amortizacion) continue;
+
+                    $capRevertir = (float)($detalle['cap'] ?? 0);
+                    $ordRevertir = (float)($detalle['int'] ?? 0);
+                    $morRevertir = (float)($detalle['mor'] ?? 0);
+
+                    $nuevoCapPagado = max(0, round((float)$amortizacion->capital_pagado - $capRevertir, 2));
+                    $nuevoOrdPagado = max(0, round((float)$amortizacion->interes_ordinario_pagado - $ordRevertir, 2));
+                    $nuevoMorPagado = max(0, round((float)$amortizacion->interes_moratorio_pagado - $morRevertir, 2));
+                    $nuevoSaldoInsoluto = round((float)$amortizacion->saldo_insoluto + $capRevertir, 2);
+
+                    $amortizacion->update([
+                        'capital_pagado'           => $nuevoCapPagado,
+                        'interes_ordinario_pagado' => $nuevoOrdPagado,
+                        'interes_moratorio_pagado' => $nuevoMorPagado,
+                        'saldo_insoluto'           => $nuevoSaldoInsoluto,
+                        'pago_restante'            => round(
+                            ((float)$amortizacion->capital_esperado + (float)$amortizacion->interes_ordinario_esperado)
+                            - ($nuevoCapPagado + $nuevoOrdPagado),
+                            2
+                        ),
+                        'estado'            => ($nuevoCapPagado <= 0 && $nuevoOrdPagado <= 0) ? 'Pendiente' : 'Parcial',
+                        'fecha_ultimo_pago' => null,
+                    ]);
+                }
             }
 
             $pago->update([
@@ -392,6 +610,9 @@ class PagoController extends Controller
                 'aplicado_mora'      => (float)$pago->aplicado_mora,
                 'aplicado_ordinario' => (float)$pago->aplicado_ordinario,
                 'aplicado_capital'   => (float)$pago->aplicado_capital,
+                'tipo_abono'         => $pago->tipo_abono,
+                'sobrante_aplicado'  => $pago->sobrante_aplicado !== null ? (float)$pago->sobrante_aplicado : null,
+                'resultado_abono'    => $this->resumenAbonoPago($pago),
                 'cuotas_cubiertas'   => $pago->cuotas_cubiertas ?? [],
                 'observaciones'      => $pago->observaciones,
                 'registrado_por'     => $pago->cajero?->name ?? 'Sistema',
@@ -414,8 +635,106 @@ class PagoController extends Controller
     {
         $pago->load(['acreditado', 'cajero', 'credito.modalidad']);
         $pdf = app('dompdf.wrapper');
-        $pdf->loadView('pdf.recibo-pago', ['pago' => $pago]);
+        $pdf->loadView('pdf.recibo-pago', [
+            'pago'            => $pago,
+            'resultado_abono' => $this->resumenAbonoPago($pago),
+        ]);
         $pdf->setPaper('letter', 'portrait');
         return $pdf->download("Recibo_{$pago->folio}.pdf");
+    }
+
+    /**
+     * Resultado de un abono a capital (B/C) para mostrarlo en el comprobante,
+     * leído de las amortizaciones pendientes del crédito tras el pago.
+     */
+    private function resumenAbonoPago(Pago $pago): array
+    {
+        if (!in_array($pago->tipo_abono, ['Reducir Cuota', 'Reducir Plazo'], true)) {
+            return [];
+        }
+
+        $pendientes = $pago->credito?->amortizaciones()
+            ->whereNotIn('estado', ['Pagado', 'Condonado', 'Reestructurada', 'Gracia'])
+            ->orderBy('numero_cuota', 'asc')
+            ->get();
+
+        if ($pendientes === null || $pendientes->isEmpty()) {
+            return [];
+        }
+
+        $cuotaVigente = round((float) $pendientes->first()->cuota_fija, 2);
+
+        if ($pago->tipo_abono === 'Reducir Cuota') {
+            // Con Reducir cuota todas las pendientes conservan la misma cuota.
+            return ['cuota_nueva' => $cuotaVigente];
+        }
+
+        // Reducir plazo: primeras cuotas a la cuota vigente + una final más chica.
+        $completas = $pendientes->filter(fn($c) => abs((float) $c->cuota_fija - $cuotaVigente) < 0.005)->count();
+        $final     = $pendientes->last();
+        $cuotaFinal = ($final && abs((float) $final->cuota_fija - $cuotaVigente) >= 0.005)
+            ? round((float) $final->cuota_fija, 2)
+            : null;
+
+        return [
+            'cuotas_completas' => $completas,
+            'cuota_final'      => $cuotaFinal,
+        ];
+    }
+
+    /**
+     * Mora real de una cuota vencida (RO Cláusula 7a): días > 5 sobre saldo vencido.
+     */
+    private function moraFilaPara(Carbon $hoy, Carbon $vencimiento, float $saldoVencido, float $tasaDiaria): float
+    {
+        if ($hoy->gt($vencimiento)) {
+            // Carbon 3: diffInDays() con signo; vencimiento como receptor da días positivos.
+            $dias = (int) $vencimiento->diffInDays($hoy);
+            if ($dias > 5) {
+                return round($saldoVencido * $tasaDiaria * $dias, 2);
+            }
+        }
+        return 0.0;
+    }
+
+    /**
+     * Resumen de lo vencido sobre las cuotas pendientes para validar el pago.
+     * - moraTotal: mora real (días > 5) de cuotas vencidas.
+     * - interesVencido: interés pendiente de cuotas con vencimiento <= hoy.
+     * - capitalPendiente: capital pendiente de todas las cuotas activas.
+     * - costoEstarAlDia: mora + interés + capital de las cuotas vencidas.
+     */
+    private function resumenVencido(Collection $cuotas, Carbon $hoy, float $tasaDiaria): array
+    {
+        $moraTotal       = 0.0;
+        $interesVencido  = 0.0;
+        $capitalPendiente = 0.0;
+        $costoEstarAlDia = 0.0;
+
+        foreach ($cuotas as $cuota) {
+            $capitalPend = round((float) $cuota->capital_esperado - (float) $cuota->capital_pagado, 2);
+            $interesPend = round(
+                (float) $cuota->interes_ordinario_esperado - (float) $cuota->interes_ordinario_pagado,
+                2
+            );
+            $capitalPendiente += $capitalPend;
+
+            $vencimiento = Carbon::parse($cuota->fecha_vencimiento)->startOfDay();
+            if ($vencimiento->lte($hoy)) {
+                $saldoVencido = round(max(0, (float) $cuota->saldo_insoluto - (float) $cuota->capital_pagado), 2);
+                $mora         = $this->moraFilaPara($hoy, $vencimiento, $saldoVencido, $tasaDiaria);
+
+                $moraTotal       += $mora;
+                $interesVencido  += $interesPend;
+                $costoEstarAlDia += $mora + $interesPend + $capitalPend;
+            }
+        }
+
+        return [
+            'moraTotal'        => round($moraTotal, 2),
+            'interesVencido'   => round($interesVencido, 2),
+            'capitalPendiente' => round($capitalPendiente, 2),
+            'costoEstarAlDia'  => round($costoEstarAlDia, 2),
+        ];
     }
 }

@@ -118,6 +118,25 @@ const fmtDate = (d) => {
                         </div>
                     </div>
 
+                    <!-- Opción de sobrepago -->
+                    <div v-if="pago.tipo_abono" class="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-2xl p-4">
+                        <p class="text-[10px] font-black text-amber-600 dark:text-amber-400 uppercase mb-2">
+                            Opción de sobrepago: {{ pago.tipo_abono }}
+                        </p>
+                        <div class="space-y-1 text-xs">
+                            <p v-if="pago.sobrante_aplicado > 0" class="text-amber-700 dark:text-amber-300">
+                                Sobrante aplicado a capital: <strong>{{ fmt(pago.sobrante_aplicado) }}</strong>
+                            </p>
+                            <p v-if="pago.tipo_abono === 'Reducir Cuota' && pago.resultado_abono?.cuota_nueva" class="text-amber-700 dark:text-amber-300">
+                                Nueva cuota: <strong>{{ fmt(pago.resultado_abono.cuota_nueva) }}</strong>
+                            </p>
+                            <p v-else-if="pago.tipo_abono === 'Reducir Plazo' && pago.resultado_abono?.cuotas_completas !== undefined" class="text-amber-700 dark:text-amber-300">
+                                Quedan <strong>{{ pago.resultado_abono.cuotas_completas }}</strong> cuotas
+                                <template v-if="pago.resultado_abono.cuota_final">y una final de {{ fmt(pago.resultado_abono.cuota_final) }}</template>.
+                            </p>
+                        </div>
+                    </div>
+
                     <!-- Registrado por -->
                     <div class="flex items-center justify-between pt-4 border-t border-slate-100 dark:border-slate-800 text-xs text-slate-400">
                         <span>Registrado por: <strong>{{ pago.registrado_por }}</strong></span>
