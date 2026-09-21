@@ -149,14 +149,19 @@ test('caso 3: sobrante de 3,000 con reducir cuota deja 23 cuotas de 1,860.24', f
 
     expect(cuotaDe($credito, 1)->estado)->toBe('Pagado');
 
-    $sumaCapital = 0.0;
+    $sumaCapital       = 0.0;
+    $sumaCapitalPagado = 0.0;
     for ($n = 2; $n <= 24; $n++) {
         $cuota = cuotaDe($credito, $n);
         expect((float) $cuota->cuota_fija)->toBe(1860.24);
-        $sumaCapital += (float) $cuota->capital_esperado;
+        $sumaCapital       += (float) $cuota->capital_esperado;
+        $sumaCapitalPagado += (float) $cuota->capital_pagado;
     }
 
-    expect(round($sumaCapital, 2))->toBe(39930.78);
+    // capital_esperado se conserva (proyección original del contrato)
+    expect(round($sumaCapital, 2))->toBe(42930.78);
+    // el abono queda registrado en capital_pagado
+    expect(round($sumaCapitalPagado, 2))->toBe(3000.0);
 
     $pago = Pago::where('credito_id', $credito->id)->first();
     expect($pago->tipo_abono)->toBe('Reducir Cuota');
@@ -166,7 +171,7 @@ test('caso 3: sobrante de 3,000 con reducir cuota deja 23 cuotas de 1,860.24', f
 /**
  * Caso 4 — Paga $5,000 con Reducir plazo: 21 cuotas de $2,000 + final $578.88.
  */
-test('caso 4: sobrante de 3,000 con reducir plazo deja 21 cuotas de 2,000 y final de 578.88', function () {
+test('caso 4: sobrante de 3,000 con reducir plazo acorta el plazo y conserva el calendario', function () {
     $this->actingAs(operativoVerificado());
     $credito = crearCreditoSobrepago();
 
@@ -179,27 +184,27 @@ test('caso 4: sobrante de 3,000 con reducir plazo deja 21 cuotas de 2,000 y fina
 
     expect(cuotaDe($credito, 1)->estado)->toBe('Pagado');
 
-    // 21 cuotas completas (cuotas 2..22)
+    // Las cuotas conservadas mantienen su cuota fija original.
     for ($n = 2; $n <= 22; $n++) {
         expect((float) cuotaDe($credito, $n)->cuota_fija)->toBe(2000.0);
     }
 
-    // Cuota 23 final
-    expect((float) cuotaDe($credito, 23)->cuota_fija)->toBe(578.88);
-
-    // Cuota 24 eliminada
+    // El abono paga cuotas desde el final: la última queda pagada.
     $cuota24 = cuotaDe($credito, 24);
     expect($cuota24->estado)->toBe('Pagado');
-    expect((float) $cuota24->cuota_fija)->toBe(0.0);
-    expect((float) $cuota24->capital_esperado)->toBe(0.0);
+    expect((float) $cuota24->capital_pagado)->toBe((float) $cuota24->capital_esperado);
     expect((float) $cuota24->pago_restante)->toBe(0.0);
-    expect($cuota24->observaciones)->toContain('eliminada por reducción de plazo');
 
-    $sumaCapital = 0.0;
+    // capital_esperado se conserva (proyección original del contrato)
+    $sumaCapital       = 0.0;
+    $sumaCapitalPagado = 0.0;
     for ($n = 2; $n <= 24; $n++) {
-        $sumaCapital += (float) cuotaDe($credito, $n)->capital_esperado;
+        $sumaCapital       += (float) cuotaDe($credito, $n)->capital_esperado;
+        $sumaCapitalPagado += (float) cuotaDe($credito, $n)->capital_pagado;
     }
-    expect(round($sumaCapital, 2))->toBe(39930.78);
+    expect(round($sumaCapital, 2))->toBe(42930.78);
+    // el abono queda registrado en capital_pagado
+    expect(round($sumaCapitalPagado, 2))->toBe(3000.0);
 
     $pago = Pago::where('credito_id', $credito->id)->first();
     expect($pago->tipo_abono)->toBe('Reducir Plazo');
@@ -349,4 +354,42 @@ test('gate 2: con mora se bloquea el pago que excede ponerse al día', function 
     ])->assertSessionHasErrors('monto_recibido');
 
     expect(Pago::where('credito_id', $credito->id)->count())->toBe(0);
+});
+
+/**
+ * Conciliación — el abono a capital debe quedar registrado en capital_pagado para que
+ * Σ pagos.aplicado_capital coincida con Σ amortizaciones.capital_pagado.
+ */
+test('mantiene cuadrada la conciliacion al reducir cuota', function () {
+    $this->actingAs(operativoVerificado());
+    $credito = crearCreditoSobrepago();
+
+    $this->post(route('pagos.store', $credito->id), [
+        'monto_recibido' => 5000,
+        'fecha_pago'     => Carbon::today()->toDateString(),
+        'forma_pago'     => 'Efectivo',
+        'tipo_abono'     => 'Reducir Cuota',
+    ])->assertRedirect();
+
+    $segunPagos = round((float) Pago::where('credito_id', $credito->id)->sum('aplicado_capital'), 2);
+    $segunAmort = round((float) Amortizacion::where('credito_id', $credito->id)->sum('capital_pagado'), 2);
+
+    expect($segunPagos)->toBe($segunAmort);
+});
+
+test('mantiene cuadrada la conciliacion al reducir plazo', function () {
+    $this->actingAs(operativoVerificado());
+    $credito = crearCreditoSobrepago();
+
+    $this->post(route('pagos.store', $credito->id), [
+        'monto_recibido' => 5000,
+        'fecha_pago'     => Carbon::today()->toDateString(),
+        'forma_pago'     => 'Efectivo',
+        'tipo_abono'     => 'Reducir Plazo',
+    ])->assertRedirect();
+
+    $segunPagos = round((float) Pago::where('credito_id', $credito->id)->sum('aplicado_capital'), 2);
+    $segunAmort = round((float) Amortizacion::where('credito_id', $credito->id)->sum('capital_pagado'), 2);
+
+    expect($segunPagos)->toBe($segunAmort);
 });
