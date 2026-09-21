@@ -254,6 +254,148 @@ class ExportController extends Controller
         return $this->download($spreadsheet, $nombre);
     }
 
+// REPORTE DE ANTIGÜEDAD DE SALDOS
+public function antiguedad(Request $request): StreamedResponse
+{
+    $estatus   = $request->get('estatus');
+    $modId     = $request->get('modalidad_id') ? (int)$request->get('modalidad_id') : null;
+    $sexo      = $request->get('sexo');
+    $municipio = $request->get('municipio');
+
+    $creditosQuery = Credito::with(['acreditado', 'modalidad', 'amortizaciones'])
+        ->when($estatus, fn($q) => $q->where('estatus', $estatus))
+        ->when($modId, fn($q) => $q->where('modalidad_id', $modId))
+        ->when($sexo, fn($q) => $q->whereHas('acreditado', fn($a) => $a->where('sexo', $sexo)))
+        ->when($municipio, fn($q) => $q->whereHas('acreditado', fn($a) => $a->where('municipio', $municipio)));
+
+    $creditos = $creditosQuery->get();
+
+    $buckets = [
+        'al_corriente' => ['rango' => 'Al corriente',    'creditos' => 0, 'capital' => 0, 'interes' => 0, 'mora' => 0, 'total' => 0],
+        '1_30'         => ['rango' => '1 a 30 días',     'creditos' => 0, 'capital' => 0, 'interes' => 0, 'mora' => 0, 'total' => 0],
+        '31_60'        => ['rango' => '31 a 60 días',    'creditos' => 0, 'capital' => 0, 'interes' => 0, 'mora' => 0, 'total' => 0],
+        '61_90'        => ['rango' => '61 a 90 días',    'creditos' => 0, 'capital' => 0, 'interes' => 0, 'mora' => 0, 'total' => 0],
+        'mas_90'       => ['rango' => 'Más de 90 días',  'creditos' => 0, 'capital' => 0, 'interes' => 0, 'mora' => 0, 'total' => 0],
+    ];
+
+    foreach ($creditos as $c) {
+        $tasaDiaria = ($c->tasa_interes_moratorio / 100) / 360;
+        $creditoContabilizado = [];
+
+        foreach ($c->amortizaciones as $fila) {
+            if (in_array($fila->estado, ['Pagado', 'Condonado', 'Reestructurada', 'Gracia'])) {
+                continue;
+            }
+
+            $vencimiento = Carbon::parse($fila->fecha_vencimiento)->startOfDay();
+            $capPend     = max(0, (float)$fila->capital_esperado - (float)$fila->capital_pagado);
+            $intPend     = max(0, (float)$fila->interes_ordinario_esperado - (float)$fila->interes_ordinario_pagado);
+
+            $hoyMerida = Carbon::now('America/Merida')->startOfDay();
+
+            if ($hoyMerida->gt($vencimiento)) {
+                $diasAtraso = (int) $vencimiento->diffInDays($hoyMerida);
+
+                if ($diasAtraso <= 30) {
+                    $key = '1_30';
+                } elseif ($diasAtraso <= 60) {
+                    $key = '31_60';
+                } elseif ($diasAtraso <= 90) {
+                    $key = '61_90';
+                } else {
+                    $key = 'mas_90';
+                }
+
+                $moraActual = 0;
+                if ($diasAtraso > 5) {
+                    $sv = max(0, (float)$fila->saldo_insoluto - (float)$fila->capital_pagado);
+                    $moraActual = round($sv * $tasaDiaria * $diasAtraso, 2);
+                }
+
+                $buckets[$key]['capital'] += $capPend;
+                $buckets[$key]['interes'] += $intPend;
+                $buckets[$key]['mora']    += $moraActual;
+            } else {
+                $key = 'al_corriente';
+                $buckets['al_corriente']['capital'] += $capPend;
+                $buckets['al_corriente']['interes'] += $intPend;
+            }
+
+            if (!isset($creditoContabilizado[$key])) {
+                $buckets[$key]['creditos']++;
+                $creditoContabilizado[$key] = true;
+            }
+        }
+    }
+
+    $granTotal = 0;
+    foreach ($buckets as $k => $b) {
+        $subtotal = $b['capital'] + $b['interes'] + $b['mora'];
+        $buckets[$k]['total'] = round($subtotal, 2);
+        $granTotal += $subtotal;
+    }
+
+    $spreadsheet = new Spreadsheet();
+    $sheet       = $spreadsheet->getActiveSheet();
+    $sheet->setTitle('Antigüedad de Saldos');
+
+    // Título e info
+    $sheet->setCellValue('A1', 'Reporte de Antigüedad de Saldos (Aging)');
+    $sheet->setCellValue('A2', 'Generado: ' . now()->format('d/m/Y H:i'));
+    $sheet->getStyle('A1')->getFont()->setBold(true)->setSize(14);
+
+    // Headers
+    $headers = ['Rango', 'Créditos', 'Capital Vencido', 'Interés Vencido', 'Mora', 'Total', '% de la Cartera'];
+    $col = 'A';
+    foreach ($headers as $h) {
+        $sheet->setCellValue($col . '4', $h);
+        $col++;
+    }
+    $sheet->getStyle('A4:G4')->applyFromArray($this->headerStyle());
+
+    // Filas
+    $row = 5;
+    foreach ($buckets as $b) {
+        $porcentaje = $granTotal > 0 ? round(($b['total'] / $granTotal), 4) : 0;
+
+        $sheet->setCellValue('A' . $row, $b['rango']);
+        $sheet->setCellValue('B' . $row, $b['creditos']);
+        $sheet->setCellValue('C' . $row, round($b['capital'], 2));
+        $sheet->setCellValue('D' . $row, round($b['interes'], 2));
+        $sheet->setCellValue('E' . $row, round($b['mora'], 2));
+        $sheet->setCellValue('F' . $row, "=SUM(C{$row}:E{$row})");
+        $sheet->setCellValue('G' . $row, $porcentaje);
+
+        $row++;
+    }
+
+    // Fila Total
+    $sheet->setCellValue('A' . $row, 'Total');
+    $sheet->setCellValue('B' . $row, "=SUM(B5:B" . ($row - 1) . ")");
+    $sheet->setCellValue('C' . $row, "=SUM(C5:C" . ($row - 1) . ")");
+    $sheet->setCellValue('D' . $row, "=SUM(D5:D" . ($row - 1) . ")");
+    $sheet->setCellValue('E' . $row, "=SUM(E5:E" . ($row - 1) . ")");
+    $sheet->setCellValue('F' . $row, "=SUM(F5:F" . ($row - 1) . ")");
+    $sheet->setCellValue('G' . $row, "=SUM(G5:G" . ($row - 1) . ")");
+    $sheet->getStyle("A{$row}:G{$row}")->getFont()->setBold(true);
+
+    // Formato de Moneda
+    $moneyFmt = '#,##0.00';
+    foreach (['C', 'D', 'E', 'F'] as $c) {
+        $sheet->getStyle("{$c}5:{$c}{$row}")
+              ->getNumberFormat()->setFormatCode($moneyFmt);
+    }
+
+    // Formato de Porcentaje
+    $sheet->getStyle("G5:G{$row}")
+          ->getNumberFormat()->setFormatCode('0.00%');
+
+    $this->autoSize($sheet, ['A', 'B', 'C', 'D', 'E', 'F', 'G']);
+
+    $nombre = 'Reporte_Antiguedad_Saldos_' . date('Ymd') . '.xlsx';
+    return $this->download($spreadsheet, $nombre);
+}
+
     private function download(Spreadsheet $spreadsheet, string $nombre): StreamedResponse
     {
         $writer = new Xlsx($spreadsheet);

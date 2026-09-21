@@ -104,12 +104,122 @@ class ReporteController extends Controller
             ->whereNotNull('municipio')->where('municipio', '!=', '')
             ->distinct()->orderBy('municipio')->pluck('municipio');
 
-        return Inertia::render('Reportes/Cartera', [
+    return Inertia::render('Reportes/Cartera', [
             'creditos'    => $creditos->values(),
             'resumen'     => $resumen,
             'modalidades' => $modalidades,
             'municipios'  => $municipios,
             'filtros'     => ['estatus' => $estatus, 'modalidad_id' => $modId, 'sexo' => $sexo, 'municipio' => $municipio],
+        ]);
+    }
+
+    public function antiguedad(Request $request)
+    {
+        $estatus    = $request->get('estatus');
+        $modId      = $request->get('modalidad_id') ? (int)$request->get('modalidad_id') : null;
+        $sexo       = $request->get('sexo');
+        $municipio  = $request->get('municipio');
+        $hoy        = Carbon::now('America/Merida')->toDateString();
+
+        $modalidades = \App\Models\ModalidadCrea::orderBy('nombre')->get(['id', 'nombre']);
+        $municipios  = \App\Models\Acreditado::select('municipio')
+            ->whereNotNull('municipio')->where('municipio', '!=', '')
+            ->distinct()->orderBy('municipio')->pluck('municipio');
+
+        $creditosQuery = Credito::with(['acreditado', 'modalidad', 'amortizaciones'])
+            ->when($estatus, fn($q) => $q->where('estatus', $estatus))
+            ->when($modId, fn($q) => $q->where('modalidad_id', $modId))
+            ->when($sexo, fn($q) => $q->whereHas('acreditado', fn($a) => $a->where('sexo', $sexo)))
+            ->when($municipio, fn($q) => $q->whereHas('acreditado', fn($a) => $a->where('municipio', $municipio)));
+
+        $creditos = $creditosQuery->get();
+
+        $buckets = [
+            'al_corriente' => ['rango' => 'Al corriente',  'creditos' => 0, 'capital' => 0, 'interes' => 0, 'mora' => 0, 'total' => 0],
+            '1_30'         => ['rango' => '1 a 30 días',   'creditos' => 0, 'capital' => 0, 'interes' => 0, 'mora' => 0, 'total' => 0],
+            '31_60'        => ['rango' => '31 a 60 días',  'creditos' => 0, 'capital' => 0, 'interes' => 0, 'mora' => 0, 'total' => 0],
+            '61_90'        => ['rango' => '61 a 90 días',  'creditos' => 0, 'capital' => 0, 'interes' => 0, 'mora' => 0, 'total' => 0],
+            'mas_90'       => ['rango' => 'Más de 90 días', 'creditos' => 0, 'capital' => 0, 'interes' => 0, 'mora' => 0, 'total' => 0],
+        ];
+
+        foreach ($creditos as $c) {
+            $tasaDiaria = ($c->tasa_interes_moratorio / 100) / 360;
+            $creditoContabilizado = []; // Para no duplicar el conteo de créditos en un mismo bucket
+
+            foreach ($c->amortizaciones as $fila) {
+                if (in_array($fila->estado, ['Pagado', 'Condonado', 'Reestructurada', 'Gracia'])) {
+                    continue;
+                }
+
+                $vencimiento = Carbon::parse($fila->fecha_vencimiento)->startOfDay();
+                $capPend = max(0, (float)$fila->capital_esperado - (float)$fila->capital_pagado);
+                $intPend = max(0, (float)$fila->interes_ordinario_esperado - (float)$fila->interes_ordinario_pagado);
+
+                $hoyMerida = Carbon::now('America/Merida')->startOfDay();
+
+                if ($hoyMerida->gt($vencimiento)) {
+                    $diasAtraso = (int) $vencimiento->diffInDays($hoyMerida);
+                    
+                    // Asignar bucket por la antigüedad específica de esta cuota
+                    if ($diasAtraso <= 30) {
+                        $key = '1_30';
+                    } elseif ($diasAtraso <= 60) {
+                        $key = '31_60';
+                    } elseif ($diasAtraso <= 90) {
+                        $key = '61_90';
+                    } else {
+                        $key = 'mas_90';
+                    }
+
+                    $moraActual = 0;
+                    if ($diasAtraso > 5) {
+                        $sv = max(0, (float)$fila->saldo_insoluto - (float)$fila->capital_pagado);
+                        $moraActual = round($sv * $tasaDiaria * $diasAtraso, 2);
+                    }
+
+                    $buckets[$key]['capital'] += $capPend;
+                    $buckets[$key]['interes'] += $intPend;
+                    $buckets[$key]['mora']    += $moraActual;
+                } else {
+                    $key = 'al_corriente';
+                    $buckets['al_corriente']['capital'] += $capPend;
+                    $buckets['al_corriente']['interes'] += $intPend;
+                }
+
+                // Sumar al contador de créditos únicos por bucket
+                if (!isset($creditoContabilizado[$key])) {
+                    $buckets[$key]['creditos']++;
+                    $creditoContabilizado[$key] = true;
+                }
+            }
+        }
+
+        $granTotal = 0;
+        foreach ($buckets as $k => $b) {
+            $subtotal = $b['capital'] + $b['interes'] + $b['mora'];
+            $buckets[$k]['total'] = round($subtotal, 2);
+            $granTotal += $subtotal;
+        }
+
+        $reporte = array_map(function ($b) use ($granTotal) {
+            $b['porcentaje'] = $granTotal > 0 ? round(($b['total'] / $granTotal) * 100, 2) : 0;
+            $b['capital']    = round($b['capital'], 2);
+            $b['interes']    = round($b['interes'], 2);
+            $b['mora']       = round($b['mora'], 2);
+            return $b;
+        }, array_values($buckets));
+
+        return Inertia::render('Reportes/Antiguedad', [
+            'reporte'     => $reporte,
+            'gran_total'  => round($granTotal, 2),
+            'modalidades' => $modalidades,
+            'municipios'  => $municipios,
+            'filtros'     => [
+                'estatus'      => $estatus,
+                'modalidad_id' => $modId,
+                'sexo'         => $sexo,
+                'municipio'    => $municipio
+            ],
         ]);
     }
 

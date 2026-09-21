@@ -182,6 +182,9 @@ Route::middleware(['auth', 'verified', 'operativo'])->group(function () {
     // REPORTES ADICIONALES
     Route::get('reportes/beneficiarios', [ReporteController::class, 'beneficiarios'])->name('reportes.beneficiarios');
     Route::get('reportes/informe-cobranza', [ReporteController::class, 'informeCobranza'])->name('reportes.informe-cobranza');
+    Route::get('reportes/antiguedad', [ReporteController::class, 'antiguedad'])->name('reportes.antiguedad');
+    Route::get('exportar/antiguedad', [ExportController::class, 'antiguedad'])->name('exportar.antiguedad');
+    Route::get('/reportes/antiguedad/excel', [ExportController::class, 'antiguedad'])->name('reportes.antiguedad.excel');
 });
 
 require __DIR__.'/settings.php';
