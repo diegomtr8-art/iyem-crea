@@ -17,9 +17,10 @@ class CondonacionFormalController extends Controller
     {
         $credito->load(['acreditado', 'modalidad', 'amortizaciones', 'condonaciones.autorizadoPor']);
 
-        $saldoCapital   = $credito->amortizaciones->whereNotIn('estado', ['Pagado', 'Condonado', 'Reestructurada', 'Gracia'])->sum('capital_esperado');
-        $saldoIntereses = $credito->amortizaciones->whereNotIn('estado', ['Pagado', 'Condonado', 'Reestructurada', 'Gracia'])->sum('interes_ordinario_esperado');
-        $saldoMora      = $credito->amortizaciones->whereNotIn('estado', ['Pagado', 'Condonado', 'Reestructurada', 'Gracia'])->sum('moratorio_acumulado');
+        $amortizacionesPendientes = $credito->amortizaciones->whereNotIn('estado', ['Pagado', 'Condonado', 'Reestructurada', 'Gracia']);
+        $saldoCapital   = $amortizacionesPendientes->sum('capital_esperado') - $amortizacionesPendientes->sum('capital_pagado');
+        $saldoIntereses = $amortizacionesPendientes->sum('interes_ordinario_esperado');
+        $saldoMora      = $amortizacionesPendientes->sum('moratorio_acumulado');
 
         return Inertia::render('Creditos/CondonacionFormal', [
             'credito' => [
