@@ -80,6 +80,9 @@ Aquí no hay mecanismo que contar. Con la estructura actual no se puede concilia
 
 ---
 
+## Consultas
+
+Todas las consultas están en [`sql/A2_conciliacion.sql`](sql/A2_conciliacion.sql). Son `SELECT`, así que se pueden correr sin riesgo en phpMyAdmin (pestaña SQL, con la base seleccionada).
 
 | Consulta | Qué responde |
 |---|---|
