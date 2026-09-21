@@ -33,6 +33,10 @@ class UserController extends Controller
         $user = User::create([
             'name' => $request->name,
             'email' => $request->email,
+            // Explícito a propósito: antes dependía del valor por defecto de la
+            // columna. Ese default cambió a 'ciudadano' para que un olvido cree
+            // una cuenta inofensiva y no una operativa.
+            'tipo' => 'operativo',
             'password' => Hash::make($request->password),
             'email_verified_at' => now(),
         ]);
