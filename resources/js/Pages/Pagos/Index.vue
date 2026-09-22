@@ -2,6 +2,7 @@
 import AppLayout from '@/layouts/app/AppSidebarLayout.vue';
 import { ref, computed, watch } from 'vue';
 import { useForm, Head } from '@inertiajs/vue3';
+import { parseDate } from '@/utils/dateUtils';
 
 const props = defineProps({
     credito: Object,
@@ -99,9 +100,8 @@ const simulacion = computed(() => {
         // Si no hay dinero y no es liquidación total (donde el interés se vuelve 0), saltamos
         if (fondo <= 0 && !esLiquidacionTotal) break;
 
-        //Como el formato se cambia desde el modelo se hace esta pequeña corrección
-        const[dia, mes, anio] = c.fecha_vencimiento.split('/').map(Number);
-        const vencimiento = new Date(anio, mes - 1, dia);
+        //Se utiliza la nueva función
+        const vencimiento = parseDate(c.fecha_vencimiento);
 
         // 1. Cálculo de Mora (sobre saldo insoluto vencido, RO Cláusula Séptima)
         let moraFila = 0;

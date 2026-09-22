@@ -8,6 +8,7 @@ import {
     Download, Calculator, X, ClipboardCheck, Plus, Trash2, ExternalLink
 } from 'lucide-vue-next';
 import { router, useForm } from '@inertiajs/vue3';
+import { parseDate } from '@/utils/dateUtils';
 
 const props = defineProps<{
     credito: {
@@ -81,9 +82,8 @@ const estadoCuota = (item: typeof props.credito.tabla[0]) => {
     if (item.estado === 'Condonado') return { texto: 'CONDONADO', clase: 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400' };
 
     const hoy = new Date();
-    //const venc = new Date(item.fecha_vencimiento);
-    const[dia, mes, anio] = item.fecha_vencimiento.split('/').map(Number);
-    const venc = new Date(anio, mes - 1, dia);
+    //se utiliza la nueva función
+    const venc = parseDate(item.fecha_vencimiento);
     const diff = Math.floor((hoy.getTime() - venc.getTime()) / 86400000);
     const total = (item.capital ?? 0) + (item.ordinario ?? 0);
     const pagado = item.total_pagado ?? 0;
