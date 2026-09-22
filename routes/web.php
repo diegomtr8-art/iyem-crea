@@ -134,6 +134,7 @@ Route::middleware(['auth', 'verified', 'operativo'])->group(function () {
     // REPORTES
     Route::get('reportes/cartera', [ReporteController::class, 'cartera'])->name('reportes.cartera');
     Route::get('reportes/pagos', [ReporteController::class, 'pagos'])->name('reportes.pagos');
+    Route::get('reportes/antiguedad', [ReporteController::class, 'antiguedad'])->name('reportes.antiguedad');
     Route::get('reportes/adeudo/{credito}', [ReporteController::class, 'adeudo'])->name('reportes.adeudo');
 
     // SIMULADOR
@@ -171,6 +172,7 @@ Route::middleware(['auth', 'verified', 'operativo'])->group(function () {
     Route::get('exportar/movimientos/{acreditado}', [ExportController::class, 'movimientosAcreditado'])->name('operaciones.export');
     Route::get('exportar/cartera', [ExportController::class, 'cartera'])->name('exportar.cartera');
     Route::get('exportar/pagos', [ExportController::class, 'pagos'])->name('exportar.pagos');
+    Route::get('exportar/antiguedad', [ExportController::class, 'antiguedad'])->name('exportar.antiguedad');
 
     // AUDITORÍA
     Route::get('auditoria', [AuditoriaController::class, 'index'])->name('auditoria.index');
@@ -182,9 +184,6 @@ Route::middleware(['auth', 'verified', 'operativo'])->group(function () {
     // REPORTES ADICIONALES
     Route::get('reportes/beneficiarios', [ReporteController::class, 'beneficiarios'])->name('reportes.beneficiarios');
     Route::get('reportes/informe-cobranza', [ReporteController::class, 'informeCobranza'])->name('reportes.informe-cobranza');
-    Route::get('reportes/antiguedad', [ReporteController::class, 'antiguedad'])->name('reportes.antiguedad');
-    Route::get('exportar/antiguedad', [ExportController::class, 'antiguedad'])->name('exportar.antiguedad');
-    Route::get('/reportes/antiguedad/excel', [ExportController::class, 'antiguedad'])->name('reportes.antiguedad.excel');
 });
 
 require __DIR__.'/settings.php';

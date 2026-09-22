@@ -62,7 +62,7 @@ const exportar = () => {
     if (filtroMod.value) params.set('modalidad_id', String(filtroMod.value));
     if (filtroSexo.value) params.set('sexo', filtroSexo.value);
     if (filtroMun.value) params.set('municipio', filtroMun.value);
-    window.location.href = `/reportes/antiguedad/excel?${params}`;
+    window.location.href = `/exportar/antiguedad?${params}`;
 };
 
 const fmt = (n: number) =>
@@ -222,7 +222,8 @@ const totalCreditos = computed(() => props.reporte.reduce((acc, i) => acc + i.cr
                         <thead class="bg-gray-50 dark:bg-zinc-800/60 text-[10px] sm:text-xs uppercase tracking-wider text-gray-500 dark:text-gray-400">
                             <tr>
                                 <th class="px-3 py-2.5 sm:px-4 sm:py-3 text-left">Rango</th>
-                                <th class="px-3 py-2.5 sm:px-4 sm:py-3 text-center">Créditos</th>
+                                <!-- 1. Nombre cambiado a Cuotas -->
+                                <th class="px-3 py-2.5 sm:px-4 sm:py-3 text-center">Cuotas</th>
                                 <th class="px-3 py-2.5 sm:px-4 sm:py-3 text-right">Capital Vencido</th>
                                 <th class="px-3 py-2.5 sm:px-4 sm:py-3 text-right">Interés Vencido</th>
                                 <th class="px-3 py-2.5 sm:px-4 sm:py-3 text-right">Mora</th>
@@ -233,7 +234,8 @@ const totalCreditos = computed(() => props.reporte.reduce((acc, i) => acc + i.cr
                         <tbody class="divide-y divide-gray-100 dark:divide-zinc-800">
                             <tr v-for="row in reporte" :key="row.rango" class="hover:bg-gray-50 dark:hover:bg-zinc-800/40">
                                 <td class="px-3 py-2.5 sm:px-4 sm:py-3 font-medium text-gray-900 dark:text-gray-100 whitespace-nowrap">{{ row.rango }}</td>
-                                <td class="px-3 py-2.5 sm:px-4 sm:py-3 text-center text-gray-600 dark:text-gray-300">{{ row.creditos }}</td>
+                                <!-- 2. Propiedad cuotas -->
+                                <td class="px-3 py-2.5 sm:px-4 sm:py-3 text-center text-gray-600 dark:text-gray-300">{{ row.cuotas }}</td>
                                 <td class="px-3 py-2.5 sm:px-4 sm:py-3 text-right text-gray-600 dark:text-gray-300 whitespace-nowrap">{{ fmt(row.capital) }}</td>
                                 <td class="px-3 py-2.5 sm:px-4 sm:py-3 text-right text-gray-600 dark:text-gray-300 whitespace-nowrap">{{ fmt(row.interes) }}</td>
                                 <td class="px-3 py-2.5 sm:px-4 sm:py-3 text-right text-gray-600 dark:text-gray-300 whitespace-nowrap">{{ fmt(row.mora) }}</td>
@@ -247,7 +249,8 @@ const totalCreditos = computed(() => props.reporte.reduce((acc, i) => acc + i.cr
                         <tfoot v-if="reporte.length > 0" class="bg-gray-50 dark:bg-zinc-800/60 font-semibold text-gray-900 dark:text-gray-100 border-t border-gray-200 dark:border-zinc-800">
                             <tr>
                                 <td class="px-3 py-2.5 sm:px-4 sm:py-3 whitespace-nowrap">Total</td>
-                                <td class="px-3 py-2.5 sm:px-4 sm:py-3 text-center">{{ totalCreditos }}</td>
+                                <!-- 3. Suma de cuotas -->
+                                <td class="px-3 py-2.5 sm:px-4 sm:py-3 text-center">{{ reporte.reduce((a, b) => a + b.cuotas, 0) }}</td>
                                 <td class="px-3 py-2.5 sm:px-4 sm:py-3 text-right whitespace-nowrap">{{ fmt(reporte.reduce((a, b) => a + b.capital, 0)) }}</td>
                                 <td class="px-3 py-2.5 sm:px-4 sm:py-3 text-right whitespace-nowrap">{{ fmt(reporte.reduce((a, b) => a + b.interes, 0)) }}</td>
                                 <td class="px-3 py-2.5 sm:px-4 sm:py-3 text-right whitespace-nowrap">{{ fmt(reporte.reduce((a, b) => a + b.mora, 0)) }}</td>
@@ -256,6 +259,12 @@ const totalCreditos = computed(() => props.reporte.reduce((acc, i) => acc + i.cr
                             </tr>
                         </tfoot>
                     </table>
+                </div>
+
+                <!-- 4. Notas al pie solicitadas en el ticket -->
+                <div class="px-4 py-3 bg-gray-50/50 dark:bg-zinc-800/30 border-t border-gray-200 dark:border-zinc-800 text-[11px] text-gray-500 dark:text-gray-400 space-y-1">
+                    <p>* <strong>Cuotas:</strong> Cantidad de amortizaciones o cuotas pendientes agrupadas por rango de morosidad (un crédito puede tener cuotas en distintos rangos).</p>
+                    <p>** <strong>Días de gracia:</strong> Las cuotas vencidas dentro del periodo de gracia (&le; 5 días) se incluyen en "1 a 30 días" con mora en $0.00.</p>
                 </div>
             </div>
 
