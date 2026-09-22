@@ -81,7 +81,9 @@ const estadoCuota = (item: typeof props.credito.tabla[0]) => {
     if (item.estado === 'Condonado') return { texto: 'CONDONADO', clase: 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400' };
 
     const hoy = new Date();
-    const venc = new Date(item.fecha_vencimiento);
+    //const venc = new Date(item.fecha_vencimiento);
+    const[dia, mes, anio] = item.fecha_vencimiento.split('/').map(Number);
+    const venc = new Date(anio, mes - 1, dia);
     const diff = Math.floor((hoy.getTime() - venc.getTime()) / 86400000);
     const total = (item.capital ?? 0) + (item.ordinario ?? 0);
     const pagado = item.total_pagado ?? 0;

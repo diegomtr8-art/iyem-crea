@@ -99,10 +99,9 @@ const simulacion = computed(() => {
         // Si no hay dinero y no es liquidación total (donde el interés se vuelve 0), saltamos
         if (fondo <= 0 && !esLiquidacionTotal) break;
 
-        //Como el formato se cambia desde el modelo posiblemente se tenga que hacer esta pequeña corrección
-        /*const[dia, mes, anio] = c.fecha_vencimiento.split('/').map(Number);
-        const vencimiento = new Date(anio, mes - 1, dia);*/
-        const vencimiento = new Date(c.fecha_vencimiento + 'T00:00:00');
+        //Como el formato se cambia desde el modelo se hace esta pequeña corrección
+        const[dia, mes, anio] = c.fecha_vencimiento.split('/').map(Number);
+        const vencimiento = new Date(anio, mes - 1, dia);
 
         // 1. Cálculo de Mora (sobre saldo insoluto vencido, RO Cláusula Séptima)
         let moraFila = 0;
