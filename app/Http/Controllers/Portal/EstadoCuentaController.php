@@ -77,7 +77,7 @@ class EstadoCuentaController extends Controller
                 }
             } else {
                 $totalIntereses += max(0, (float)$cuota->interes_ordinario_esperado - (float)$cuota->interes_ordinario_pagado);
-                $totalMora += (float)($cuota->moratorio_acumulado ?? 0);
+                $totalMora += (float)($cuota->interes_moratorio_generado ?? 0);
             }
         }
 
