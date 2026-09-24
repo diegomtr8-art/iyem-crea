@@ -242,6 +242,7 @@ class PagoController extends Controller
                     'interes_ordinario_pagado'   => $nuevoOrdPagado,
                     'interes_moratorio_pagado'   => round((float)$fila->interes_moratorio_pagado + $pagoMora, 2),
                     'interes_moratorio_generado' => $moraFila,
+                    'moratorio_acumulado'        => $moraFila,
                     'saldo_insoluto'             => $nuevoSaldoInsoluto,
                     'pago_restante'              => max(0, round(
                         ((float)$fila->capital_esperado + (float)$fila->interes_ordinario_esperado)

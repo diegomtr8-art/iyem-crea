@@ -26,6 +26,7 @@ class Amortizacion extends Model
         'interes_moratorio_pagado',
         'interes_moratorio_generado', // <--- DEBE ESTAR AQUÍ
         'comision_pagada',
+        // @deprecated — espejo histórico. Fuente única: interes_moratorio_generado.
         'moratorio_acumulado',
         'pago_restante',
         'estado',
