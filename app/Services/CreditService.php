@@ -89,8 +89,9 @@ class CreditService
                 // Año comercial 360
                 $tasaDiaria = ($tasaMoratoriaAnual / 100) / 360;
                 
-                // Calculamos la mora sobre lo que falta pagar (pago_restante)
-                $nuevaMora = round($fila->pago_restante * $tasaDiaria * $diasAtraso, 2);
+                // Mora sobre saldo insoluto vencido (misma base que UpdateMoratorio y PagoController)
+                $saldoVencido = round(max(0, (float)$fila->saldo_insoluto - (float)$fila->capital_pagado), 2);
+                $nuevaMora = round($saldoVencido * $tasaDiaria * $diasAtraso, 2);
                 
                 // Actualizamos en la base de datos para que sea "real"
                 // Nota: Usamos una columna para mora acumulada si quieres persistirla
