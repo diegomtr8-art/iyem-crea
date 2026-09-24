@@ -132,7 +132,7 @@
                     <td>{{ $a->fecha_vencimiento->format('d/m/Y') }}</td>
                     <td class="text-right">${{ number_format((float)$a->capital_esperado, 2) }}</td>
                     <td class="text-right">${{ number_format((float)$a->interes_ordinario_esperado, 2) }}</td>
-                    <td class="text-right" style="color:#e67e22">${{ number_format((float)($a->moratorio_acumulado ?? 0), 2) }}</td>
+                    <td class="text-right" style="color:#e67e22">${{ number_format((float)($a->interes_moratorio_generado ?? 0), 2) }}</td>
                     <td class="text-right">${{ number_format((float)$a->cuota_fija, 2) }}</td>
                     <td class="text-right"><strong>${{ number_format((float)$a->pago_restante, 2) }}</strong></td>
                     <td class="text-center">

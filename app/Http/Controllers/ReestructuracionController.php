@@ -24,7 +24,7 @@ class ReestructuracionController extends Controller
 
         $moraAcumulada = $credito->amortizaciones
             ->whereNotIn('estado', ['Pagado', 'Condonado', 'Reestructurada', 'Gracia'])
-            ->sum('moratorio_acumulado');
+            ->sum('interes_moratorio_generado');
 
         return Inertia::render('Creditos/Reestructuracion', [
             'credito' => [
