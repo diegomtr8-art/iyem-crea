@@ -2,6 +2,7 @@
 import AppLayout from '@/layouts/app/AppSidebarLayout.vue';
 import { ref, computed, watch } from 'vue';
 import { useForm, Head } from '@inertiajs/vue3';
+import { parseDate } from '@/utils/dateUtils';
 
 const props = defineProps({
     credito: Object,
@@ -99,7 +100,8 @@ const simulacion = computed(() => {
         // Si no hay dinero y no es liquidación total (donde el interés se vuelve 0), saltamos
         if (fondo <= 0 && !esLiquidacionTotal) break;
 
-        const vencimiento = new Date(c.fecha_vencimiento + 'T00:00:00');
+        //Se utiliza la nueva función
+        const vencimiento = parseDate(c.fecha_vencimiento);
 
         // 1. Cálculo de Mora (sobre saldo insoluto vencido, RO Cláusula Séptima)
         let moraFila = 0;
@@ -332,7 +334,7 @@ const submit = () => {
                     <p class="text-xs text-slate-400 -mt-2 mb-1">
                         👆 Haz clic en una fila para pre-llenar el importe con el monto exigible de esa cuota.
                     </p>
-
+                    
                     <div class="bg-white dark:bg-zinc-900 rounded-[2.5rem] shadow-sm border border-slate-200 dark:border-zinc-800 overflow-hidden">
                         <div class="overflow-x-auto">
                         <table class="w-full min-w-[480px] text-left border-collapse">

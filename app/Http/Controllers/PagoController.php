@@ -12,6 +12,7 @@ use Illuminate\Support\Collection;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Carbon\Carbon;
+use App\Enums\EstadoCredito;
 
 class PagoController extends Controller
 {
@@ -44,7 +45,7 @@ class PagoController extends Controller
                 return [
                     'id'                => $cuota->id,
                     'numero_cuota'      => $cuota->numero_cuota,
-                    'fecha_vencimiento' => $cuota->fecha_vencimiento,
+                    'fecha_vencimiento' => $cuota->fecha_vencimiento?->format('d/m/Y'), //se pone el formato de la fecha aquí, de lo contrario el pagos/index.vue muestra el fromato iso
                     'capital_pendiente' => round((float)$cuota->capital_esperado - (float)$cuota->capital_pagado, 2),
                     'interes_pendiente' => round((float)$cuota->interes_ordinario_esperado - (float)$cuota->interes_ordinario_pagado, 2),
                     'saldo_vencido'     => round(max(0, (float)$cuota->saldo_insoluto - (float)$cuota->capital_pagado), 2),
@@ -308,11 +309,11 @@ class PagoController extends Controller
                 ->whereNotIn('estado', ['Pagado', 'Condonado', 'Reestructurada', 'Gracia']);
 
             if ($activasQuery()->count() === 0) {
-                $credito->update(['estatus' => 'Liquidado']);
+                $credito->update(['estatus' => EstadoCredito::LIQUIDADO]);
             } elseif ($activasQuery()->where('fecha_vencimiento', '<', now())->exists()) {
-                $credito->update(['estatus' => 'Moroso']);
+                $credito->update(['estatus' => EstadoCredito::MOROSO]);
             } else {
-                $credito->update(['estatus' => 'Activo']);
+                $credito->update(['estatus' => EstadoCredito::ACTIVO]);
             }
 
             return $pago->id;
@@ -544,11 +545,11 @@ class PagoController extends Controller
                 ->whereNotIn('estado', ['Pagado', 'Condonado', 'Reestructurada', 'Gracia']);
 
             if ($activasQuery()->count() === 0) {
-                $credito->update(['estatus' => 'Liquidado']);
+                $credito->update(['estatus' => EstadoCredito::LIQUIDADO]);
             } elseif ($activasQuery()->where('fecha_vencimiento', '<', now())->exists()) {
-                $credito->update(['estatus' => 'Moroso']);
+                $credito->update(['estatus' => EstadoCredito::MOROSO]);
             } else {
-                $credito->update(['estatus' => 'Activo']);
+                $credito->update(['estatus' => EstadoCredito::ACTIVO]);
             }
         });
 

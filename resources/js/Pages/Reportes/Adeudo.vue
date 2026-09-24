@@ -2,6 +2,7 @@
 import AppLayout from '@/layouts/app/AppSidebarLayout.vue';
 import { Link, router } from '@inertiajs/vue3';
 import { ref } from 'vue';
+import { parseDate } from '@/utils/dateUtils';
 
 const props = defineProps({
     credito: Object,
@@ -23,8 +24,10 @@ function recalcular() {
 const money = (v) => new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN', minimumFractionDigits: 2 }).format(v || 0);
 
 function fmtFecha(f) {
-    if (!f) return '—';
-    return new Date(f + 'T12:00:00').toLocaleDateString('es-MX');
+   
+    //se utiliza la nueva función que toma en consideración el formato ISO de fecha_pago
+
+    return parseDate(f).toLocaleDateString('es-MX');
 }
 
 function estadoClass(estado) {

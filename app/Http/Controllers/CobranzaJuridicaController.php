@@ -13,6 +13,9 @@ use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Inertia\Response;
 
+use App\Enums\EstadoCredito;
+
+
 class CobranzaJuridicaController extends Controller
 {
     public function index(Request $request): Response
@@ -133,7 +136,7 @@ class CobranzaJuridicaController extends Controller
             ]);
 
             if ($data['estatus'] === 'Recuperada') {
-                $juridico->credito->update(['estatus' => 'Activo']);
+                $juridico->credito->update(['estatus' => EstadoCredito::ACTIVO]);
             }
 
             if ($data['estatus'] === 'Reestructurada') {
