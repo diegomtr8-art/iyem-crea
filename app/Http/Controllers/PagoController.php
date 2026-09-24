@@ -23,7 +23,7 @@ class PagoController extends Controller
         abort_if($credito->estatus === 'Cancelado', 403, 'Este crédito está cancelado.');
 
         $hoy = Carbon::now('America/Merida')->startOfDay();
-        $tasaDiaria = ($credito->tasaMoratoriaEfectiva() / 100) / 360;
+        $tasaDiaria = ($credito->tasaMoratoriaEfectiva() / 100) / config('credito.dias_anio_comercial');
 
         $cuotasPendientes = $credito->amortizaciones()
             ->whereNotIn('estado', ['Pagado', 'Condonado', 'Reestructurada', 'Gracia'])
@@ -35,7 +35,7 @@ class PagoController extends Controller
 
                 if ($hoy->gt($vencimiento)) {
                     $dias = (int) $vencimiento->diffInDays($hoy);
-                    if ($dias > 5) {
+                    if ($dias > config('credito.dias_gracia_mora')) {
                         $saldoVencido = round(max(0, (float)$cuota->saldo_insoluto - (float)$cuota->capital_pagado), 2);
                         $mora = round($saldoVencido * $tasaDiaria * $dias, 2);
                     }
@@ -80,7 +80,7 @@ class PagoController extends Controller
         $pagoId = DB::transaction(function () use ($validated, $credito) {
             $hoy           = Carbon::parse($validated['fecha_pago'])->startOfDay();
             $montoRestante = (float) $validated['monto_recibido'];
-            $tasaDiaria    = ($credito->tasaMoratoriaEfectiva() / 100) / 360;
+            $tasaDiaria    = ($credito->tasaMoratoriaEfectiva() / 100) / config('credito.dias_anio_comercial');
 
             $capitalPendienteTotal = round((float) $credito->amortizaciones()
                 ->whereNotIn('estado', ['Pagado', 'Condonado', 'Reestructurada', 'Gracia'])
@@ -209,7 +209,7 @@ class PagoController extends Controller
                 if ($hoy->gt($vencimiento)) {
                     // Carbon 3: diffInDays() es con signo. Usar $vencimiento->diffInDays($hoy) para obtener días positivos cuando está vencida.
                     $dias = (int) $vencimiento->diffInDays($hoy);
-                    if ($dias > 5) {
+                    if ($dias > config('credito.dias_gracia_mora')) {
                         $saldoVencido = round(max(0, (float)$fila->saldo_insoluto - (float)$fila->capital_pagado), 2);
                         $moraFila = round($saldoVencido * $tasaDiaria * $dias, 2);
                     }
@@ -649,7 +649,7 @@ class PagoController extends Controller
         if ($hoy->gt($vencimiento)) {
             // Carbon 3: diffInDays() con signo; vencimiento como receptor da días positivos.
             $dias = (int) $vencimiento->diffInDays($hoy);
-            if ($dias > 5) {
+            if ($dias > config('credito.dias_gracia_mora')) {
                 return round($saldoVencido * $tasaDiaria * $dias, 2);
             }
         }

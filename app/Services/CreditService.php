@@ -85,9 +85,9 @@ class CreditService
             $diasAtraso = (int) $vencimiento->diffInDays($hoy);
 
             // Regla de los 5 días de gracia
-            if ($diasAtraso > 5) {
+            if ($diasAtraso > config('credito.dias_gracia_mora')) {
                 // Año comercial 360
-                $tasaDiaria = ($tasaMoratoriaAnual / 100) / 360;
+                $tasaDiaria = ($tasaMoratoriaAnual / 100) / config('credito.dias_anio_comercial');
                 
                 // Calculamos la mora sobre lo que falta pagar (pago_restante)
                 $nuevaMora = round($fila->pago_restante * $tasaDiaria * $diasAtraso, 2);
