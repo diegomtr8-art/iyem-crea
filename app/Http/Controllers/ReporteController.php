@@ -13,6 +13,12 @@ use Inertia\Inertia;
 
 class ReporteController extends Controller
 {
+    /**
+     * NOTA SOBRE CONCILIACIÓN CON EL REPORTE DE CARTERA:
+     * El total de este reporte calcula: Capital Pendiente + Interés Pendiente + Mora recalculada al vuelo (con tasa diaria).
+     * El reporte de cartera() suma la columna 'pago_restante' de las amortizaciones (Cuota + Mora almacenada - Pagado).
+     * Existen discrepancias naturales mientras la sincronización de tablas de moras permanezca pendiente (Tarea 4.5).
+     */
     public function cartera(Request $request)
     {
         $estatus    = $request->get('estatus');
@@ -104,12 +110,129 @@ class ReporteController extends Controller
             ->whereNotNull('municipio')->where('municipio', '!=', '')
             ->distinct()->orderBy('municipio')->pluck('municipio');
 
-        return Inertia::render('Reportes/Cartera', [
+    return Inertia::render('Reportes/Cartera', [
             'creditos'    => $creditos->values(),
             'resumen'     => $resumen,
             'modalidades' => $modalidades,
             'municipios'  => $municipios,
             'filtros'     => ['estatus' => $estatus, 'modalidad_id' => $modId, 'sexo' => $sexo, 'municipio' => $municipio],
+        ]);
+    }
+
+/**
+     * Método público/estático para obtener los datos puros calculados del reporte.
+     */
+    public static function obtenerDatosAntiguedad(array $filtros): array
+    {
+        $estatus   = $filtros['estatus'] ?? null;
+        $modId     = isset($filtros['modalidad_id']) ? (int)$filtros['modalidad_id'] : null;
+        $sexo      = $filtros['sexo'] ?? null;
+        $municipio = $filtros['municipio'] ?? null;
+
+        $creditosQuery = Credito::with(['acreditado', 'modalidad', 'amortizaciones'])
+            ->when($estatus, fn($q) => $q->where('estatus', $estatus))
+            ->when($modId, fn($q) => $q->where('modalidad_id', $modId))
+            ->when($sexo, fn($q) => $q->whereHas('acreditado', fn($a) => $a->where('sexo', $sexo)))
+            ->when($municipio, fn($q) => $q->whereHas('acreditado', fn($a) => $a->where('municipio', $municipio)));
+
+        $creditos = $creditosQuery->get();
+
+        $buckets = [
+            'al_corriente' => ['rango' => 'Al corriente',  'cuotas' => 0, 'capital' => 0, 'interes' => 0, 'mora' => 0, 'total' => 0],
+            '1_30'         => ['rango' => '1 a 30 días',   'cuotas' => 0, 'capital' => 0, 'interes' => 0, 'mora' => 0, 'total' => 0],
+            '31_60'        => ['rango' => '31 a 60 días',  'cuotas' => 0, 'capital' => 0, 'interes' => 0, 'mora' => 0, 'total' => 0],
+            '61_90'        => ['rango' => '61 a 90 días',  'cuotas' => 0, 'capital' => 0, 'interes' => 0, 'mora' => 0, 'total' => 0],
+            'mas_90'       => ['rango' => 'Más de 90 días', 'cuotas' => 0, 'capital' => 0, 'interes' => 0, 'mora' => 0, 'total' => 0],
+        ];
+
+        foreach ($creditos as $c) {
+            $tasaDiaria = ($c->tasa_interes_moratorio / 100) / 360;
+
+            foreach ($c->amortizaciones as $fila) {
+                if (in_array($fila->estado, ['Pagado', 'Condonado', 'Reestructurada', 'Gracia'])) {
+                    continue;
+                }
+
+                $vencimiento = Carbon::parse($fila->fecha_vencimiento)->startOfDay();
+                $capPend = max(0, (float)$fila->capital_esperado - (float)$fila->capital_pagado);
+                $intPend = max(0, (float)$fila->interes_ordinario_esperado - (float)$fila->interes_ordinario_pagado);
+                $hoyMerida = Carbon::now('America/Merida')->startOfDay();
+
+                if ($hoyMerida->gt($vencimiento)) {
+                    $diasAtraso = (int) $vencimiento->diffInDays($hoyMerida);
+
+                    if ($diasAtraso <= 30) {
+                        $key = '1_30';
+                    } elseif ($diasAtraso <= 60) {
+                        $key = '31_60';
+                    } elseif ($diasAtraso <= 90) {
+                        $key = '61_90';
+                    } else {
+                        $key = 'mas_90';
+                    }
+
+                    $moraActual = 0;
+                    if ($diasAtraso > 5) {
+                        $sv = max(0, (float)$fila->saldo_insoluto - (float)$fila->capital_pagado);
+                        $moraActual = round($sv * $tasaDiaria * $diasAtraso, 2);
+                    }
+
+                    $buckets[$key]['capital'] += $capPend;
+                    $buckets[$key]['interes'] += $intPend;
+                    $buckets[$key]['mora']    += $moraActual;
+                } else {
+                    $key = 'al_corriente';
+                    $buckets['al_corriente']['capital'] += $capPend;
+                    $buckets['al_corriente']['interes'] += $intPend;
+                }
+
+                $buckets[$key]['cuotas']++;
+            }
+        }
+
+        $granTotal = 0;
+        foreach ($buckets as $k => $b) {
+            $subtotal = $b['capital'] + $b['interes'] + $b['mora'];
+            $buckets[$k]['total'] = round($subtotal, 2);
+            $granTotal += $subtotal;
+        }
+
+        return [
+            'buckets'    => array_values($buckets),
+            'gran_total' => round($granTotal, 2),
+        ];
+    }
+
+    public function antiguedad(Request $request)
+    {
+        $filtros = [
+            'estatus'      => $request->get('estatus'),
+            'modalidad_id' => $request->get('modalidad_id') ? (int)$request->get('modalidad_id') : null,
+            'sexo'         => $request->get('sexo'),
+            'municipio'    => $request->get('municipio'),
+        ];
+
+        $datos = self::obtenerDatosAntiguedad($filtros);
+
+        $modalidades = \App\Models\ModalidadCrea::orderBy('nombre')->get(['id', 'nombre']);
+        $municipios  = \App\Models\Acreditado::select('municipio')
+            ->whereNotNull('municipio')->where('municipio', '!=', '')
+            ->distinct()->orderBy('municipio')->pluck('municipio');
+
+        $reporte = array_map(function ($b) use ($datos) {
+            $b['porcentaje'] = $datos['gran_total'] > 0 ? round(($b['total'] / $datos['gran_total']) * 100, 2) : 0;
+            $b['capital']    = round($b['capital'], 2);
+            $b['interes']    = round($b['interes'], 2);
+            $b['mora']       = round($b['mora'], 2);
+            return $b;
+        }, $datos['buckets']);
+
+        return Inertia::render('Reportes/Antiguedad', [
+            'reporte'     => $reporte,
+            'gran_total'  => $datos['gran_total'],
+            'modalidades' => $modalidades,
+            'municipios'  => $municipios,
+            'filtros'     => $filtros,
         ]);
     }
 
