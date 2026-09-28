@@ -103,7 +103,7 @@ class MiCreditoController extends Controller
                     'saldo_insoluto' => $a->saldo_insoluto,
                     'capital'        => $a->capital_esperado,
                     'ordinario'      => $a->interes_ordinario_esperado,
-                    'moratorio'      => $a->moratorio_acumulado ?? 0,
+                    'moratorio'      => $a->interes_moratorio_generado ?? 0,
                     'capital_pagado' => $a->capital_pagado,
                     'ordinario_pagado'=> $a->interes_ordinario_pagado,
                     'total_pagado'   => ($a->capital_pagado ?? 0) + ($a->interes_ordinario_pagado ?? 0),
