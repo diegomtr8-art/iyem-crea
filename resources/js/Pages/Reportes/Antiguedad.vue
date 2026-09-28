@@ -19,7 +19,7 @@ ChartJS.register(Title, Tooltip, Legend, BarElement, CategoryScale, LinearScale)
 const props = defineProps<{
     reporte: {
         rango: string;
-        creditos: number;
+        cuotas: number;
         capital: number;
         interes: number;
         mora: number;
@@ -108,7 +108,9 @@ const chartOptions = computed(() => ({
     },
 }));
 
-const totalCreditos = computed(() => props.reporte.reduce((acc, i) => acc + i.creditos, 0));
+const totalCuotas = computed(() => {
+    return props.reporte.reduce((acc, i) => acc + (i.cuotas || 0), 0);
+});
 </script>
 
 <template>
@@ -148,7 +150,7 @@ const totalCreditos = computed(() => props.reporte.reduce((acc, i) => acc + i.cr
                 <div class="rounded-xl border border-gray-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-3.5 sm:p-4 shadow-sm min-w-0">
                     <p class="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide truncate">Créditos con Adeudo</p>
                     <p class="mt-1 text-xl sm:text-3xl font-bold text-gray-900 dark:text-gray-100 truncate">
-                        {{ totalCreditos }}
+                        {{ totalCuotas }}
                     </p>
                 </div>
                 <div class="rounded-xl border border-gray-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-3.5 sm:p-4 shadow-sm min-w-0">
