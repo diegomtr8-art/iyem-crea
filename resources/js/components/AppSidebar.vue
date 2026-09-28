@@ -105,6 +105,12 @@ const mainNavItems = computed(() => {
             icon: FileText,
             group: 'Reportes',
         });
+        items.push({
+            title: 'Reporte Antigüedad',
+            url: route('reportes.antiguedad'),
+            icon: BarChart2,
+            group: 'Reportes',
+        });
     }
     if (can('ver.simulador')) {
         items.push({

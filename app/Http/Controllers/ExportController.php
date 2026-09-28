@@ -254,6 +254,75 @@ class ExportController extends Controller
         return $this->download($spreadsheet, $nombre);
     }
 
+// REPORTE DE ANTIGÜEDAD DE SALDOS
+// REPORTE DE ANTIGÜEDAD DE SALDOS
+public function antiguedad(Request $request): StreamedResponse
+{
+    $filtros = [
+        'estatus'      => $request->get('estatus'),
+        'modalidad_id' => $request->get('modalidad_id') ? (int)$request->get('modalidad_id') : null,
+        'sexo'         => $request->get('sexo'),
+        'municipio'    => $request->get('municipio'),
+    ];
+
+    // CORREGIDO: Se quitó el "Calculo" duplicado de la llamada
+    $data = ReporteController::obtenerDatosAntiguedad($filtros);
+    $buckets   = $data['buckets'];
+    $granTotal = $data['gran_total'];
+
+    $spreadsheet = new Spreadsheet();
+    $sheet       = $spreadsheet->getActiveSheet();
+    $sheet->setTitle('Antigüedad de Saldos');
+
+    $sheet->setCellValue('A1', 'Reporte de Antigüedad de Saldos (Aging)');
+    $sheet->setCellValue('A2', 'Generado: ' . now()->format('d/m/Y H:i'));
+    $sheet->getStyle('A1')->getFont()->setBold(true)->setSize(14);
+
+    // Encabezado con la columna llamada "Cuotas Vencidas" en lugar de "Créditos" (Punto 3)
+    $headers = ['Rango', 'Cuotas', 'Capital Vencido', 'Interés Vencido', 'Mora', 'Total', '% de la Cartera'];
+    $col = 'A';
+    foreach ($headers as $h) {
+        $sheet->setCellValue($col . '4', $h);
+        $col++;
+    }
+    $sheet->getStyle('A4:G4')->applyFromArray($this->headerStyle());
+
+    $row = 5;
+    foreach ($buckets as $b) {
+        $porcentaje = $granTotal > 0 ? round(($b['total'] / $granTotal), 4) : 0;
+
+        $sheet->setCellValue('A' . $row, $b['rango']);
+        $sheet->setCellValue('B' . $row, $b['cuotas']);
+        $sheet->setCellValue('C' . $row, round($b['capital'], 2));
+        $sheet->setCellValue('D' . $row, round($b['interes'], 2));
+        $sheet->setCellValue('E' . $row, round($b['mora'], 2));
+        $sheet->setCellValue('F' . $row, "=SUM(C{$row}:E{$row})");
+        $sheet->setCellValue('G' . $row, $porcentaje);
+
+        $row++;
+    }
+
+    $sheet->setCellValue('A' . $row, 'Total');
+    $sheet->setCellValue('B' . $row, "=SUM(B5:B" . ($row - 1) . ")");
+    $sheet->setCellValue('C' . $row, "=SUM(C5:C" . ($row - 1) . ")");
+    $sheet->setCellValue('D' . $row, "=SUM(D5:D" . ($row - 1) . ")");
+    $sheet->setCellValue('E' . $row, "=SUM(E5:E" . ($row - 1) . ")");
+    $sheet->setCellValue('F' . $row, "=SUM(F5:F" . ($row - 1) . ")");
+    $sheet->setCellValue('G' . $row, "=SUM(G5:G" . ($row - 1) . ")");
+    $sheet->getStyle("A{$row}:G{$row}")->getFont()->setBold(true);
+
+    $moneyFmt = '#,##0.00';
+    foreach (['C', 'D', 'E', 'F'] as $c) {
+        $sheet->getStyle("{$c}5:{$c}{$row}")->getNumberFormat()->setFormatCode($moneyFmt);
+    }
+    $sheet->getStyle("G5:G{$row}")->getNumberFormat()->setFormatCode('0.00%');
+
+    $this->autoSize($sheet, ['A', 'B', 'C', 'D', 'E', 'F', 'G']);
+
+    $nombre = 'Reporte_Antiguedad_Saldos_' . date('Ymd') . '.xlsx';
+    return $this->download($spreadsheet, $nombre);
+}
+
     private function download(Spreadsheet $spreadsheet, string $nombre): StreamedResponse
     {
         $writer = new Xlsx($spreadsheet);
