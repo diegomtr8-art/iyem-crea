@@ -70,6 +70,7 @@ Route::middleware(['auth', 'verified', 'ciudadano'])->prefix('mi-portal')->name(
     Route::get('mi-credito', [MiCreditoController::class, 'index'])->name('credito');
     Route::get('mi-credito/estado-cuenta/pdf', [EstadoCuentaController::class, 'pdf'])->name('credito.estado-cuenta.pdf');
     Route::get('mi-credito/liquidacion-anticipada', [EstadoCuentaController::class, 'liquidacionAnticipada'])->name('credito.liquidacion');
+    Route::get('mi-credito/constancia', [EstadoCuentaController::class, 'constancia'])->name('credito.constancia');
 
     // Comprobación de uso del crédito
     Route::post('comprobacion/{comprobacion}/enviar', [ComprobacionPortalController::class, 'enviar'])->name('comprobacion.enviar');

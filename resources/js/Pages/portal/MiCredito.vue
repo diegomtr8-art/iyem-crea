@@ -5,7 +5,7 @@ import { ref, computed } from 'vue';
 import {
     BadgeCheck, CalendarDays, CreditCard, DollarSign, TrendingUp,
     FileText, Clock, CheckCircle2, AlertCircle, Minus,
-    Download, Calculator, X, ClipboardCheck, Plus, Trash2, ExternalLink
+    Download, Calculator, X, ClipboardCheck, Plus, Trash2, ExternalLink, FileCheck2
 } from 'lucide-vue-next';
 import { router, useForm } from '@inertiajs/vue3';
 import { parseDate } from '@/utils/dateUtils';
@@ -414,7 +414,7 @@ const enviarComprobacion = () => {
             </div>
 
             <!-- Acciones del Portal -->
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <a :href="route('portal.credito.estado-cuenta.pdf')" target="_blank"
                     class="flex items-center gap-3 bg-white dark:bg-zinc-900 border border-slate-100 dark:border-zinc-800 rounded-2xl p-5 shadow-sm hover:border-red-300 dark:hover:border-red-800 transition-all group">
                     <div class="w-10 h-10 rounded-xl bg-red-50 dark:bg-red-900/30 flex items-center justify-center group-hover:bg-red-100 transition-colors">
@@ -423,6 +423,17 @@ const enviarComprobacion = () => {
                     <div>
                         <p class="font-bold text-slate-900 dark:text-white text-sm">Estado de Cuenta</p>
                         <p class="text-xs text-slate-500 dark:text-zinc-400">Descargar PDF con historial</p>
+                    </div>
+                </a>
+
+                <a :href="route('portal.credito.constancia')" target="_blank"
+                    class="flex items-center gap-3 bg-white dark:bg-zinc-900 border border-slate-100 dark:border-zinc-800 rounded-2xl p-5 shadow-sm hover:border-emerald-300 dark:hover:border-emerald-800 transition-all group">
+                    <div class="w-10 h-10 rounded-xl bg-emerald-50 dark:bg-emerald-900/30 flex items-center justify-center group-hover:bg-emerald-100 transition-colors">
+                        <FileCheck2 size="20" class="text-emerald-700" />
+                    </div>
+                    <div>
+                        <p class="font-bold text-slate-900 dark:text-white text-sm">Constancia de Crédito</p>
+                        <p class="text-xs text-slate-500 dark:text-zinc-400">Descargar carta de crédito activo</p>
                     </div>
                 </a>
 
