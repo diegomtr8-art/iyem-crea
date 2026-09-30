@@ -64,16 +64,34 @@ class ReestructuracionController extends Controller
             'observaciones'            => 'nullable|string|max:2000',
         ]);
 
-        $saldoPendiente = $credito->amortizaciones()
-            ->whereNotIn('estado', ['Pagado', 'Condonado', 'Reestructurada', 'Gracia'])
-            ->sum('pago_restante');
+        $fechaCorte = Carbon::parse($data['fecha_reestructura'])->startOfDay();
 
-        return DB::transaction(function () use ($credito, $data, $saldoPendiente) {
+        $cuotasActivas = $credito->amortizaciones()
+            ->whereNotIn('estado', ['Pagado', 'Condonado', 'Reestructurada', 'Gracia'])
+            ->get([
+                'fecha_vencimiento',
+                'capital_esperado',
+                'capital_pagado',
+                'interes_ordinario_esperado',
+                'interes_ordinario_pagado',
+            ]);
+
+        $capitalPendiente = $cuotasActivas->sum(
+            fn ($cuota) => (float) $cuota->capital_esperado - (float) $cuota->capital_pagado
+        );
+
+        $interesDevengado = $cuotasActivas
+            ->filter(fn ($cuota) => Carbon::parse($cuota->fecha_vencimiento)->startOfDay()->lte($fechaCorte))
+            ->sum(fn ($cuota) => max(0, (float) $cuota->interes_ordinario_esperado - (float) $cuota->interes_ordinario_pagado));
+
+        $baseReestructuracion = round($capitalPendiente + $interesDevengado, 2);
+
+        return DB::transaction(function () use ($credito, $data, $baseReestructuracion) {
             $reestructuracion = Reestructuracion::create([
                 'credito_id'               => $credito->id,
                 'fecha_reestructura'       => $data['fecha_reestructura'],
                 'motivo'                   => $data['motivo'],
-                'saldo_al_momento'         => $saldoPendiente,
+                'saldo_al_momento'         => $baseReestructuracion,
                 'mora_condonada'           => $data['mora_condonada'] ?? 0,
                 'interes_condonado'        => $data['interes_condonado'] ?? 0,
                 'nuevo_plazo_meses'        => $data['nuevo_plazo_meses'],
@@ -89,7 +107,7 @@ class ReestructuracionController extends Controller
                 ->whereNotIn('estado', ['Pagado', 'Condonado', 'Reestructurada', 'Gracia'])
                 ->update(['estado' => 'Reestructurada', 'pago_restante' => 0]);
 
-            $monto       = $saldoPendiente - ($data['mora_condonada'] ?? 0) - ($data['interes_condonado'] ?? 0);
+            $monto       = $baseReestructuracion;
             $plazo       = (int) $data['nuevo_plazo_meses'];
             $tasa        = ((float) $data['nueva_tasa_interes'] / 100) / 12;
             $fechaInicio = Carbon::parse($data['nueva_fecha_inicio_pagos']);
