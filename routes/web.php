@@ -30,6 +30,7 @@ use App\Http\Controllers\Portal\ComprobacionPortalController;
 use App\Http\Controllers\Portal\WizardSolicitudController;
 use App\Http\Controllers\Portal\MiCreditoController;
 use App\Http\Controllers\Portal\ExpedienteController;
+use App\Http\Controllers\Portal\PerfilController;
 use Illuminate\Support\Facades\Route;
 
 // --- RUTAS PÚBLICAS (LANDING PAGE INFORMATIVA) ---
@@ -51,6 +52,10 @@ Route::middleware(['auth', 'verified', 'ciudadano'])->prefix('mi-portal')->name(
     // Expediente digital
     Route::get('expediente', [ExpedienteController::class, 'index'])->name('expediente');
 
+    // Mi perfil (teléfono y correo de contacto)
+    Route::get('perfil', [PerfilController::class, 'edit'])->name('perfil');
+    Route::patch('perfil', [PerfilController::class, 'update'])->name('perfil.update');
+
     // Wizard de solicitud (flujo principal en /solicitud)
     Route::get('solicitud', [WizardSolicitudController::class, 'index'])->name('solicitud.index');
     Route::post('solicitud/verificar-curp', [WizardSolicitudController::class, 'verificarCurp'])->name('solicitar.verificar-curp');
@@ -70,6 +75,7 @@ Route::middleware(['auth', 'verified', 'ciudadano'])->prefix('mi-portal')->name(
     Route::get('mi-credito', [MiCreditoController::class, 'index'])->name('credito');
     Route::get('mi-credito/estado-cuenta/pdf', [EstadoCuentaController::class, 'pdf'])->name('credito.estado-cuenta.pdf');
     Route::get('mi-credito/liquidacion-anticipada', [EstadoCuentaController::class, 'liquidacionAnticipada'])->name('credito.liquidacion');
+    Route::get('mi-credito/constancia', [EstadoCuentaController::class, 'constancia'])->name('credito.constancia');
 
     // Comprobación de uso del crédito
     Route::post('comprobacion/{comprobacion}/enviar', [ComprobacionPortalController::class, 'enviar'])->name('comprobacion.enviar');
