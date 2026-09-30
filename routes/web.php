@@ -32,6 +32,7 @@ use App\Http\Controllers\Portal\MiCreditoController;
 use App\Http\Controllers\Portal\ExpedienteController;
 use App\Http\Controllers\Portal\AyudaController;
 use App\Http\Controllers\Portal\MensajeContactoController;
+use App\Http\Controllers\Portal\HistorialPagosController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Admin\MensajesCiudadanoController;
 use App\Http\Controllers\BitacoraTareasController;
@@ -84,6 +85,7 @@ Route::middleware(['auth', 'verified', 'ciudadano'])->prefix('mi-portal')->name(
     Route::get('mi-credito/estado-cuenta/pdf', [EstadoCuentaController::class, 'pdf'])->name('credito.estado-cuenta.pdf');
     Route::get('mi-credito/liquidacion-anticipada', [EstadoCuentaController::class, 'liquidacionAnticipada'])->name('credito.liquidacion');
     Route::get('mi-credito/constancia', [EstadoCuentaController::class, 'constancia'])->name('credito.constancia');
+    Route::get('mi-credito/{credito}/pagos/excel', [HistorialPagosController::class, 'excel'])->name('credito.pagos.excel');
 
     // Comprobación de uso del crédito
     Route::post('comprobacion/{comprobacion}/enviar', [ComprobacionPortalController::class, 'enviar'])->name('comprobacion.enviar');
