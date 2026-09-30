@@ -31,6 +31,8 @@ use App\Http\Controllers\Portal\WizardSolicitudController;
 use App\Http\Controllers\Portal\MiCreditoController;
 use App\Http\Controllers\Portal\ExpedienteController;
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\BitacoraTareasController;
+use App\Http\Controllers\RespaldoExcelController;
 
 // --- RUTAS PÚBLICAS (LANDING PAGE INFORMATIVA) ---
 Route::get('/', [PublicController::class, 'index'])->name('welcome');
@@ -171,9 +173,11 @@ Route::middleware(['auth', 'verified', 'operativo'])->group(function () {
     Route::get('exportar/movimientos/{acreditado}', [ExportController::class, 'movimientosAcreditado'])->name('operaciones.export');
     Route::get('exportar/cartera', [ExportController::class, 'cartera'])->name('exportar.cartera');
     Route::get('exportar/pagos', [ExportController::class, 'pagos'])->name('exportar.pagos');
+    Route::get('admin/respaldo-excel', [RespaldoExcelController::class, 'descargar'])->middleware('role:Administrador')->name('respaldo-excel.descargar');
 
     // AUDITORÍA
     Route::get('auditoria', [AuditoriaController::class, 'index'])->name('auditoria.index');
+    Route::get('admin/tareas-programadas', [BitacoraTareasController::class, 'index'])->middleware('role:Administrador')->name('bitacora-tareas.index');
 
     // PRESUPUESTO — módulo eliminado
     // Route::get('presupuesto', [PresupuestoController::class, 'index'])->name('presupuesto.index');
