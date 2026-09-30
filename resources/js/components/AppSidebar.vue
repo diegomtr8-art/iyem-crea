@@ -4,7 +4,7 @@ import NavMain from '@/components/NavMain.vue';
 import NavUser from '@/components/NavUser.vue';
 import { Sidebar, SidebarContent, SidebarFooter, SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem } from '@/components/ui/sidebar';
 import { Link, usePage } from '@inertiajs/vue3';
-import { LayoutGrid, ShieldCheck, Users, ClipboardList, BarChart2, FileText, Calculator, Inbox, TrendingDown, ScrollText, ClipboardCheck } from 'lucide-vue-next';
+import { LayoutGrid, ShieldCheck, Users, ClipboardList, BarChart2, FileText, Calculator, Inbox, TrendingDown, ScrollText, ClipboardCheck, Clock } from 'lucide-vue-next';
 import AppLogo from './AppLogo.vue';
 import { computed, watch, onMounted, ref } from 'vue';
 
@@ -127,6 +127,10 @@ const mainNavItems = computed(() => {
     }
     if (can('ver.roles')) {
         items.push({ title: 'Roles y Permisos', url: '/roles', icon: ShieldCheck, group: 'Sistema' });
+    }
+
+    if (page.props.auth?.user?.roles?.includes('Administrador')) {
+        items.push({ title: 'Tareas programadas', url: route('bitacora-tareas.index'), icon: Clock, group: 'Sistema' });
     }
 
     return items;
