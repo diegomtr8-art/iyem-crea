@@ -74,7 +74,9 @@ Configura la conexión a la base de datos en el archivo .env
 DB_DATABASE=<nombre_de_la_bd>
 DB_USERNAME=root
 DB_PASSWORD=
+DB_CONNECTION=mysql
 ```
+Es necesario que se cambie la conexión de sqlite a mysql de lo contrario no será posible levantar la base de datos correctamente.
 
 ### 7. Ejecutar migraciones
 
@@ -106,19 +108,27 @@ URL local: http://127.0.0.1:8000/
 ## Variables de entorno
 
 ```env
-APP_NAME=Laravel
+APP_NAME=IYEM-CREA
 APP_ENV=local
 APP_KEY=<generada_con_php_artisan_key:generate>
 APP_URL=http://localhost
 
 DB_CONNECTION=mysql
-DB_HOST=128.0.0.1
+DB_HOST=127.0.0.1
 DB_PORT=3306
 DB_DATABASE=<nombre_de_la_base_de_datos>
 DB_USERNAME=root
 DB_PASSWORD=
 
-[OTRAS_VARIABLES]
+MAIL_MAILER=log
+MAIL_SCHEME=null
+MAIL_HOST=servidor-de-correo
+MAIL_PORT=587
+MAIL_USERNAME=correo@dominio.com
+MAIL_PASSWORD=null
+MAIL_FROM_ADDRESS="correo@dominio.com"
+MAIL_FROM_NAME="${APP_NAME}"
+
 CREA_DIAS_ANIO=360
 CREA_DIAS_GRACIA=5
 ```
@@ -127,8 +137,14 @@ CREA_DIAS_GRACIA=5
 
 | Rol | Descripción | Permisos |
 |---|---|---|
-| Administrador | Responsable de la gestión y configuración general del sistema. | Ver interesados, acreditados, pagos, reportes, simulador, usuarios y roles |
-| Operativo | Responsable de la consulta y gestión de la información relacionada con la operación del programa. | Ver interesados, acreditados, pagos y reportes. |
+| Administrador | Responsable de la gestión y configuración general del sistema. | Acceso total al sistema, incluyendo interesados, solicitudes, acreditados, análisis crediticio, desembolsos, pagos, cobranza, jurídico, presupuesto, reportes, simulador, auditoría, usuarios y roles. |
+| Operativo | Responsable de la consulta y gestión de la información relacionada con la operación del programa. | Consultar el panel principal, interesados, acreditados, pagos, reportes y simulador. |
+Analista de Crédito | Responsable de la evaluación y gestión de solicitudes de crédito. | Ver y gestionasr interesados y solicitudes; aprobar o rechazar solicitudes; consultar acrediytados y desembolsos; gestionar análisis crediticios; consultar reportes y utilizar el simulador |
+| Cajero | Responsable del registro y consulta de pagos relacionados con los créditos | Consultar acreditados, pagos y cobranza; registrar pagos y consultar reportes. |
+| Cobranza | Responsable del seguimiento y gestión de pagos y procesos de cobranza. | Consultar acreditados; consultar, registrar y cancelar pagos; ver y gestionar cobranza; consultar información jurídica y reportes. |
+| Jurídico | Responsable del seguimiento de los asuntos jurídicos relacionados con los creditos y procesos de cobranza. | Consultar acreditados; ver y gestionar cobranza; consultar y editar información jurídica; consultar reportes. |
+| Consulta | Usuario con acceso de solo lectura a la información general del sistema | Consultar interesados, solicitudes, acreditados, pagos, cobranza y reportes, así como utilizar el simulador. |
+| Ciudadano | Usuario externo que accede a las funcionalidades destinadas a los ciudadanos. | Acceso a las funcionalidades correspondientes a ciudadanos, controlado mediante el tipo de usuario y el middleware del sistema. |
 
 ## Módulos
 
@@ -243,10 +259,10 @@ Permite mantener un registro de las acciones y modificaciones realizadas en el s
 
 ## Cómo contribuir
 
-1. Crear una rama:
+1. Crea la rama asignada para la tarea. Las ramas siguen las convenciones feature/, fix/ o docs/, según el tipo de cambio:
 
 ```bash
-git checkout -b [NOMBRE-DE-LA-RAMA]
+git checkout -b feature/gestion-solicitudes
 ```
 
 2. Realizar los cambios.
@@ -257,20 +273,20 @@ git checkout -b [NOMBRE-DE-LA-RAMA]
 php artisan test
 ```
 
-5. Registrar los cambios:
+5. Registrar los cambios los cambios utilizando el formato tipo(área): descripción:
 
 ```bash
 git add .
-git commit -m "[DESCRIPCIÓN DEL CAMBIO]"
+git commit -m "feat(solicitudes): agregar validación de documentos"
 ```
 
-6. Subir la rama:
+6. Subir la rama al repositorio remoto:
 
 ```bash
-git push origin [NOMBRE-DE-LA-RAMA]
+git push origin feature/gestion-solicitudes
 ```
 
-7. Crear un Pull Request y describir los cambios.
+7. Crear un Pull Request de la rama de trabajo hacia develop y describir los cambios realizados.
 
 ## Contacto
 
