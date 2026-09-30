@@ -38,7 +38,7 @@ class HistorialPagosController extends Controller
         $sheet->setCellValue('A2', 'Contrato:');
         $sheet->setCellValue('B2', $credito->clave_contrato ?? '—');
         $sheet->setCellValue('A3', 'Generado:');
-        $sheet->setCellValue('B3', now()->format('d/m/Y H:i'));
+        $sheet->setCellValue('B3', now()->timezone('America/Merida')->format('d/m/Y H:i'));
 
         $headers = ['Folio', 'Fecha', 'Forma de pago', 'Referencia', 'Monto recibido',
                     'Aplicado a mora', 'Aplicado a interés', 'Aplicado a capital'];
