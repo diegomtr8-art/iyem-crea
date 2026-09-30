@@ -271,6 +271,14 @@ const labelCls = 'block text-xs font-bold uppercase tracking-wider text-slate-40
                     </div>
                 </div>
 
+                <!-- Errores de validación -->
+                <div v-if="Object.keys(form.errors).length" class="space-y-2">
+                    <p v-for="(msg, campo) in form.errors" :key="campo"
+                        class="text-xs font-bold text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl px-3 py-2">
+                        {{ msg }}
+                    </p>
+                </div>
+
                 <!-- Acciones -->
                 <div class="flex flex-col-reverse sm:flex-row justify-end gap-3 sm:gap-4">
                     <Link :href="route('acreditados.show', credito.acreditado_id)"

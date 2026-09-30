@@ -9,6 +9,7 @@ use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
 use App\Enums\EstadoCredito;
@@ -108,6 +109,13 @@ class ReestructuracionController extends Controller
                 ->update(['estado' => 'Reestructurada', 'pago_restante' => 0]);
 
             $monto       = $baseReestructuracion;
+
+            if ($monto <= 0) {
+                throw ValidationException::withMessages([
+                    'monto' => 'El monto a reestructurar debe ser mayor a cero: el crédito no tiene capital o interés devengado pendiente.',
+                ]);
+            }
+
             $plazo       = (int) $data['nuevo_plazo_meses'];
             $tasa        = ((float) $data['nueva_tasa_interes'] / 100) / 12;
             $fechaInicio = Carbon::parse($data['nueva_fecha_inicio_pagos']);
