@@ -221,6 +221,10 @@ onMounted(notify);
                                         <p class="text-xs font-bold text-slate-900 dark:text-white truncate">{{ user?.name }}</p>
                                         <p class="text-xs text-slate-400 dark:text-zinc-500 truncate">{{ user?.email }}</p>
                                     </div>
+                                    <Link :href="route('portal.perfil')" @click="userMenuOpen = false"
+                                        class="w-full flex items-center gap-2 px-3 py-2.5 text-sm font-medium text-slate-700 dark:text-zinc-200 hover:bg-slate-50 dark:hover:bg-zinc-800/50 rounded-xl transition-colors">
+                                        <User size="15" /> Mi Perfil
+                                    </Link>
                                     <button @click="logout"
                                         class="w-full flex items-center gap-2 px-3 py-2.5 text-sm font-medium text-[#6B1938] dark:text-[#f4a8c4] hover:bg-[#6B1938]/5 dark:hover:bg-[#6B1938]/10 rounded-xl transition-colors">
                                         <LogOut size="15" /> Cerrar Sesión
@@ -266,6 +270,10 @@ onMounted(notify);
                                 <p class="text-xs text-slate-400 dark:text-zinc-500 truncate">{{ user?.email }}</p>
                             </div>
                         </div>
+                        <Link :href="route('portal.perfil')" @click="mobileOpen = false"
+                            class="w-full flex items-center gap-2 px-4 py-3 text-sm font-semibold text-slate-700 dark:text-zinc-200 hover:bg-slate-50 dark:hover:bg-zinc-800/50 rounded-xl transition-colors">
+                            <User size="16" /> Mi Perfil
+                        </Link>
                         <button @click="logout"
                             class="w-full flex items-center gap-2 px-4 py-3 text-sm font-semibold text-[#6B1938] dark:text-[#f4a8c4] hover:bg-[#6B1938]/5 dark:hover:bg-[#6B1938]/10 rounded-xl transition-colors">
                             <LogOut size="16" /> Cerrar Sesión

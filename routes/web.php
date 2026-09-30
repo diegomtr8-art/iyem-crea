@@ -30,6 +30,7 @@ use App\Http\Controllers\Portal\ComprobacionPortalController;
 use App\Http\Controllers\Portal\WizardSolicitudController;
 use App\Http\Controllers\Portal\MiCreditoController;
 use App\Http\Controllers\Portal\ExpedienteController;
+use App\Http\Controllers\Portal\PerfilController;
 use Illuminate\Support\Facades\Route;
 
 // --- RUTAS PÚBLICAS (LANDING PAGE INFORMATIVA) ---
@@ -50,6 +51,10 @@ Route::middleware(['auth', 'verified', 'ciudadano'])->prefix('mi-portal')->name(
 
     // Expediente digital
     Route::get('expediente', [ExpedienteController::class, 'index'])->name('expediente');
+
+    // Mi perfil (teléfono y correo de contacto)
+    Route::get('perfil', [PerfilController::class, 'edit'])->name('perfil');
+    Route::patch('perfil', [PerfilController::class, 'update'])->name('perfil.update');
 
     // Wizard de solicitud (flujo principal en /solicitud)
     Route::get('solicitud', [WizardSolicitudController::class, 'index'])->name('solicitud.index');
