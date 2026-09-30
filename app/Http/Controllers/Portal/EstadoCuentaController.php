@@ -52,6 +52,21 @@ class EstadoCuentaController extends Controller
         return $pdf->download("EstadoCuenta_{$credito->clave_contrato}.pdf");
     }
 
+    public function constancia(): \Symfony\Component\HttpFoundation\Response
+    {
+        $credito = $this->getCreditoUsuario();
+        abort_if(!$credito, 404, 'No tienes un crédito activo.');
+
+        $pdf = app('dompdf.wrapper');
+        $pdf->loadView('pdf.constancia-credito', [
+            'credito'          => $credito,
+            'fecha_generacion' => now()->format('d/m/Y'),
+        ]);
+        $pdf->setPaper('letter', 'portrait');
+
+        return $pdf->download("Constancia_{$credito->clave_contrato}.pdf");
+    }
+
     public function liquidacionAnticipada(): JsonResponse
     {
         $credito = $this->getCreditoUsuario();
