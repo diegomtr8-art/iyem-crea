@@ -154,3 +154,43 @@ test('T2: rechaza la reestructuración cuando el monto resultante es <= 0', func
     expect(Reestructuracion::count())->toBe(0)
         ->and($credito->amortizaciones()->count())->toBe(1);
 });
+
+test('T3: guarda en mora_condonada la mora real, no la capturada por el operador', function () {
+    [$user, $credito] = baseReestructuraTest();
+    $this->actingAs($user);
+
+    $moras = [1389.94, 946.48, 550.40, 178.02]; // Σ = 3064.84
+    foreach ($moras as $i => $mora) {
+        $credito->amortizaciones()->create([
+            'numero_cuota'               => $i + 1,
+            'fecha_vencimiento'          => '2026-0' . (5 + $i) . '-15',
+            'saldo_insoluto'             => 4000 - ($i * 1000),
+            'capital_esperado'           => 1000,
+            'interes_ordinario_esperado' => 100,
+            'cuota_fija'                 => 1100,
+            'pago_restante'              => 1100,
+            'estado'                     => 'Pendiente',
+            'capital_pagado'             => 0,
+            'interes_ordinario_pagado'   => 0,
+            'interes_moratorio_pagado'   => 0,
+            'interes_moratorio_generado' => $mora,
+            'moratorio_acumulado'        => 0,
+        ]);
+    }
+
+    $this->post(route('creditos.reestructurar.store', $credito->id), [
+        'fecha_reestructura'       => '2026-09-25',
+        'motivo'                   => 'Dificultad_Economica',
+        'mora_condonada'           => 999.99,   // debe ignorarse
+        'interes_condonado'        => 12345,    // debe ignorarse
+        'nuevo_plazo_meses'        => 12,
+        'nueva_tasa_interes'       => 7,
+        'nueva_fecha_inicio_pagos' => '2026-10-15',
+    ])->assertRedirect();
+
+    $reestructuracion = Reestructuracion::first();
+
+    // mora_condonada = Σ interes_moratorio_generado (3064.84), NO 999.99
+    expect((float) $reestructuracion->mora_condonada)->toBe(3064.84)
+        ->and((float) $reestructuracion->saldo_al_momento)->toBe(4400.00);
+});
