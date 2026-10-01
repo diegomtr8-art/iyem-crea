@@ -40,4 +40,14 @@ class Acreditado extends Model
     {
         return $this->hasOne(SolicitudCredito::class);
     }
+
+    /**
+     * Dirección a la que Laravel envía las notificaciones por correo.
+     * Por defecto buscaría el campo "email", pero en esta tabla se llama "correo";
+     * sin este método las notificaciones (como RecordatorioCuota) se descartaban sin error.
+     */
+    public function routeNotificationForMail($notification): ?string
+    {
+        return $this->correo;
+    }
 }
