@@ -1,12 +1,7 @@
 #!/usr/bin/env python3
-"""Recalcula las tablas de amortizacion de CREA y las compara con lo guardado.
+"""Recalcula las amortizaciones de CREA y las compara con lo guardado (solo lee CSV).
 
-Replica app/Services/CreditService.php::generarTablaAmortizacion con Decimal.
-Solo lee CSV; no toca la base de datos.
-
-Uso:
-    python recalculo_motor.py --creditos creditos.csv --amortizaciones amortizaciones.csv \
-        --salida diferencias.csv [--tasa anual|mensual]
+python recalculo_motor.py --creditos c.csv --amortizaciones a.csv --salida d.csv [--tasa anual|mensual]
 """
 import argparse
 import calendar
@@ -22,12 +17,11 @@ MESES_GRACIA_SUSTENTABLE = 3
 
 
 def r2(x):
-    # PHP round(): mitad hacia arriba (lejos de cero)
     return x.quantize(CENTAVO, rounding=ROUND_HALF_UP)
 
 
 def add_months(d, n):
-    """Suma meses como Carbon::addMonths (con desborde: 31-ene + 1 mes = 3-mar)."""
+    """Como Carbon::addMonths, con desborde de fin de mes."""
     m = d.month - 1 + n
     y, m = d.year + m // 12, m % 12 + 1
     dim = calendar.monthrange(y, m)[1]
@@ -65,7 +59,7 @@ def tabla(credito, tasa_modo):
     cuota_teorica = monto * (i / (1 - (1 + i) ** -plazo)) if i > 0 else monto / plazo
     saldo = monto
     for n in range(1, plazo + 1):
-        interes = r2(saldo * tasa / div)  # multiplicar antes de dividir: evita errores en empates de medio centavo
+        interes = r2(saldo * tasa / div)  # multiplicar antes de dividir
         capital = r2(saldo) if n == plazo else r2(cuota_teorica - interes)
         filas.append(dict(numero_cuota=n, fecha_vencimiento=add_months(fecha, n + gracia),
                           saldo_insoluto=r2(saldo), capital_esperado=capital,
@@ -124,7 +118,6 @@ def main():
                 exp = ""
                 dif = guard - recal
                 if campo == "saldo_insoluto" and dif != 0:
-                    # el pago descuenta capital_pagado del saldo guardado
                     if guard + Decimal(g["capital_pagado"]) == recal:
                         exp = "saldo descontado por capital pagado"
                 elif campo == "interes_ordinario_esperado" and dif != 0:

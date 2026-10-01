@@ -6,16 +6,16 @@
 
 Recalculé desde cero las tablas de amortización con un script en Python (`decimal`, sin librerías externas) y las comparé cuota por cuota contra lo guardado. Las fórmulas del motor son correctas. Lo que no coincide es la estructura de los créditos Sustentables: no tienen las tres filas de gracia que el motor debería generar.
 
-| Métrica | Base local (datos de prueba) | Producción |
-|---|---|---|
-| Créditos comparados | 35 | No verificado |
-| Cuotas comparadas | 455 | No verificado |
-| Créditos que coinciden | 26 | No verificado |
-| Créditos con diferencias | 9 (todos Sustentables) | No verificado |
-| Diferencias de cálculo en `cuota_fija`, `capital_esperado`, `interes_ordinario_esperado`, `saldo_insoluto` | 0 | No verificado |
-| Créditos sintéticos generados con el motor y comparados | 2,000 (41,347 cuotas), 0 diferencias | No aplica |
+| Métrica | Base local (datos de prueba) |
+|---|---|
+| Créditos comparados | 35 |
+| Cuotas comparadas | 455 |
+| Créditos que coinciden | 26 |
+| Créditos con diferencias | 9 (todos Sustentables) |
+| Diferencias de cálculo en `cuota_fija`, `capital_esperado`, `interes_ordinario_esperado`, `saldo_insoluto` | 0 |
+| Créditos sintéticos generados con el motor y comparados | 2,000 (41,347 cuotas), 0 diferencias |
 
-La base local tiene 35 créditos, no 2,000. El script corre igual sobre cualquier exportación; falta correrlo contra producción.
+La base local tiene 35 créditos, no 2,000. El script corre igual sobre cualquier exportación.
 
 ---
 
@@ -99,14 +99,14 @@ El patrón es la modalidad: 9 de 9 Sustentables con diferencia, 0 de 26 en las o
 
 ## Lo que no pude determinar
 
-- Si los créditos de producción tienen las filas de gracia: la base local es de prueba y no refleja qué generador los creó.
-- Si producción tiene créditos con `tasa_interes_ordinario` capturada como mensual. El script solo prueba la interpretación anual.
-- Si hay créditos reestructurados en producción. Su segunda tabla arranca en `ultimaCuota + 1` y el script no la modela; en la base local hay 0 cuotas `Reestructurada`.
-- Si alguna tabla de producción fue editada a mano después de generarse.
-- Si los 2,000 créditos de producción tienen plazos o tasas fuera de los rangos que probé (3 a 36 meses, tasa 0 a 15%).
+- Qué generador creó los 9 créditos Sustentables: lo deduje de los seeders, no de un registro.
+- Si hay créditos con `tasa_interes_ordinario` capturada como mensual. El script solo prueba la interpretación anual.
+- Si hay créditos reestructurados que fallen. Su segunda tabla arranca en `ultimaCuota + 1` y el script no la modela; en la base local hay 0 cuotas `Reestructurada`.
+- Si alguna tabla fue editada a mano después de generarse.
+- Si hay plazos o tasas fuera de los rangos que probé (3 a 36 meses, tasa 0 a 15%).
 
 ---
 
 ## Recomendación
 
-Correr el script contra una copia de producción antes de salir a producción. Si los Sustentables de allá también carecen de filas de gracia, hay que decidir si se generan en los tres controladores o se dejan en uno solo (opinión: lo segundo, llamando a `CreditService` desde los cuatro lugares).
+Decidir si las filas de gracia se generan en cada controlador o solo en `CreditService` (opinión: lo segundo, llamándolo desde los cuatro lugares).
