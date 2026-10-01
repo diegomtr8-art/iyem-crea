@@ -4,7 +4,7 @@ import { Link, router, usePage } from '@inertiajs/vue3';
 import { Toaster, toast } from 'vue-sonner';
 import axios from 'axios';
 import {
-    Home, FolderOpen, FileText, BadgeCheck,
+    Home, FolderOpen, FileText, BadgeCheck, CalendarClock,
     Bell, LogOut, ChevronDown, Menu, X, Sun, Moon, User,
     CheckCircle2, Info, AlertTriangle, XCircle, Check
 } from 'lucide-vue-next';
@@ -38,6 +38,7 @@ const navItems = computed(() => [
     { label: 'Mi Expediente',     href: route('portal.expediente'),      icon: FolderOpen, always: true },
     { label: 'Solicitar Crédito', href: route('portal.solicitud.index'), icon: FileText,   always: true },
     { label: 'Mi Crédito',        href: route('portal.credito'),         icon: BadgeCheck, always: false, show: tieneCredito.value },
+    { label: 'Avisos',            href: route('portal.avisos'),          icon: CalendarClock, always: false, show: tieneCredito.value },
 ]);
 
 const isActive = (href: string) => page.url.startsWith(new URL(href).pathname);
