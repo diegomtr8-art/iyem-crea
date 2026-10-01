@@ -4,7 +4,7 @@ import { Link, router, usePage } from '@inertiajs/vue3';
 import { Toaster, toast } from 'vue-sonner';
 import axios from 'axios';
 import {
-    Home, FolderOpen, FileText, BadgeCheck,
+    Home, FolderOpen, FileText, BadgeCheck, History,
     Bell, LogOut, ChevronDown, Menu, X, Sun, Moon, User,
     MessageSquare, CheckCircle2, Info, AlertTriangle, XCircle, Check, HelpCircle
 } from 'lucide-vue-next';
@@ -40,6 +40,7 @@ const navItems = computed(() => [
     { label: 'Mi Crédito',        href: route('portal.credito'),         icon: BadgeCheck, always: false, show: tieneCredito.value },
     { label: 'Contacto',          href: route('portal.contacto'),        icon: MessageSquare, always: true },
     { label: 'Ayuda',             href: route('portal.ayuda'),           icon: HelpCircle, always: true },
+    { label: 'Mis Accesos',       href: route('portal.accesos'),         icon: History,    always: true },
 ]);
 
 const isActive = (href: string) => page.url.startsWith(new URL(href).pathname);
