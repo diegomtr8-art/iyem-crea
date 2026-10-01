@@ -163,7 +163,7 @@ test('6. primera amortización tiene fecha_vencimiento correcta según fecha de 
     );
 
     $primera = $credito->amortizaciones->where('estado', 'Pendiente')->sortBy('numero_cuota')->first();
-    expect($primera->fecha_vencimiento)->toBe('2026-02-15');
+    expect($primera->fecha_vencimiento->toDateString())->toBe('2026-02-15');
 });
 
 /**
