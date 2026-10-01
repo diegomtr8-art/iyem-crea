@@ -33,13 +33,7 @@ class EnviarRecordatorioPago implements ShouldQueue
             return;
         }
 
-        Mail::to($acreditado->correo)->send(new RecordatorioPagoMail(
-            nombre:   $acreditado->nombre_completo,
-            contrato: $cuota->credito->clave_contrato,
-            cuota:    $cuota->numero_cuota,
-            monto:    (float) $cuota->pago_restante,
-            vence:    $cuota->fecha_vencimiento->format('d/m/Y'),
-        ));
+        Mail::to($acreditado->correo)->send(RecordatorioPagoMail::desdeCuota($cuota));
     }
 
     // Si falló después de los 3 intentos, se quita la marca para poder reintentar después

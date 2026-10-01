@@ -3,19 +3,22 @@
 namespace App\Console\Commands;
 
 use App\Models\Amortizacion;
-use App\Notifications\RecordatorioCuota;
+use App\Mail\RecordatorioPagoMail;
 use Carbon\Carbon;
 use Illuminate\Console\Command;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\DB;
 
 class RecordatoriosPago extends Command
 {
+    // Días de anticipación del aviso. El botón del administrador usa este mismo límite.
+    public const DIAS_ANTICIPACION = 3;
     protected $signature   = 'crea:recordatorios-pago';
     protected $description = 'Envía recordatorio por correo a acreditados con cuota que vence en 3 días';
 
     public function handle(): void
     {
-        $en3dias = Carbon::now('America/Merida')->addDays(3)->toDateString();
+        $en3dias = Carbon::now('America/Merida')->addDays(self::DIAS_ANTICIPACION)->toDateString();
 
         $cuotas = Amortizacion::with(['credito.acreditado'])
             ->whereNotIn('estado', ['Pagado', 'Condonado', 'Reestructurada', 'Gracia'])
@@ -38,7 +41,7 @@ class RecordatoriosPago extends Command
             if ($reservada === 0) continue;
 
             try {
-                $acreditado->notify(new RecordatorioCuota($cuota));
+                Mail::to($acreditado->correo)->send(RecordatorioPagoMail::desdeCuota($cuota));
                 $enviados++;
             } catch (\Exception $e) {
                 DB::table('amortizaciones')->where('id', $cuota->id)->update(['recordatorio_enviado_at' => null]);

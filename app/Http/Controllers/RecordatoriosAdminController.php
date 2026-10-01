@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Console\Commands\RecordatoriosPago;
 use App\Jobs\EnviarRecordatorioPago;
 use App\Models\Amortizacion;
 use Carbon\Carbon;
@@ -13,12 +14,15 @@ class RecordatoriosAdminController extends Controller
 {
     public function index()
     {
-        return Inertia::render('Admin/Recordatorios', ['dias_default' => 3]);
+        return Inertia::render('Admin/Recordatorios', ['dias_max' => RecordatoriosPago::DIAS_ANTICIPACION]);
     }
 
     public function enviar(Request $request)
     {
-        $data = $request->validate(['dias' => 'required|integer|min:1|max:30']);
+        // Nunca más lejos que el aviso diario: si el botón avisara antes, su marca bloquearía el aviso de 3 días
+        $data = $request->validate([
+            'dias' => 'required|integer|min:1|max:' . RecordatoriosPago::DIAS_ANTICIPACION,
+        ]);
 
         $hoy   = Carbon::now('America/Merida')->startOfDay();
         $hasta = $hoy->copy()->addDays($data['dias']);
@@ -53,6 +57,6 @@ class RecordatoriosAdminController extends Controller
             });
 
         return back()->with('success',
-            "Recordatorios encolados: {$encolados}. Ya enviados antes: {$yaEnviados}. Sin correo: {$sinCorreo}.");
+            "Recordatorios encolados: {$encolados}. Ya avisadas antes (no se reenvían): {$yaEnviados}. Sin correo: {$sinCorreo}.");
     }
 }

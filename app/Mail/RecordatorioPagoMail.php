@@ -9,6 +9,7 @@ use Illuminate\Mail\Mailables\Attachment;
 use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Queue\SerializesModels;
+use App\Models\Amortizacion;
 
 class RecordatorioPagoMail extends Mailable
 {
@@ -24,6 +25,21 @@ class RecordatorioPagoMail extends Mailable
         public readonly float $monto,
         public readonly string $vence,
     ) {}
+
+    /**
+     * Arma el correo a partir de una cuota. Lo usan el botón (Job) y el proceso diario,
+     * así los dos mandan exactamente el mismo mensaje.
+     */
+    public static function desdeCuota(Amortizacion $cuota): self
+    {
+        return new self(
+            nombre:   $cuota->credito->acreditado->nombre_completo,
+            contrato: $cuota->credito->clave_contrato,
+            cuota:    $cuota->numero_cuota,
+            monto:    (float) $cuota->pago_restante,
+            vence:    $cuota->fecha_vencimiento->format('d/m/Y'),
+        );
+    }
 
     /**
      * Get the message envelope.

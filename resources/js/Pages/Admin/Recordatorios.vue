@@ -2,11 +2,11 @@
 import AppLayout from '@/layouts/app/AppSidebarLayout.vue';
 import { Head, useForm } from '@inertiajs/vue3';
 
-const props = defineProps({ dias_default: Number });
-const form = useForm({ dias: props.dias_default });
+const props = defineProps({ dias_max: Number });
+const form = useForm({ dias: props.dias_max });
 
 const enviar = () => {
-    if (!confirm(`¿Enviar recordatorios a las cuotas que vencen en los próximos ${form.dias} días?`)) return;
+    if (!confirm(`¿Enviar recordatorios a las cuotas que vencen en los próximos ${form.dias} días? Las que ya recibieron su aviso no se vuelven a avisar.`)) return;
     form.post(route('recordatorios.enviar'), { preserveScroll: true });
 };
 </script>
@@ -18,13 +18,16 @@ const enviar = () => {
         <div class="max-w-xl mx-auto py-8 px-4 space-y-6">
             <h1 class="text-2xl font-black uppercase tracking-tight text-slate-900 dark:text-white">Recordatorios de
                 pago</h1>
-            <p class="text-sm text-slate-500">Encola un correo por cada cuota que vence en los próximos días. A cada
-                cuota solo se le avisa una vez.</p>
+            <p class="text-sm text-slate-500">Encola un correo por cada cuota que vence en los próximos días
+                (máximo {{ dias_max }}, igual que el aviso automático diario de las 9:00).
+                <strong>Cada cuota se avisa una sola vez:</strong> si ya recibió su recordatorio, por este botón
+                o por el aviso diario, no se le vuelve a enviar.
+            </p>
 
             <form @submit.prevent="enviar"
                 class="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-6 space-y-4">
                 <label class="block text-xs font-black uppercase text-slate-500">Días por vencer</label>
-                <input v-model.number="form.dias" type="number" min="1" max="30"
+                <input v-model.number="form.dias" type="number" min="1" :max="dias_max"
                     class="w-full rounded-2xl border border-slate-200 dark:border-slate-700 dark:bg-slate-950 dark:text-white py-2.5 px-4 text-sm" />
                 <p v-if="form.errors.dias" class="text-red-600 text-sm font-bold">{{ form.errors.dias }}</p>
                 <button type="submit" :disabled="form.processing"

@@ -44,7 +44,7 @@ class Acreditado extends Model
     /**
      * Dirección a la que Laravel envía las notificaciones por correo.
      * Por defecto buscaría el campo "email", pero en esta tabla se llama "correo";
-     * sin este método las notificaciones (como RecordatorioCuota) se descartaban sin error.
+     * sin este método las notificaciones por correo se descartaban sin error.
      */
     public function routeNotificationForMail($notification): ?string
     {
