@@ -9,7 +9,15 @@ return new class extends Migration
 {
     public function up(): void
     {
-        DB::statement("ALTER TABLE amortizaciones MODIFY COLUMN estado ENUM('Pendiente','Parcial','Pagado','Condonado','Reestructurada','Gracia') DEFAULT 'Pendiente'");
+        if (DB::getDriverName() === 'mysql') {
+            DB::statement("ALTER TABLE amortizaciones MODIFY COLUMN estado ENUM('Pendiente','Parcial','Pagado','Condonado','Reestructurada','Gracia') DEFAULT 'Pendiente'");
+        } elseif (DB::getDriverName() === 'sqlite') {
+            Schema::table('amortizaciones', function (Blueprint $table) {
+                $table->enum('estado', ['Pendiente', 'Parcial', 'Pagado', 'Condonado', 'Reestructurada', 'Gracia'])
+                    ->default('Pendiente')
+                    ->change();
+            });
+        }
 
         if (!Schema::hasColumn('amortizaciones', 'observaciones')) {
             Schema::table('amortizaciones', function (Blueprint $table) {
@@ -21,7 +29,16 @@ return new class extends Migration
     public function down(): void
     {
         DB::table('amortizaciones')->where('estado', 'Gracia')->update(['estado' => 'Pagado']);
-        DB::statement("ALTER TABLE amortizaciones MODIFY COLUMN estado ENUM('Pendiente','Parcial','Pagado','Condonado','Reestructurada') DEFAULT 'Pendiente'");
+
+        if (DB::getDriverName() === 'mysql') {
+            DB::statement("ALTER TABLE amortizaciones MODIFY COLUMN estado ENUM('Pendiente','Parcial','Pagado','Condonado','Reestructurada') DEFAULT 'Pendiente'");
+        } elseif (DB::getDriverName() === 'sqlite') {
+            Schema::table('amortizaciones', function (Blueprint $table) {
+                $table->enum('estado', ['Pendiente', 'Parcial', 'Pagado', 'Condonado', 'Reestructurada'])
+                    ->default('Pendiente')
+                    ->change();
+            });
+        }
 
         if (Schema::hasColumn('amortizaciones', 'observaciones')) {
             Schema::table('amortizaciones', function (Blueprint $table) {

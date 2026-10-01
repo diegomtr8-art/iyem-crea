@@ -139,23 +139,33 @@ class DashboardController extends Controller
             )
             ->get();
 
-        // ── Mora pendiente (calculada dinámicamente) ──────────────────────────
+                // ── Mora pendiente (calculada dinámicamente) ──────────────────────────
+        $esMysql = DB::getDriverName() === 'mysql';
+
+        $diasVencido = $esMysql
+            ? 'DATEDIFF(?, amortizaciones.fecha_vencimiento)'
+            : 'julianday(?) - julianday(date(amortizaciones.fecha_vencimiento))';
+
+        $saldoPendiente = $esMysql
+            ? 'GREATEST(0, amortizaciones.saldo_insoluto - amortizaciones.capital_pagado)'
+            : 'MAX(0, amortizaciones.saldo_insoluto - amortizaciones.capital_pagado)';
+
         $moraPendiente = (float) (DB::table('amortizaciones')
             ->join('creditos as c_mp', 'amortizaciones.credito_id', '=', 'c_mp.id')
             ->whereNotIn('amortizaciones.estado', ['Pagado', 'Condonado', 'Reestructurada'])
             ->where('amortizaciones.fecha_vencimiento', '<', $hoy)
             ->when($modId, fn($q) => $q->where('c_mp.modalidad_id', $modId))
-            ->selectRaw('
+            ->selectRaw("
                 SUM(
-                    CASE WHEN DATEDIFF(?, amortizaciones.fecha_vencimiento) > 5
+                    CASE WHEN {$diasVencido} > 5
                     THEN ROUND(
-                        GREATEST(0, amortizaciones.saldo_insoluto - amortizaciones.capital_pagado)
+                        {$saldoPendiente}
                         * (c_mp.tasa_interes_moratorio / 100.0 / 360.0)
-                        * DATEDIFF(?, amortizaciones.fecha_vencimiento),
+                        * {$diasVencido},
                     2)
                     ELSE 0 END
                 ) as mora_calc
-            ', [$hoy, $hoy])
+            ", [$hoy, $hoy])
             ->first()
             ->mora_calc ?? 0);
 
