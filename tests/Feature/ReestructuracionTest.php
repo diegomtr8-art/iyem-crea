@@ -194,3 +194,39 @@ test('T3: guarda en mora_condonada la mora real, no la capturada por el operador
     expect((float) $reestructuracion->mora_condonada)->toBe(3064.84)
         ->and((float) $reestructuracion->saldo_al_momento)->toBe(4400.00);
 });
+
+test('T4: mora_condonada descuenta la mora ya pagada', function () {
+    [$user, $credito] = baseReestructuraTest();
+    $this->actingAs($user);
+
+    $credito->amortizaciones()->create([
+        'numero_cuota'               => 1,
+        'fecha_vencimiento'          => '2026-05-15',
+        'saldo_insoluto'             => 1000,
+        'capital_esperado'           => 1000,
+        'interes_ordinario_esperado' => 100,
+        'cuota_fija'                 => 1100,
+        'pago_restante'              => 1100,
+        'estado'                     => 'Pendiente',
+        'capital_pagado'             => 0,
+        'interes_ordinario_pagado'   => 0,
+        'interes_moratorio_pagado'   => 300,
+        'interes_moratorio_generado' => 1000,
+        'moratorio_acumulado'        => 1000,
+    ]);
+
+    $this->post(route('creditos.reestructurar.store', $credito->id), [
+        'fecha_reestructura'       => '2026-09-25',
+        'motivo'                   => 'Dificultad_Economica',
+        'mora_condonada'           => 9999,   // debe ignorarse
+        'nuevo_plazo_meses'        => 12,
+        'nueva_tasa_interes'       => 7,
+        'nueva_fecha_inicio_pagos' => '2026-10-15',
+    ])->assertRedirect();
+
+    $reestructuracion = Reestructuracion::first();
+
+    // Mora pendiente = generado 1000 − pagado 300 = 700
+    expect((float) $reestructuracion->mora_condonada)->toBe(700.00)
+        ->and((float) $reestructuracion->saldo_al_momento)->toBe(1100.00);
+});
