@@ -20,13 +20,9 @@ class ReestructuracionController extends Controller
     {
         $credito->load(['acreditado', 'modalidad', 'amortizaciones', 'reestructuraciones.autorizadoPor']);
 
-        $saldoPendiente = $credito->amortizaciones
-            ->whereNotIn('estado', ['Pagado', 'Condonado', 'Reestructurada', 'Gracia'])
-            ->sum('pago_restante');
+        $fechaCorte = Carbon::now('America/Merida')->startOfDay();
 
-        $moraAcumulada = $credito->amortizaciones
-            ->whereNotIn('estado', ['Pagado', 'Condonado', 'Reestructurada', 'Gracia'])
-            ->sum('moratorio_acumulado');
+        $calculo = $this->calcularBaseReestructuracion($credito, $fechaCorte);
 
         return Inertia::render('Creditos/Reestructuracion', [
             'credito' => [
@@ -37,8 +33,8 @@ class ReestructuracionController extends Controller
                 'tasa_ordinaria' => $credito->tasa_interes_ordinario,
                 'acreditado'     => $credito->acreditado?->nombre_completo,
                 'acreditado_id'  => $credito->acreditado_id,
-                'saldo_pendiente'=> round($saldoPendiente, 2),
-                'mora_acumulada' => round($moraAcumulada, 2),
+                'saldo_pendiente'=> $calculo['base'],
+                'mora_acumulada' => $calculo['mora'],
             ],
             'reestructuraciones_previas' => $credito->reestructuraciones->map(fn($r) => [
                 'fecha'            => $r->fecha_reestructura->format('d/m/Y'),
@@ -66,31 +62,9 @@ class ReestructuracionController extends Controller
 
         $fechaCorte = Carbon::parse($data['fecha_reestructura'])->startOfDay();
 
-        $cuotasActivas = $credito->amortizaciones()
-            ->whereNotIn('estado', ['Pagado', 'Condonado', 'Reestructurada', 'Gracia'])
-            ->get([
-                'fecha_vencimiento',
-                'capital_esperado',
-                'capital_pagado',
-                'interes_ordinario_esperado',
-                'interes_ordinario_pagado',
-                'interes_moratorio_generado',
-                'interes_moratorio_pagado',
-            ]);
-
-        $capitalPendiente = $cuotasActivas->sum(
-            fn ($cuota) => (float) $cuota->capital_esperado - (float) $cuota->capital_pagado
-        );
-
-        $interesDevengado = $cuotasActivas
-            ->filter(fn ($cuota) => Carbon::parse($cuota->fecha_vencimiento)->startOfDay()->lte($fechaCorte))
-            ->sum(fn ($cuota) => max(0, (float) $cuota->interes_ordinario_esperado - (float) $cuota->interes_ordinario_pagado));
-
-        $baseReestructuracion = round($capitalPendiente + $interesDevengado, 2);
-
-        $moraCondonada = round($cuotasActivas->sum(
-            fn ($cuota) => max(0, (float) $cuota->interes_moratorio_generado - (float) $cuota->interes_moratorio_pagado)
-        ), 2);
+        $calculo = $this->calcularBaseReestructuracion($credito, $fechaCorte);
+        $baseReestructuracion = $calculo['base'];
+        $moraCondonada = $calculo['mora'];
 
         return DB::transaction(function () use ($credito, $data, $baseReestructuracion, $moraCondonada) {
             $reestructuracion = Reestructuracion::create([
@@ -169,5 +143,35 @@ class ReestructuracionController extends Controller
             return redirect()->route('acreditados.show', $credito->acreditado_id)
                 ->with('success', 'Reestructuración registrada y tabla de amortización regenerada.');
         });
+    }
+
+    private function calcularBaseReestructuracion(Credito $credito, Carbon $fechaCorte): array
+    {
+        $cuotas = $credito->amortizaciones()
+            ->whereNotIn('estado', ['Pagado', 'Condonado', 'Reestructurada', 'Gracia'])
+            ->get([
+                'fecha_vencimiento',
+                'capital_esperado',
+                'capital_pagado',
+                'interes_ordinario_esperado',
+                'interes_ordinario_pagado',
+                'interes_moratorio_generado',
+                'interes_moratorio_pagado',
+            ]);
+
+        $capital = $cuotas->sum(fn ($c) => (float) $c->capital_esperado - (float) $c->capital_pagado);
+
+        $devengado = $cuotas
+            ->filter(fn ($c) => Carbon::parse($c->fecha_vencimiento)->startOfDay()->lte($fechaCorte))
+            ->sum(fn ($c) => max(0, (float) $c->interes_ordinario_esperado - (float) $c->interes_ordinario_pagado));
+
+        $mora = $cuotas->sum(
+            fn ($c) => max(0, (float) $c->interes_moratorio_generado - (float) $c->interes_moratorio_pagado)
+        );
+
+        return [
+            'base' => round($capital + $devengado, 2),
+            'mora' => round($mora, 2),
+        ];
     }
 }
