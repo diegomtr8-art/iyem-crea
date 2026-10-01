@@ -86,8 +86,25 @@ php artisan migrate
 
 ### 8. Ejecutar seeders
 
+Ejecitar los seeders generales del proyecto: 
+
 ```bash
 php artisan db:seed
+```
+
+Ejecutar el seeder de roles y permisos:
+
+```bash
+php artisan db:seed --class=RoleAndPermissionSeeder
+```
+
+Para cargar datos adicionales utilizados para pruebas y desarrollo, se pueden ejecutar los siguientes seeders según sea necesario:
+
+```bash
+php artisan db:seed --class=ActualizarModalidadesSeeder
+php artisan db:seed --class=Add30CreditosSeeder
+php artisan db:seed --class=TestCreditosSeeder
+php artisan db:seed --class=TestDataSeeder
 ```
 
 ### 9. Compilar los recursos
@@ -139,7 +156,7 @@ CREA_DIAS_GRACIA=5
 |---|---|---|
 | Administrador | Responsable de la gestión y configuración general del sistema. | Acceso total al sistema, incluyendo interesados, solicitudes, acreditados, análisis crediticio, desembolsos, pagos, cobranza, jurídico, presupuesto, reportes, simulador, auditoría, usuarios y roles. |
 | Operativo | Responsable de la consulta y gestión de la información relacionada con la operación del programa. | Consultar el panel principal, interesados, acreditados, pagos, reportes y simulador. |
-Analista de Crédito | Responsable de la evaluación y gestión de solicitudes de crédito. | Ver y gestionasr interesados y solicitudes; aprobar o rechazar solicitudes; consultar acrediytados y desembolsos; gestionar análisis crediticios; consultar reportes y utilizar el simulador |
+| Analista de Crédito | Responsable de la evaluación y gestión de solicitudes de crédito. | Ver y gestionar interesados y solicitudes; aprobar o rechazar solicitudes; consultar acreditados y desembolsos; gestionar análisis crediticios; consultar reportes y utilizar el simulador |
 | Cajero | Responsable del registro y consulta de pagos relacionados con los créditos | Consultar acreditados, pagos y cobranza; registrar pagos y consultar reportes. |
 | Cobranza | Responsable del seguimiento y gestión de pagos y procesos de cobranza. | Consultar acreditados; consultar, registrar y cancelar pagos; ver y gestionar cobranza; consultar información jurídica y reportes. |
 | Jurídico | Responsable del seguimiento de los asuntos jurídicos relacionados con los creditos y procesos de cobranza. | Consultar acreditados; ver y gestionar cobranza; consultar y editar información jurídica; consultar reportes. |
@@ -298,4 +315,3 @@ git push origin feature/gestion-solicitudes
 
 **Repositorio:** https://github.com/diegomtr8-art/iyem-crea
 
-**Otros medios:** [INFORMACIÓN]
