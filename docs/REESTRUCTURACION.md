@@ -200,12 +200,26 @@ registro (la mora nunca formó parte de la base).
 
 ---
 
-## 7. Pregunta pendiente
+## 7. Reglas finales de cierre (4.6)
 
-`interes_condonado` (`ReestructuracionController.php:91`) todavía no tiene tratamiento
-definido bajo la nueva regla. Falta confirmar con dirección:
+Dirección definió las dos reglas aplicadas en `ReestructuracionController::store()`:
 
-> ¿Conservamos `interes_condonado` como descuento opcional del interés devengado, o todo
-> se capitaliza sin descuentos?
+### 7.1 Capitalización total del interés ordinario devengado
 
-Hasta que se responda, la base es `capital + devengado` sin restar `interes_condonado`.
+Todo el interés ordinario devengado se capitaliza, sin descuentos. No hay condonación de
+interés ordinario en la reestructuración.
+
+- Se retiró la casilla "Interés Condonado" del formulario y de la validación.
+- La columna `interes_condonado` y los registros históricos se conservan; solo dejan de
+  usarse en reestructuraciones nuevas.
+
+**Ejemplo (CREA-2026-101):** base = capital pendiente + interés devengado =
+`$26,474.98 + $702.44 = $27,177.42`, sin descuento alguno.
+
+### 7.2 Condonación automática de la mora
+
+`mora_condonada` no se toma de lo que capture el operador: se calcula en el servidor con la
+mora real generada, `Σ interes_moratorio_generado` de las cuotas que se reestructuran.
+
+**Ejemplo (CREA-2026-101):** mora real de las cuotas reestructuradas (4–8) =
+`$1,389.94 + $946.48 + $550.40 + $178.02 + $0 = $3,064.84` → ese es el valor que se guarda.
