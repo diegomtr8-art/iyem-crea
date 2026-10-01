@@ -33,7 +33,6 @@ const form = useForm({
     fecha_reestructura:       new Date().toISOString().split('T')[0],
     motivo:                   'Dificultad_Economica',
     mora_condonada:           props.credito.mora_acumulada ?? 0,
-    interes_condonado:        0,
     nuevo_plazo_meses:        12,
     nueva_tasa_interes:       props.credito.tasa_ordinaria ?? '',
     nueva_fecha_inicio_pagos: '',
@@ -48,8 +47,7 @@ const fmt = (val: number | string) =>
 const nuevoCapital = computed(() => {
     const saldo       = props.credito.saldo_pendiente || 0;
     const moraCondon  = parseFloat(String(form.mora_condonada)) || 0;
-    const intCondon   = parseFloat(String(form.interes_condonado)) || 0;
-    return Math.max(0, saldo - moraCondon - intCondon);
+    return Math.max(0, saldo - moraCondon);
 });
 
 const cuotaEstimada = computed(() => {
@@ -178,11 +176,6 @@ const labelCls = 'block text-xs font-bold uppercase tracking-wider text-slate-40
                                 :max="credito.mora_acumulada" :class="inputCls" />
                             <p class="text-xs text-slate-400 mt-1">Máx: {{ fmt(credito.mora_acumulada) }}</p>
                             <p v-if="form.errors.mora_condonada" class="text-red-600 text-xs mt-1">{{ form.errors.mora_condonada }}</p>
-                        </div>
-                        <div>
-                            <label :class="labelCls">Interés Condonado ($)</label>
-                            <input v-model="form.interes_condonado" type="number" step="0.01" min="0" :class="inputCls" />
-                            <p v-if="form.errors.interes_condonado" class="text-red-600 text-xs mt-1">{{ form.errors.interes_condonado }}</p>
                         </div>
                     </div>
                 </div>
