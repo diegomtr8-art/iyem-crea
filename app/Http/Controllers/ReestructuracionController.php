@@ -74,6 +74,7 @@ class ReestructuracionController extends Controller
                 'capital_pagado',
                 'interes_ordinario_esperado',
                 'interes_ordinario_pagado',
+                'interes_moratorio_generado',
             ]);
 
         $capitalPendiente = $cuotasActivas->sum(
@@ -86,13 +87,17 @@ class ReestructuracionController extends Controller
 
         $baseReestructuracion = round($capitalPendiente + $interesDevengado, 2);
 
-        return DB::transaction(function () use ($credito, $data, $baseReestructuracion) {
+        $moraCondonada = round($cuotasActivas->sum(
+            fn ($cuota) => (float) $cuota->interes_moratorio_generado
+        ), 2);
+
+        return DB::transaction(function () use ($credito, $data, $baseReestructuracion, $moraCondonada) {
             $reestructuracion = Reestructuracion::create([
                 'credito_id'               => $credito->id,
                 'fecha_reestructura'       => $data['fecha_reestructura'],
                 'motivo'                   => $data['motivo'],
                 'saldo_al_momento'         => $baseReestructuracion,
-                'mora_condonada'           => $data['mora_condonada'] ?? 0,
+                'mora_condonada'           => $moraCondonada,
                 'nuevo_plazo_meses'        => $data['nuevo_plazo_meses'],
                 'nueva_tasa_interes'       => $data['nueva_tasa_interes'],
                 'nueva_fecha_inicio_pagos' => $data['nueva_fecha_inicio_pagos'],
