@@ -147,8 +147,8 @@ interes_devengado = Σ (interes_ordinario_esperado − interes_ordinario_pagado)
 monto = capital_pendiente + interes_devengado
 ```
 
-El interés futuro del plan anterior ya **no** entra a la base: se condona o se informa por
-separado, igual que en la liquidación anticipada (`PagoController.php:201-205`).
+El interés futuro del plan anterior ya **no** entra a la base: no se condona ni se cobra,
+simplemente queda fuera del cálculo del nuevo saldo.
 
 Además, se debe agregar la validación faltante en `ReestructuracionController.php:91`:
 `monto > 0` antes de generar la nueva tabla.
