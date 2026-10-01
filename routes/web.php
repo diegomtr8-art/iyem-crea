@@ -25,6 +25,7 @@ use App\Http\Controllers\SimuladorController;
 use App\Http\Controllers\SolicitudOperativoController;
 use App\Http\Controllers\CobranzaController;
 // use App\Http\Controllers\CobranzaJuridicaController; // Módulo eliminado (Cobranza Jurídica / listado juridico.*)
+use App\Http\Controllers\Portal\AccesosController;
 use App\Http\Controllers\Portal\BeneficiarioController;
 use App\Http\Controllers\Portal\ComprobacionPortalController;
 use App\Http\Controllers\Portal\WizardSolicitudController;
@@ -47,6 +48,9 @@ Route::middleware(['auth', 'verified', 'ciudadano'])->prefix('mi-portal')->name(
     Route::post('anuncios/{anuncio}/leer', [BeneficiarioController::class, 'marcarLeido'])->name('anuncios.leer');
     Route::post('anuncios/leer-todos', [BeneficiarioController::class, 'marcarTodosLeidos'])->name('anuncios.leer-todos');
     Route::get('notificaciones', [BeneficiarioController::class, 'notificaciones'])->name('notificaciones.lista');
+
+    // Bitácora de accesos del propio ciudadano
+    Route::get('accesos', [AccesosController::class, 'index'])->name('accesos');
 
     // Expediente digital
     Route::get('expediente', [ExpedienteController::class, 'index'])->name('expediente');

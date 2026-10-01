@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Contracts\Auth\MustVerifyEmail;
+use App\Models\AccesoCiudadano;
 use App\Models\AnuncioCiudadano;
 use App\Models\SolicitudCredito;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -64,6 +65,11 @@ class User extends Authenticatable implements MustVerifyEmail
     public function anuncios(): HasMany
     {
         return $this->hasMany(AnuncioCiudadano::class);
+    }
+
+    public function accesos(): HasMany
+    {
+        return $this->hasMany(AccesoCiudadano::class);
     }
 
     public function esCiudadano(): bool
