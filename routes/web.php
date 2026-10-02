@@ -182,6 +182,8 @@ Route::middleware(['auth', 'verified', 'operativo'])->group(function () {
     // REPORTES ADICIONALES
     Route::get('reportes/beneficiarios', [ReporteController::class, 'beneficiarios'])->name('reportes.beneficiarios');
     Route::get('reportes/informe-cobranza', [ReporteController::class, 'informeCobranza'])->name('reportes.informe-cobranza');
+    Route::get('/reportes/recuperacion', [ReporteController::class, 'recuperacion'])->name('reportes.recuperacion');
+    Route::get('/reportes/recuperacion/exportar', [ReporteController::class, 'exportarRecuperacion'])->name('exportar.recuperacion');
 });
 
 require __DIR__.'/settings.php';
