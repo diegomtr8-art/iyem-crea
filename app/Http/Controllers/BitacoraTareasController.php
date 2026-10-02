@@ -4,12 +4,13 @@ namespace App\Http\Controllers;
 
 use App\Models\BitacoraTareaProgramada;
 use Inertia\Inertia;
+use App\Jobs\CalcularCarteraActiva;
 
 class BitacoraTareasController extends Controller
 {
     // Las tareas de routes/console.php. Si agregan una tarea nueva, sumarla aquí:
     // así aparece en rojo aunque nunca haya corrido.
-    private const TAREAS_ESPERADAS = ['crea:update-moratorio', 'crea:recordatorios-pago'];
+    private const TAREAS_ESPERADAS = ['crea:update-moratorio', 'crea:recordatorios-pago', CalcularCarteraActiva::class];
 
     private const HORAS_ALERTA = 24;
 
