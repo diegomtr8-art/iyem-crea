@@ -4,6 +4,7 @@ namespace App\Http\Middleware;
 
 use App\Models\AnuncioCiudadano;
 use App\Models\ComprobacionUso;
+use App\Notifications\TareaProgramadaFallida;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
@@ -59,6 +60,9 @@ class HandleInertiaRequests extends Middleware
                     ->whereDate('fecha_limite_comprobacion', '<=', now()->addDays(7))
                     ->count()
                 : null,
+            
+            // --- FALLOS DE TAREAS PROGRAMADAS (solo administradores) ---
+            'fallos_tareas' => $this->fallosTareas($request),
 
             // --- NOTIFICACIONES FLASH ---
             'flash' => [
@@ -68,5 +72,24 @@ class HandleInertiaRequests extends Middleware
                 'info' => $request->session()->get('info'),
             ],
         ]);
+    }
+    
+    /** Alertas sin leer de tareas programadas que fallaron; null para quien no es administrador. */
+    private function fallosTareas(Request $request): ?array
+    {
+        $usuario = $request->user();
+
+        if (! $usuario || $usuario->tipo !== 'operativo' || ! $usuario->hasRole('Administrador')) {
+            return null;
+        }
+
+        $sinLeer = fn () => $usuario->unreadNotifications()->where('type', TareaProgramadaFallida::class);
+
+        return [
+            'total'     => $sinLeer()->count(),
+            'recientes' => $sinLeer()->latest()->limit(10)->get()
+                ->map(fn ($n) => ['id' => $n->id] + $n->data)
+                ->all(),
+        ];
     }
 }

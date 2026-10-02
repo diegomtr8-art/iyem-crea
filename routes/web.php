@@ -35,6 +35,7 @@ use App\Http\Controllers\BitacoraTareasController;
 use App\Http\Controllers\RespaldoExcelController;
 use App\Http\Controllers\RecordatoriosAdminController;
 use App\Http\Controllers\ImportarAcreditadosController;
+use App\Http\Controllers\NotificacionesTareasController;
 
 // --- RUTAS PÚBLICAS (LANDING PAGE INFORMATIVA) ---
 Route::get('/', [PublicController::class, 'index'])->name('welcome');
@@ -186,6 +187,7 @@ Route::middleware(['auth', 'verified', 'operativo'])->group(function () {
     Route::post('admin/importar-acreditados/previsualizar', [ImportarAcreditadosController::class, 'previsualizar'])->middleware('role:Administrador')->name('importar-acreditados.previsualizar');
     Route::post('admin/importar-acreditados/confirmar', [ImportarAcreditadosController::class, 'confirmar'])->middleware('role:Administrador')->name('importar-acreditados.confirmar');
     Route::post('admin/importar-acreditados/cancelar', [ImportarAcreditadosController::class, 'cancelar'])->middleware('role:Administrador')->name('importar-acreditados.cancelar');
+    Route::post('admin/notificaciones-tareas/leidas', [NotificacionesTareasController::class, 'marcarLeidas'])->middleware('role:Administrador')->name('notificaciones-tareas.leidas');
     // PRESUPUESTO — módulo eliminado
     // Route::get('presupuesto', [PresupuestoController::class, 'index'])->name('presupuesto.index');
     // Route::post('presupuesto', [PresupuestoController::class, 'store'])->name('presupuesto.store');
