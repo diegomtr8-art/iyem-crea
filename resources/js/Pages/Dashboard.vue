@@ -259,9 +259,6 @@ const municipiosSinMapa = computed(() =>
                 </div>
             </div>
 
-            <!-- ── Cartera activa: calculada una vez al día y leída de caché ── -->
-            <TarjetaCarteraActiva :cartera="cartera_activa" class="mb-4" />
-
             <!-- ── FILA 1: Capital + Portafolio ─────────────────────────────── -->
             <div class="grid grid-cols-1 lg:grid-cols-12 gap-4 mb-4">
 
@@ -349,6 +346,9 @@ const municipiosSinMapa = computed(() =>
                     <p class="text-[10px] text-zinc-400 mt-1">Rend. {{ stats?.kpis?.rendimiento_total }}% sobre colocado</p>
                 </div>
             </div>
+
+            <!-- ── Cartera activa: calculada una vez al día y leída de caché ── -->
+            <TarjetaCarteraActiva :cartera="cartera_activa" class="mb-4" />
 
             <!-- ── FILA 3: Mapa + Género + Top Municipios ────────────────── -->
             <div class="grid grid-cols-1 lg:grid-cols-12 gap-4 mb-4">
