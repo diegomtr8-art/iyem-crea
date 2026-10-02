@@ -112,7 +112,7 @@ class MiCreditoController extends Controller
                 'pagos' => $credito->pagos->map(fn($p) => [
                     'id'            => $p->id,
                     'folio'         => $p->folio,
-                    'fecha_pago'    => $p->fecha_pago,
+                    'fecha_pago'    => $p->fecha_pago?->format('d/m/Y'),
                     'monto_recibido'=> $p->monto_recibido,
                     'forma_pago'    => $p->forma_pago,
                 ]),
