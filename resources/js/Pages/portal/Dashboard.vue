@@ -80,7 +80,17 @@ const estatusConfig: Record<string, { label: string; color: string; bg: string; 
     },
 };
 
-const cfg = computed(() => props.solicitud ? estatusConfig[props.solicitud.estatus] : null);
+const cfg = computed(() => {
+    if (!props.solicitud) return null;
+    const base = estatusConfig[props.solicitud.estatus];
+    if (base && props.solicitud.estatus === 'Aprobada' && !props.credito_activo) {
+        return {
+            ...base,
+            desc: 'Tu solicitud fue aprobada. Un asesor CREA te contactará para registrar tu crédito; cuando esté listo lo verás aquí.',
+        };
+    }
+    return base;
+});
 
 const tipoAnuncio: Record<string, { color: string; icon: any }> = {
     info:   { color: 'bg-blue-50 dark:bg-blue-900/10 border-blue-200 dark:border-blue-800/40', icon: Info },
