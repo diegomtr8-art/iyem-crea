@@ -5,13 +5,14 @@ namespace App\Http\Controllers\Portal;
 use App\Http\Controllers\Controller;
 use App\Models\ComprobacionUso;
 use App\Models\Credito;
+use Illuminate\Http\RedirectResponse;
 use Inertia\Inertia;
 use Inertia\Response;
 use Illuminate\Support\Carbon;
 
 class MiCreditoController extends Controller
 {
-    public function index(): Response
+    public function index(): Response|RedirectResponse
     {
         $user = auth()->user();
         $solicitud = $user->solicitudCredito;
