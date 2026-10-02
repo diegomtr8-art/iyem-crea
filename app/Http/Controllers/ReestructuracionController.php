@@ -52,7 +52,6 @@ class ReestructuracionController extends Controller
         $data = $request->validate([
             'fecha_reestructura'       => 'required|date',
             'motivo'                   => 'required|in:Dificultad_Economica,Desastre_Natural,Pandemia,Cambio_Actividad,Otro',
-            'mora_condonada'           => 'nullable|numeric|min:0',
             'nuevo_plazo_meses'        => 'required|integer|min:1|max:60',
             'nueva_tasa_interes'       => 'required|numeric|min:0|max:100',
             'nueva_fecha_inicio_pagos' => 'required|date',
