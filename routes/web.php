@@ -30,6 +30,7 @@ use App\Http\Controllers\Portal\ComprobacionPortalController;
 use App\Http\Controllers\Portal\WizardSolicitudController;
 use App\Http\Controllers\Portal\MiCreditoController;
 use App\Http\Controllers\Portal\ExpedienteController;
+use App\Http\Controllers\Portal\MensajeContactoController;
 use Illuminate\Support\Facades\Route;
 
 // --- RUTAS PÚBLICAS (LANDING PAGE INFORMATIVA) ---
@@ -50,6 +51,10 @@ Route::middleware(['auth', 'verified', 'ciudadano'])->prefix('mi-portal')->name(
 
     // Expediente digital
     Route::get('expediente', [ExpedienteController::class, 'index'])->name('expediente');
+
+    // Contacto con el equipo IYEM (ciudadano autenticado)
+    Route::get('contacto', [MensajeContactoController::class, 'create'])->name('contacto');
+    Route::post('contacto', [MensajeContactoController::class, 'store'])->middleware('throttle:5,1')->name('contacto.enviar');
 
     // Wizard de solicitud (flujo principal en /solicitud)
     Route::get('solicitud', [WizardSolicitudController::class, 'index'])->name('solicitud.index');
