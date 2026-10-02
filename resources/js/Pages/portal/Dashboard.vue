@@ -108,6 +108,13 @@ const tipoIconColor: Record<string, string> = {
 const marcarLeido = (id: number) => router.post(route('portal.anuncios.leer', id), {}, { preserveScroll: true });
 const marcarTodos = () => router.post(route('portal.anuncios.leer-todos'), {}, { preserveScroll: true });
 
+const tituloCredito: Record<string, string> = {
+    Activo: 'Crédito activo',
+    Moroso: 'Crédito activo',
+    Liquidado: 'Crédito liquidado',
+    Cancelado: 'Crédito cancelado',
+};
+
 const today = new Date().toLocaleDateString('es-MX', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
 </script>
 
@@ -206,11 +213,11 @@ const today = new Date().toLocaleDateString('es-MX', { weekday: 'long', year: 'n
                 <div v-if="credito_activo" class="rounded-2xl bg-gradient-to-br from-[#6B1938] to-[#4A0E22] p-6 text-white shadow-2xl shadow-[#6B1938]/30">
                     <div class="flex items-center justify-between">
                         <div class="space-y-1">
-                            <p class="text-[#f4a8c4] text-xs font-bold uppercase tracking-wider">Crédito Activo</p>
+                            <p class="text-[#f4a8c4] text-xs font-bold uppercase tracking-wider">{{ tituloCredito[credito_activo.estatus] ?? 'Mi crédito' }}</p>
                             <p class="text-3xl font-black">
                                 ${{ Number(credito_activo.monto_otorgado).toLocaleString('es-MX', { minimumFractionDigits: 2 }) }}
                             </p>
-                            <span class="inline-block px-3 py-1 bg-white/20 rounded-full text-xs font-bold capitalize">{{ credito_activo.estatus }}</span>
+                            <span v-if="credito_activo.estatus" class="inline-block px-3 py-1 bg-white/20 rounded-full text-xs font-bold capitalize">{{ credito_activo.estatus }}</span>
                         </div>
                         <Link :href="route('portal.credito')"
                             class="flex items-center gap-2 px-4 py-2.5 bg-white text-[#6B1938] dark:text-[#f4a8c4] font-bold rounded-xl hover:bg-red-50 transition-colors text-sm shrink-0">
