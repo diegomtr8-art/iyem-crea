@@ -170,8 +170,9 @@ test('caso 3: sobrante de 3,000 con reducir cuota deja 23 cuotas de 1,860.24', f
 
 /**
  * Caso 4 — Paga $5,000 con Reducir plazo: 21 cuotas de $2,000 + final $578.88.
+ * El plan restante se recalcula desde el saldo nuevo (interés y plazo).
  */
-test('caso 4: sobrante de 3,000 con reducir plazo acorta el plazo y conserva el calendario', function () {
+test('caso 4: sobrante de 3,000 con reducir plazo recalcula el plan y acorta el plazo', function () {
     $this->actingAs(operativoVerificado());
     $credito = crearCreditoSobrepago();
 
@@ -184,31 +185,70 @@ test('caso 4: sobrante de 3,000 con reducir plazo acorta el plazo y conserva el 
 
     expect(cuotaDe($credito, 1)->estado)->toBe('Pagado');
 
-    // Las cuotas conservadas mantienen su cuota fija original.
+    // 21 cuotas completas a la cuota vigente (cuotas 2..22).
     for ($n = 2; $n <= 22; $n++) {
         expect((float) cuotaDe($credito, $n)->cuota_fija)->toBe(2000.0);
     }
 
-    // El abono paga cuotas desde el final: la última queda pagada.
+    // El interés se recalcula desde el saldo nuevo S = 39,930.78.
+    expect((float) cuotaDe($credito, 2)->interes_ordinario_esperado)->toBe(232.93);
+
+    // Cuota final (23) más chica y cuota 24 fuera del nuevo término.
+    expect((float) cuotaDe($credito, 23)->cuota_fija)->toBe(578.88);
+
     $cuota24 = cuotaDe($credito, 24);
     expect($cuota24->estado)->toBe('Pagado');
-    expect((float) $cuota24->capital_pagado)->toBe((float) $cuota24->capital_esperado);
+    expect((float) $cuota24->capital_esperado)->toBe(0.0);
+    expect((float) $cuota24->interes_ordinario_esperado)->toBe(0.0);
     expect((float) $cuota24->pago_restante)->toBe(0.0);
+    expect($cuota24->observaciones)->toContain('eliminada por reducción de plazo');
 
-    // capital_esperado se conserva (proyección original del contrato)
-    $sumaCapital       = 0.0;
-    $sumaCapitalPagado = 0.0;
+    // La proyección de capital de las cuotas restantes baja por el abono.
+    $sumaCapital = 0.0;
     for ($n = 2; $n <= 24; $n++) {
-        $sumaCapital       += (float) cuotaDe($credito, $n)->capital_esperado;
-        $sumaCapitalPagado += (float) cuotaDe($credito, $n)->capital_pagado;
+        $sumaCapital += (float) cuotaDe($credito, $n)->capital_esperado;
     }
-    expect(round($sumaCapital, 2))->toBe(42930.78);
-    // el abono queda registrado en capital_pagado
-    expect(round($sumaCapitalPagado, 2))->toBe(3000.0);
+    expect(round($sumaCapital, 2))->toBe(39930.78);
 
     $pago = Pago::where('credito_id', $credito->id)->first();
     expect($pago->tipo_abono)->toBe('Reducir Plazo');
     expect((float) $pago->sobrante_aplicado)->toBe(3000.0);
+});
+
+/**
+ * Caso 5 — Pago grande con Reducir plazo: el plan se recalcula y se eliminan
+ * varias cuotas finales.
+ */
+test('caso 5: reducir plazo elimina varias cuotas finales y recalcula el interés', function () {
+    $this->actingAs(operativoVerificado());
+    $credito = crearCreditoSobrepago();
+
+    // $10,000: cuota 1 ($2,000) + $8,000 a capital.
+    $this->post(route('pagos.store', $credito->id), [
+        'monto_recibido' => 10000,
+        'fecha_pago'     => Carbon::today()->toDateString(),
+        'forma_pago'     => 'Efectivo',
+        'tipo_abono'     => 'Reducir Plazo',
+    ])->assertRedirect();
+
+    // Interés recalculado desde S = 34,930.78.
+    expect((float) cuotaDe($credito, 2)->interes_ordinario_esperado)->toBe(203.76);
+
+    // Cuotas 21..24 fuera del nuevo término: se eliminan.
+    for ($n = 21; $n <= 24; $n++) {
+        $cuota = cuotaDe($credito, $n);
+        expect((float) $cuota->capital_esperado)->toBe(0.0);
+        expect((float) $cuota->interes_ordinario_esperado)->toBe(0.0);
+        expect((float) $cuota->pago_restante)->toBe(0.0);
+        expect($cuota->estado)->toBe('Pagado');
+    }
+
+    // La proyección de capital restante es el saldo nuevo.
+    $sumaCapital = 0.0;
+    for ($n = 2; $n <= 24; $n++) {
+        $sumaCapital += (float) cuotaDe($credito, $n)->capital_esperado;
+    }
+    expect(round($sumaCapital, 2))->toBe(34930.78);
 });
 
 /**
@@ -377,9 +417,23 @@ test('mantiene cuadrada la conciliacion al reducir cuota', function () {
     expect($segunPagos)->toBe($segunAmort);
 });
 
+/**
+ * Conciliación Reducir Plazo — el abono se refleja como reducción de la proyección de
+ * capital (no como capital_pagado). La caída del capital pendiente debe igualar el
+ * capital aplicado por el pago (efectivo de las cuotas + abono).
+ */
 test('mantiene cuadrada la conciliacion al reducir plazo', function () {
     $this->actingAs(operativoVerificado());
     $credito = crearCreditoSobrepago();
+
+    $capitalPendiente = function () use ($credito) {
+        return round((float) $credito->amortizaciones()
+            ->whereNotIn('estado', ['Pagado', 'Condonado', 'Reestructurada', 'Gracia'])
+            ->get()
+            ->sum(fn ($c) => (float) $c->capital_esperado - (float) $c->capital_pagado), 2);
+    };
+
+    $pendienteAntes = $capitalPendiente();
 
     $this->post(route('pagos.store', $credito->id), [
         'monto_recibido' => 5000,
@@ -388,8 +442,14 @@ test('mantiene cuadrada la conciliacion al reducir plazo', function () {
         'tipo_abono'     => 'Reducir Plazo',
     ])->assertRedirect();
 
-    $segunPagos = round((float) Pago::where('credito_id', $credito->id)->sum('aplicado_capital'), 2);
-    $segunAmort = round((float) Amortizacion::where('credito_id', $credito->id)->sum('capital_pagado'), 2);
+    $pago = Pago::where('credito_id', $credito->id)->first();
 
-    expect($segunPagos)->toBe($segunAmort);
+    // La reducción del capital pendiente equivale al capital aplicado por el pago.
+    expect(round($pendienteAntes - $capitalPendiente(), 2))
+        ->toBe(round((float) $pago->aplicado_capital, 2));
+
+    // Solo la cuota corriente registra capital_pagado en caja (sin el abono).
+    $capitalEnCuotas = round((float) $credito->amortizaciones()->sum('capital_pagado'), 2);
+    expect($capitalEnCuotas)
+        ->toBe(round((float) $pago->aplicado_capital - (float) $pago->sobrante_aplicado, 2));
 });
