@@ -23,6 +23,7 @@ $app = Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'ciudadano'  => \App\Http\Middleware\EsCiudadano::class,
             'operativo'  => \App\Http\Middleware\EsOperativo::class,
+            'role' => \Spatie\Permission\Middleware\RoleMiddleware::class,
         ]);
 
         // Un usuario ya autenticado que llega a una ruta de "guest" (login,
