@@ -355,4 +355,107 @@ class ReporteController extends Controller
             'pagos_realizados' => $pagosRealizados,
         ]);
     }
+
+    public function colocacionMunicipio(Request $request)
+    {
+        // 1. Obtener la colocación agrupada por municipio
+        $colocacion = \App\Models\Acreditado::query()
+            ->join('creditos', 'acreditados.id', '=', 'creditos.acreditado_id')
+            ->select(
+                'acreditados.municipio',
+                \DB::raw('COUNT(creditos.id) as total_creditos'),
+                \DB::raw('SUM(creditos.monto_otorgado) as monto_colocado'),
+                \DB::raw('0 as recuperado'), 
+                \DB::raw('0 as vencido'), 
+                \DB::raw('COUNT(DISTINCT acreditados.id) as beneficiarios')
+            )
+            ->groupBy('acreditados.municipio')
+            ->get()
+            ->map(function ($item) {
+                $morosidad = $item->monto_colocado > 0 
+                    ? ($item->vencido / $item->monto_colocado) * 100 
+                    : 0;
+                $item->porcentaje_morosidad = round($morosidad, 2);
+                return $item;
+            });
+
+        // 2. Lista de referencia de los 106 municipios de Yucatán
+        $municipiosYucatan = [
+            'Abalá', 'Acanceh', 'Akil', 'Baca', 'Bokobá', 'Buctzotz', 'Cacalchén', 'Calotmul', 'Cansahcab', 'Cantamayec', 'Celestún', 'Cenotillo', 'Conkal', 'Cuncunul', 'Cuzamá', 'Chacsinkin', 'Chankom', 'Chapab', 'Chemax', 'Chichimilá', 'Chikindzonot', 'Chocholá', 'Chumayel', 'Dzidzantún', 'Dzilam de Bravo', 'Dzilam González', 'Dzitás', 'Dzoncauich', 'Espita', 'Dzemul', 'Felipe Carrillo Puerto (Dzidzantún)', 'Kanasín', 'Kinchil', 'Kopomá', 'Mama', 'Maní', 'Maxcanú', 'Mayapán', 'Mérida', 'Mocochá', 'Motul', 'Muna', 'Muxupip', 'Opachén', 'Oxkutzcab', 'Panabá', 'Peto', 'Progreso', 'Quintana Roo', 'Río Lagartos', 'Sacalum', 'Samahil', 'Sanahcat', 'San Felipe', 'Santa Elena', 'Seyé', 'Sinanché', 'Sotuta', 'Sucilá', 'Sudzal', 'Suma', 'Tahdziú', 'Tahmek', 'Teabo', 'Tecoh', 'Tekal de Venegas', 'Tekantó', 'Tekax', 'Tekit', 'Tekom', 'Telchac Pueblo', 'Telchac Puerto', 'Temax', 'Temozón', 'Tepakán', 'Tetiz', 'Teya', 'Ticul', 'Timucuy', 'Tinum', 'Tixcacalcupul', 'Tixkokob', 'Tixmehuac', 'Tixpéhual', 'Tizimín', 'Tunkás', 'Tzucacab', 'Uayma', 'Ucú', 'Umán', 'Valladolid', 'Xocchel', 'Yaxcabá', 'Yaxkukul', 'Yobaín'
+        ];
+
+        // 3. Identificar municipios sin colocación
+        $municipiosConColocacion = $colocacion->pluck('municipio')->toArray();
+        $municipiosSinColocacion = array_diff($municipiosYucatan, $municipiosConColocacion);
+
+        // 4. Retornar vista con Inertia
+        return Inertia::render('Reportes/ColocacionMunicipio', [
+            'colocacion' => $colocacion,
+            'municipiosSinColocacion' => array_values($municipiosSinColocacion),
+            'totalGeneralMonto' => $colocacion->sum('monto_colocado'),
+        ]);
+    }
+    public function exportarColocacionMunicipio(Request $request)
+    {
+        // 1. Obtener la misma consulta de colocación agrupada por municipio
+        $colocacion = \App\Models\Acreditado::query()
+            ->join('creditos', 'acreditados.id', '=', 'creditos.acreditado_id')
+            ->select(
+                'acreditados.municipio',
+                \DB::raw('COUNT(creditos.id) as total_creditos'),
+                \DB::raw('SUM(creditos.monto_otorgado) as monto_colocado'),
+                \DB::raw('0 as recuperado'), 
+                \DB::raw('0 as vencido'), 
+                \DB::raw('COUNT(DISTINCT acreditados.id) as beneficiarios')
+            )
+            ->groupBy('acreditados.municipio')
+            ->get()
+            ->map(function ($item) {
+                $morosidad = $item->monto_colocado > 0 
+                    ? ($item->vencido / $item->monto_colocado) * 100 
+                    : 0;
+                $item->porcentaje_morosidad = round($morosidad, 2);
+                return $item;
+            });
+
+        // 2. Definir el nombre del archivo
+        $filename = 'colocacion_por_municipio_' . date('Y-m-d') . '.csv';
+
+        // 3. Crear cabeceras para forzar la descarga en Excel
+        $headers = [
+            "Content-type"        => "text/csv; charset=UTF-8",
+            "Content-Disposition" => "attachment; filename=$filename",
+            "Pragma"              => "no-cache",
+            "Cache-Control"       => "must-revalidate, post-check=0, pre-check=0",
+            "Expires"             => "0"
+        ];
+
+        // 4. Construir el contenido del archivo CSV
+        $callback = function() use ($colocacion) {
+            $file = fopen('php://output', 'w');
+            
+            // Añadir BOM para que Excel reconozca los acentos (UTF-8)
+            fprintf($file, chr(0xEF).chr(0xBB).chr(0xBF));
+
+            // Encabezados de las columnas (igual que en tu tabla)
+            fputcsv($file, ['Municipio', 'Créditos', 'Monto Colocado', 'Recuperado', 'Vencido', '% Morosidad', 'Beneficiarios']);
+
+            // Filas de datos
+            foreach ($colocacion as $row) {
+                fputcsv($file, [
+                    $row->municipio,
+                    $row->total_creditos,
+                    $row->monto_colocado,
+                    $row->recuperado,
+                    $row->vencido,
+                    $row->porcentaje_morosidad . '%',
+                    $row->beneficiarios
+                ]);
+            }
+
+            fclose($file);
+        };
+
+        return response()->stream($callback, 200, $headers);
+    }
 }
