@@ -17,3 +17,6 @@ Schedule::command('crea:recordatorios-pago')->dailyAt('09:00')->timezone('Americ
 
 // Calcular el total de cartera activa para la tarjeta del panel (se lee de caché)
 Schedule::job(new CalcularCarteraActiva)->dailyAt('07:00')->timezone('America/Merida');
+
+// Respaldo diario de la base en horario de baja actividad (ver docs/RESPALDO.md)
+Schedule::command('crea:respaldo-base')->dailyAt('03:00')->timezone('America/Merida');

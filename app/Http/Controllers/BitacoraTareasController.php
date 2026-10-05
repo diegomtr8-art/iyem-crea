@@ -10,7 +10,7 @@ class BitacoraTareasController extends Controller
 {
     // Las tareas de routes/console.php. Si agregan una tarea nueva, sumarla aquí:
     // así aparece en rojo aunque nunca haya corrido.
-    private const TAREAS_ESPERADAS = ['crea:update-moratorio', 'crea:recordatorios-pago', CalcularCarteraActiva::class];
+    private const TAREAS_ESPERADAS = ['crea:update-moratorio', 'crea:recordatorios-pago', CalcularCarteraActiva::class, 'crea:respaldo-base'];
 
     private const HORAS_ALERTA = 24;
 
