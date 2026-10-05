@@ -6,6 +6,8 @@ use Inertia\Inertia;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
 use App\Models\ModalidadCrea;
+use App\Jobs\CalcularCarteraActiva;
+use Illuminate\Support\Facades\Cache;
 
 class DashboardController extends Controller
 {
@@ -227,6 +229,8 @@ class DashboardController extends Controller
         return Inertia::render('Dashboard', [
             'modalidades'      => $modalidades,
             'modalidad_activa' => $modId,
+            // Calculado una vez al día por el Job CalcularCarteraActiva; aquí solo se lee
+            'cartera_activa'   => Cache::get(CalcularCarteraActiva::CLAVE_CACHE),
             'stats' => [
                 'capital' => [
                     'colocado'   => $colocado,
