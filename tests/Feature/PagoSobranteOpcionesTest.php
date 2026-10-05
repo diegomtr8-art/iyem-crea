@@ -203,12 +203,17 @@ test('caso 4: sobrante de 3,000 con reducir plazo recalcula el plan y acorta el 
     expect((float) $cuota24->pago_restante)->toBe(0.0);
     expect($cuota24->observaciones)->toContain('eliminada por reducción de plazo');
 
-    // La proyección de capital de las cuotas restantes baja por el abono.
-    $sumaCapital = 0.0;
+    // El abono queda en capital_pagado y se compensa en capital_esperado: el neto
+    // (capital_esperado − capital_pagado) es el plan recalculado.
+    $netoCapital   = 0.0;
+    $capitalPagado = 0.0;
     for ($n = 2; $n <= 24; $n++) {
-        $sumaCapital += (float) cuotaDe($credito, $n)->capital_esperado;
+        $cuota = cuotaDe($credito, $n);
+        $netoCapital   += (float) $cuota->capital_esperado - (float) $cuota->capital_pagado;
+        $capitalPagado += (float) $cuota->capital_pagado;
     }
-    expect(round($sumaCapital, 2))->toBe(39930.78);
+    expect(round($netoCapital, 2))->toBe(39930.78);
+    expect(round($capitalPagado, 2))->toBe(3000.0);
 
     $pago = Pago::where('credito_id', $credito->id)->first();
     expect($pago->tipo_abono)->toBe('Reducir Plazo');
@@ -243,12 +248,17 @@ test('caso 5: reducir plazo elimina varias cuotas finales y recalcula el interé
         expect($cuota->estado)->toBe('Pagado');
     }
 
-    // La proyección de capital restante es el saldo nuevo.
-    $sumaCapital = 0.0;
+    // El abono queda en capital_pagado y se compensa en capital_esperado: el neto
+    // (capital_esperado − capital_pagado) es el saldo nuevo.
+    $netoCapital   = 0.0;
+    $capitalPagado = 0.0;
     for ($n = 2; $n <= 24; $n++) {
-        $sumaCapital += (float) cuotaDe($credito, $n)->capital_esperado;
+        $cuota = cuotaDe($credito, $n);
+        $netoCapital   += (float) $cuota->capital_esperado - (float) $cuota->capital_pagado;
+        $capitalPagado += (float) $cuota->capital_pagado;
     }
-    expect(round($sumaCapital, 2))->toBe(34930.78);
+    expect(round($netoCapital, 2))->toBe(34930.78);
+    expect(round($capitalPagado, 2))->toBe(8000.0);
 });
 
 /**
@@ -417,23 +427,9 @@ test('mantiene cuadrada la conciliacion al reducir cuota', function () {
     expect($segunPagos)->toBe($segunAmort);
 });
 
-/**
- * Conciliación Reducir Plazo — el abono se refleja como reducción de la proyección de
- * capital (no como capital_pagado). La caída del capital pendiente debe igualar el
- * capital aplicado por el pago (efectivo de las cuotas + abono).
- */
 test('mantiene cuadrada la conciliacion al reducir plazo', function () {
     $this->actingAs(operativoVerificado());
     $credito = crearCreditoSobrepago();
-
-    $capitalPendiente = function () use ($credito) {
-        return round((float) $credito->amortizaciones()
-            ->whereNotIn('estado', ['Pagado', 'Condonado', 'Reestructurada', 'Gracia'])
-            ->get()
-            ->sum(fn ($c) => (float) $c->capital_esperado - (float) $c->capital_pagado), 2);
-    };
-
-    $pendienteAntes = $capitalPendiente();
 
     $this->post(route('pagos.store', $credito->id), [
         'monto_recibido' => 5000,
@@ -442,14 +438,8 @@ test('mantiene cuadrada la conciliacion al reducir plazo', function () {
         'tipo_abono'     => 'Reducir Plazo',
     ])->assertRedirect();
 
-    $pago = Pago::where('credito_id', $credito->id)->first();
+    $segunPagos = round((float) Pago::where('credito_id', $credito->id)->sum('aplicado_capital'), 2);
+    $segunAmort = round((float) Amortizacion::where('credito_id', $credito->id)->sum('capital_pagado'), 2);
 
-    // La reducción del capital pendiente equivale al capital aplicado por el pago.
-    expect(round($pendienteAntes - $capitalPendiente(), 2))
-        ->toBe(round((float) $pago->aplicado_capital, 2));
-
-    // Solo la cuota corriente registra capital_pagado en caja (sin el abono).
-    $capitalEnCuotas = round((float) $credito->amortizaciones()->sum('capital_pagado'), 2);
-    expect($capitalEnCuotas)
-        ->toBe(round((float) $pago->aplicado_capital - (float) $pago->sobrante_aplicado, 2));
+    expect($segunPagos)->toBe($segunAmort);
 });

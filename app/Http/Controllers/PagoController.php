@@ -328,7 +328,9 @@ class PagoController extends Controller
      * Reducir Cuota: conserva capital_esperado y registra el abono en capital_pagado,
      * recalculando la tabla con una cuota fija uniforme y mismo plazo.
      * Reducir Plazo: recalcula todo el plan desde el saldo nuevo S (interés y plazo),
-     * manteniendo la cuota vigente; las cuotas fuera del nuevo término se eliminan.
+     * mantiene la cuota vigente y registra el abono en capital_pagado (compensado en
+     * capital_esperado) para conciliar pagos ↔ amortizaciones; las cuotas fuera del
+     * nuevo término se eliminan.
      */
     private function aplicarAbonoCapital(Credito $credito, float $sobrante, string $tipo, Carbon $hoy): void
     {
@@ -378,24 +380,17 @@ class PagoController extends Controller
                 $cuotaFinalObjetivo = round($remanenteReal * (1 + $tasaMensual), 2);
             }
 
+            // 1) Plan recalculado (sin escribir todavía).
             $remanente = $S;
             $indice    = 0;
+            $plan      = [];
 
             foreach ($pendientes as $cuota) {
                 $indice++;
 
                 // Cuotas fuera del nuevo término: se eliminan de la obligación.
                 if ($indice > $cuotasCompletas && $remanente < 0.01) {
-                    $cuota->update([
-                        'saldo_insoluto'             => 0,
-                        'capital_esperado'           => 0,
-                        'interes_ordinario_esperado' => 0,
-                        'cuota_fija'                 => 0,
-                        'pago_restante'              => 0,
-                        'estado'                     => 'Pagado',
-                        'fecha_ultimo_pago'          => null,
-                        'observaciones'              => 'Cuota eliminada por reducción de plazo',
-                    ]);
+                    $plan[] = ['cuota' => $cuota, 'conservada' => false];
                     continue;
                 }
 
@@ -426,20 +421,76 @@ class PagoController extends Controller
                     }
                 }
 
-                $cuota->update([
-                    'saldo_insoluto'             => round($remanente, 2),
-                    'capital_esperado'           => round($capital, 2),
-                    'interes_ordinario_esperado' => round($interes, 2),
-                    'cuota_fija'                 => round($cuotaFija, 2),
-                    'pago_restante'              => max(0, round(
-                        $cuotaFija
-                        - ((float) $cuota->capital_pagado + (float) $cuota->interes_ordinario_pagado),
-                        2
-                    )),
-                    // Preservar capital_pagado e interes_ordinario_pagado existentes
-                ]);
+                $plan[] = [
+                    'cuota'      => $cuota,
+                    'conservada' => true,
+                    'capital'    => round($capital, 2),
+                    'interes'    => round($interes, 2),
+                    'cuota_fija' => round($cuotaFija, 2),
+                    'saldo'      => round($remanente, 2),
+                ];
 
                 $remanente -= $capital;
+            }
+
+            // 2) Repartir el abono entre las cuotas conservadas, proporcional a su
+            //    capital recalculado (la última absorbe el redondeo). Se registra en
+            //    capital_pagado y se compensa en capital_esperado para que A2 cuadre
+            //    sin alterar el neto del plan.
+            $indicesConservadas = [];
+            $capitalConservado  = 0.0;
+            foreach ($plan as $idx => $p) {
+                if ($p['conservada']) {
+                    $indicesConservadas[] = $idx;
+                    $capitalConservado += $p['capital'];
+                }
+            }
+
+            $porAsignar = $sobrante;
+            $total      = count($indicesConservadas);
+
+            foreach ($indicesConservadas as $i => $idx) {
+                $asignado = ($i === $total - 1)
+                    ? round($porAsignar, 2)
+                    : round($sobrante * $plan[$idx]['capital'] / $capitalConservado, 2);
+
+                $plan[$idx]['abono'] = $asignado;
+                $porAsignar = round($porAsignar - $asignado, 2);
+            }
+
+            // 3) Escribir el plan.
+            foreach ($plan as $p) {
+                $cuota = $p['cuota'];
+
+                if (!$p['conservada']) {
+                    $cuota->update([
+                        'saldo_insoluto'             => 0,
+                        'capital_esperado'           => 0,
+                        'interes_ordinario_esperado' => 0,
+                        'cuota_fija'                 => 0,
+                        'pago_restante'              => 0,
+                        'estado'                     => 'Pagado',
+                        'fecha_ultimo_pago'          => null,
+                        'observaciones'              => 'Cuota eliminada por reducción de plazo',
+                    ]);
+                    continue;
+                }
+
+                $asignado      = $p['abono'] ?? 0.0;
+                $capPagadoPrevio = (float) $cuota->capital_pagado;
+                $nuevoCapPagado  = round($capPagadoPrevio + $asignado, 2);
+
+                $cuota->update([
+                    'saldo_insoluto'             => $p['saldo'],
+                    'capital_esperado'           => round($p['capital'] + $nuevoCapPagado, 2),
+                    'capital_pagado'             => $nuevoCapPagado,
+                    'interes_ordinario_esperado' => $p['interes'],
+                    'cuota_fija'                 => $p['cuota_fija'],
+                    'pago_restante'              => max(0, round(
+                        $p['cuota_fija'] - (float) $cuota->interes_ordinario_pagado,
+                        2
+                    )),
+                ]);
             }
         } else {
             // Reducir Cuota (Ticket 4.3): recalcular con el saldo nuevo y mismo plazo.
