@@ -118,15 +118,25 @@ const cuotasPendientes = computed(() => cuotasActivas.value.filter(c => estadoCu
 const mostrarLiquidacion = ref(false);
 const liquidacion = ref<null | { capital_pendiente: number; interes_proyectado: number; mora_acumulada: number; total_liquidacion: number; fecha_calculo: string }>(null);
 const cargandoLiquidacion = ref(false);
+const errorLiquidacion = ref('');
 
 const calcularLiquidacion = async () => {
     cargandoLiquidacion.value = true;
     mostrarLiquidacion.value = true;
+    errorLiquidacion.value = '';
+    liquidacion.value = null;
     try {
-        const resp = await fetch(route('portal.credito.liquidacion'));
-        liquidacion.value = await resp.json();
+        const resp = await fetch(route('portal.credito.liquidacion'), { headers: { Accept: 'application/json' } });
+        if (resp.status === 401 || resp.status === 419) {
+            errorLiquidacion.value = 'Tu sesión expiró. Inicia sesión de nuevo para ver tu liquidación.';
+            return;
+        }
+        if (!resp.ok) throw new Error('respuesta no válida');
+        const datos = await resp.json();
+        if (typeof datos?.total_liquidacion !== 'number') throw new Error('respuesta incompleta');
+        liquidacion.value = datos;
     } catch (e) {
-        liquidacion.value = null;
+        errorLiquidacion.value = 'No pudimos calcular tu liquidación. Revisa tu conexión e inténtalo de nuevo.';
     } finally {
         cargandoLiquidacion.value = false;
     }
@@ -453,6 +463,16 @@ const enviarComprobacion = () => {
                     <div v-if="cargandoLiquidacion" class="text-center py-8 text-slate-400">
                         <div class="animate-spin w-8 h-8 border-2 border-blue-600 border-t-transparent rounded-full mx-auto mb-3"></div>
                         <p class="text-sm">Calculando...</p>
+                    </div>
+
+                    <div v-else-if="errorLiquidacion" class="text-center py-6 space-y-4">
+                        <AlertCircle size="32" class="text-red-600 mx-auto" />
+                        <p class="text-sm text-slate-600 dark:text-zinc-300">{{ errorLiquidacion }}</p>
+                        <button @click="calcularLiquidacion"
+                            class="px-5 py-2 rounded-xl bg-red-700 text-white text-sm font-bold hover:bg-red-800 transition-colors">
+                            Reintentar
+                        </button>
+                        <p class="text-xs text-slate-400">Si el problema continúa, llama al <strong>999 941 2170</strong></p>
                     </div>
 
                     <div v-else-if="liquidacion" class="space-y-4">
