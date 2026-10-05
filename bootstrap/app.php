@@ -5,6 +5,9 @@ use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Middleware\AddLinkHeadersForPreloadedAssets;
+use Illuminate\Http\Request;
+use Inertia\Inertia;
+use Symfony\Component\HttpFoundation\Response;
 
 $app = Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -40,7 +43,26 @@ $app = Application::configure(basePath: dirname(__DIR__))
         });
     })
     ->withExceptions(function (Exceptions $exceptions) {
-        //
+        // Errores del portal ciudadano: pantalla en español en vez de la página
+        // técnica. Solo mi-portal/*; el panel operativo conserva sus páginas.
+        // Las peticiones JSON (axios/fetch) conservan su respuesta, y el 419 de
+        // navegación Inertia lo sigue manejando app.ts (recarga). Con
+        // APP_DEBUG el 500 se deja a la página de depuración.
+        $exceptions->respond(function (Response $response, Throwable $e, Request $request) {
+            $status = $response->getStatusCode();
+
+            if (! $request->is('mi-portal', 'mi-portal/*')
+                || ! in_array($status, [403, 404, 419, 500], true)
+                || $request->expectsJson()
+                || ($status === 419 && $request->header('X-Inertia'))
+                || ($status === 500 && config('app.debug'))) {
+                return $response;
+            }
+
+            return Inertia::render('portal/Error', ['status' => $status])
+                ->toResponse($request)
+                ->setStatusCode($status);
+        });
     })->create();
 
 // Algunos hosts compartidos (Hostinger) no permiten fijar el document root en
