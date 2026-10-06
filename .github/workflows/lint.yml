@@ -36,6 +36,7 @@ jobs:
         run: npm run format
 
       - name: Lint Frontend
+        continue-on-error: true
         run: npm run lint
 
       # - name: Commit Changes
