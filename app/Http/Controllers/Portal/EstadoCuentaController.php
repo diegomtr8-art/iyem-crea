@@ -71,7 +71,7 @@ class EstadoCuentaController extends Controller
             if ($cuota->fecha_vencimiento >= $hoy) {
                 $diasRestantes = now()->diffInDays($cuota->fecha_vencimiento, false);
                 if ($diasRestantes > 0) {
-                    $tasaDiaria = ((float)$credito->tasa_interes_ordinario / 100) / 360;
+                    $tasaDiaria = ((float)$credito->tasa_interes_ordinario / 100) / config('credito.dias_anio_comercial');
                     $interesDias = ((float)$cuota->saldo_insoluto - (float)$cuota->capital_pagado) * $tasaDiaria * $diasRestantes;
                     $totalIntereses += max(0, round($interesDias, 2));
                 }

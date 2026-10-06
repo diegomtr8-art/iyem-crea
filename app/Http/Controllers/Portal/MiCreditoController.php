@@ -38,8 +38,8 @@ class MiCreditoController extends Controller
         if ($proxima && $proxima->fecha_vencimiento < $hoy) {
             // Portal ciudadano: mismo fix de signo que PagoController. Mantener consistencia con AcreditadoController:238 y UpdateMoratorio:29.
             $diasMora = (int) Carbon::parse($proxima->fecha_vencimiento)->diffInDays(now());
-            if ($diasMora > 5) {
-                $tasaDiaria = ($credito->tasaMoratoriaEfectiva() / 100) / 360;
+            if ($diasMora > config('credito.dias_gracia_mora')) {
+                $tasaDiaria = ($credito->tasaMoratoriaEfectiva() / 100) / config('credito.dias_anio_comercial');
                 $mora = round((float) $proxima->saldo_insoluto * $tasaDiaria * $diasMora, 2);
             }
         }

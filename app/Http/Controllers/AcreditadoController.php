@@ -216,7 +216,7 @@ class AcreditadoController extends Controller
 
         if ($credito) {
             $hoy       = Carbon::now('America/Merida')->startOfDay();
-            $tasaDiaria = ($credito->tasa_interes_moratorio / 100) / 360;
+            $tasaDiaria = ($credito->tasa_interes_moratorio / 100) / config('credito.dias_anio_comercial');
 
             foreach ($credito->amortizaciones as $fila) {
                 $row = $fila->toArray();
@@ -238,7 +238,7 @@ class AcreditadoController extends Controller
                 if ($hoy->gt($vencimiento)) {
                     $diasAtraso = (int) $vencimiento->diffInDays($hoy);
 
-                    if ($diasAtraso > 5) {
+                    if ($diasAtraso > config('credito.dias_gracia_mora')) {
                         // Mora sobre saldo insoluto vencido (RO Cláusula 7a)
                         $saldoVencido = round(max(0, (float)$fila->saldo_insoluto - (float)$fila->capital_pagado), 2);
                         $moraActual   = round($saldoVencido * $tasaDiaria * $diasAtraso, 2);
