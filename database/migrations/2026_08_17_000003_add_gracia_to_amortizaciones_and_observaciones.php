@@ -19,7 +19,7 @@ return new class extends Migration
             });
         }
 
-        if (!Schema::hasColumn('amortizaciones', 'observaciones')) {
+        if (! Schema::hasColumn('amortizaciones', 'observaciones')) {
             Schema::table('amortizaciones', function (Blueprint $table) {
                 $table->string('observaciones')->nullable()->after('fecha_ultimo_pago');
             });
