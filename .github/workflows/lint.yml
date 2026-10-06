@@ -10,14 +10,13 @@ on:
       - develop
       - main
 
-permissions:
-  contents: write
-
 jobs:
   quality:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
@@ -30,13 +29,13 @@ jobs:
           npm install
 
       - name: Run Pint
-        run: vendor/bin/pint
+        run: vendor/bin/pint --test -v --diff=origin/${{ github.base_ref || 'develop' }}
 
       - name: Format Frontend
-        run: npm run format
+        continue-on-error: true
+        run: npm run format:check
 
       - name: Lint Frontend
-        continue-on-error: true
         run: npm run lint
 
       # - name: Commit Changes
