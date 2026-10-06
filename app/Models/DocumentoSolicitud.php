@@ -40,6 +40,75 @@ class DocumentoSolicitud extends Model
         ?float $montoSolicitado = null
     ): array
     {
+        $esArtesanal = $esEmprendedores = $esSustentable = false;
+
+        if ($modalidadId) {
+            $modalidad = \App\Models\ModalidadCrea::find($modalidadId);
+            $nombre    = strtolower($modalidad?->nombre ?? '');
+
+            $esArtesanal     = str_contains($nombre, 'artesanal');
+            $esEmprendedores = str_contains($nombre, 'emprendedores');
+            $esSustentable   = str_contains($nombre, 'sustentable');
+        }
+
+        return self::armarTipos(
+            $esArtesanal, $esEmprendedores, $esSustentable,
+            $tipoPersona, $tipoGarantia, $estadoCivil, $estadoCivilAval, $montoSolicitado
+        );
+    }
+
+    /**
+     * Documentos que el wizard pide a una solicitud concreta. Es la lista que
+     * deben esperar tanto el wizard como Mi Expediente.
+     *
+     * $igualarWizard: WizardCredito.vue asume garantía 'aval' mientras el paso 1
+     * no guarda tipo_garantia; Mi Expediente lo imita para que ambas pantallas
+     * muestren lo mismo. La validación del wizard en el servidor no lo usa.
+     */
+    public static function tiposRequeridosParaSolicitud(SolicitudCredito $solicitud, bool $igualarWizard = false): array
+    {
+        $wizard = $solicitud->datos_wizard ?? [];
+
+        return self::tiposRequeridos(
+            $solicitud->modalidad_id,
+            $solicitud->tipo_persona,
+            $solicitud->tipo_garantia ?? ($igualarWizard ? 'aval' : null),
+            $wizard['datos_personales_ext']['estado_civil'] ?? null,
+            $solicitud->aval?->estado_civil,
+            $solicitud->monto_solicitado ? (float) $solicitud->monto_solicitado : null
+        );
+    }
+
+    /**
+     * Catálogo completo clave => nombre legible (incluye post-aprobación).
+     * Sirve para rotular documentos ya subidos aunque ya no apliquen a la
+     * solicitud. Si una clave cambia de texto según la modalidad
+     * (cotizaciones_proveedor), manda la lista de tiposRequeridosParaSolicitud().
+     */
+    public static function etiquetas(): array
+    {
+        $todas = [];
+
+        foreach ([[false, true, false], [false, false, true], [true, false, false]] as [$art, $emp, $sus]) {
+            foreach (['aval', 'prendaria', 'hipotecaria'] as $garantia) {
+                $todas += self::armarTipos($art, $emp, $sus, 'moral', $garantia, 'Casado(a)', 'Casado(a)', 200000.0);
+            }
+        }
+
+        return $todas + self::tiposPostAprobacion();
+    }
+
+    private static function armarTipos(
+        bool $esArtesanal,
+        bool $esEmprendedores,
+        bool $esSustentable,
+        ?string $tipoPersona,
+        ?string $tipoGarantia,
+        ?string $estadoCivil,
+        ?string $estadoCivilAval,
+        ?float $montoSolicitado
+    ): array
+    {
         $base = [
             'ine_frente'           => 'INE / Credencial (Frente)',
             'ine_reverso'          => 'INE / Credencial (Reverso)',
@@ -55,16 +124,7 @@ class DocumentoSolicitud extends Model
             $base['acta_matrimonio'] = 'Acta de matrimonio';
         }
 
-        $esArtesanal = $esEmprendedores = $esSustentable = false;
-
-        if ($modalidadId) {
-            $modalidad = \App\Models\ModalidadCrea::find($modalidadId);
-            $nombre    = strtolower($modalidad?->nombre ?? '');
-
-            $esArtesanal     = str_contains($nombre, 'artesanal');
-            $esEmprendedores = str_contains($nombre, 'emprendedores');
-            $esSustentable   = str_contains($nombre, 'sustentable');
-
+        if ($esArtesanal || $esEmprendedores || $esSustentable) {
             if ($esArtesanal) {
                 $base['constancia_artesano']  = 'Constancia de Artesano';
                 $base['cotizaciones_proveedor'] = '2 cotizaciones de proveedores';
