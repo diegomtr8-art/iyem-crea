@@ -139,6 +139,10 @@ class DashboardController extends Controller
             )
             ->get();
 
+        //se pasan los valores de configuracion de los dias a variables
+        $diasGraciaMora = config('credito.dias_gracia_mora');
+        $diasAnioComercial = config('credito.dias_anio_comercial');
+        
         // ── Mora pendiente (calculada dinámicamente) ──────────────────────────
         $moraPendiente = (float) (DB::table('amortizaciones')
             ->join('creditos as c_mp', 'amortizaciones.credito_id', '=', 'c_mp.id')
@@ -147,15 +151,15 @@ class DashboardController extends Controller
             ->when($modId, fn($q) => $q->where('c_mp.modalidad_id', $modId))
             ->selectRaw('
                 SUM(
-                    CASE WHEN DATEDIFF(?, amortizaciones.fecha_vencimiento) > 5
+                    CASE WHEN DATEDIFF(?, amortizaciones.fecha_vencimiento) > ?
                     THEN ROUND(
                         GREATEST(0, amortizaciones.saldo_insoluto - amortizaciones.capital_pagado)
-                        * (c_mp.tasa_interes_moratorio / 100.0 / 360.0)
+                        * (c_mp.tasa_interes_moratorio / 100.0 / ?)
                         * DATEDIFF(?, amortizaciones.fecha_vencimiento),
                     2)
                     ELSE 0 END
                 ) as mora_calc
-            ', [$hoy, $hoy])
+            ', [$hoy, $diasGraciaMora, $diasAnioComercial, $hoy])
             ->first()
             ->mora_calc ?? 0);
 
