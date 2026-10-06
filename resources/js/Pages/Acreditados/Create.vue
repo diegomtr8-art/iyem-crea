@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 import AppLayout from '@/layouts/app/AppSidebarLayout.vue';
 import { useForm, Head } from '@inertiajs/vue3';
 import { computed } from 'vue';

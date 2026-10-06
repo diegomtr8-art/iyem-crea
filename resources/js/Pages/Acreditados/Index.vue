@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 import { ref, computed } from 'vue';
 import { Head, Link, router } from '@inertiajs/vue3';
 import { Search, UserPlus, FileText, MapPin, Users, Filter, ChevronRight, Wallet, CheckCircle2, AlertTriangle, Award, X, FolderX } from 'lucide-vue-next';
