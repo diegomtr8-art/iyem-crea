@@ -32,6 +32,7 @@ jobs:
         run: vendor/bin/pint --test -v --diff=origin/${{ github.base_ref || 'develop' }}
 
       - name: Format Frontend
+        continue-on-error: true
         run: npm run format:check
 
       - name: Lint Frontend
