@@ -1,14 +1,12 @@
-
-Dashboardcontroller · PHP
 <?php
- 
+
 namespace App\Http\Controllers;
- 
+
 use App\Models\ModalidadCrea;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
- 
+
 class DashboardController extends Controller
 {
     public function index()
@@ -16,43 +14,43 @@ class DashboardController extends Controller
         $hoy = Carbon::now('America/Merida')->toDateString();
         $modId = request('modalidad_id') ? (int) request('modalidad_id') : null;
         $modalidades = ModalidadCrea::orderBy('nombre')->get(['id', 'nombre']);
- 
+
         // ── Helpers para filtrar por modalidad ───────────────────────────────
         $credQ = fn () => DB::table('creditos')->when($modId, fn ($q) => $q->where('modalidad_id', $modId));
- 
+
         $pagosQ = fn () => DB::table('pagos')
             ->where('pagos.cancelado', false)
             ->when($modId, fn ($q) => $q->join('creditos as c_fil', 'pagos.credito_id', '=', 'c_fil.id')
                 ->where('c_fil.modalidad_id', $modId));
- 
+
         $amorQ = fn () => DB::table('amortizaciones')
             ->when($modId, fn ($q) => $q->join('creditos as c_fil', 'amortizaciones.credito_id', '=', 'c_fil.id')
                 ->where('c_fil.modalidad_id', $modId));
- 
+
         // ── Capital ──────────────────────────────────────────────────────────
         $colocado = (float) $credQ()->sum('monto_otorgado');
         $recuperado = (float) $pagosQ()->sum('pagos.aplicado_capital');
         $moraPagada = (float) $pagosQ()->sum('pagos.aplicado_mora');
         $ordPagado = (float) $pagosQ()->sum('pagos.aplicado_ordinario');
- 
+
         // ── Conteos ──────────────────────────────────────────────────────────
         $creditosActivos = $credQ()->where('estatus', 'Activo')->count();
         $creditosMorosos = $credQ()->where('estatus', 'Moroso')->count();
         $creditosLiquidados = $credQ()->where('estatus', 'Liquidado')->count();
         $totalCreditos = $credQ()->count();
- 
+
         $totalAcreditados = $modId
             ? DB::table('acreditados')
                 ->join('creditos', 'creditos.acreditado_id', '=', 'acreditados.id')
                 ->where('creditos.modalidad_id', $modId)
                 ->distinct()->count('acreditados.id')
             : DB::table('acreditados')->count();
- 
+
         $cuotasVencidas = $amorQ()
             ->whereNotIn('amortizaciones.estado', ['Pagado', 'Condonado', 'Reestructurada'])
             ->where('amortizaciones.fecha_vencimiento', '<', $hoy)
             ->count();
- 
+
         // ── Género ───────────────────────────────────────────────────────────
         $hombres = $modId
             ? DB::table('acreditados')->join('creditos', 'creditos.acreditado_id', '=', 'acreditados.id')
@@ -62,7 +60,7 @@ class DashboardController extends Controller
             ? DB::table('acreditados')->join('creditos', 'creditos.acreditado_id', '=', 'acreditados.id')
                 ->where('creditos.modalidad_id', $modId)->where('acreditados.sexo', 'M')->distinct()->count('acreditados.id')
             : DB::table('acreditados')->where('sexo', 'M')->count();
- 
+
         // ── Por modalidad ────────────────────────────────────────────────────
         $porModalidad = DB::table('creditos')
             ->join('modalidad_creas', 'creditos.modalidad_id', '=', 'modalidad_creas.id')
@@ -76,7 +74,7 @@ class DashboardController extends Controller
             ->orderByDesc('total')
             ->get()
             ->map(fn ($r) => ['nombre' => $r->nombre, 'total' => (int) $r->total, 'monto' => (float) $r->monto]);
- 
+
         // ── Por municipio ────────────────────────────────────────────────────
         $porMunicipio = DB::table('acreditados')
             ->leftJoin('creditos', 'creditos.acreditado_id', '=', 'acreditados.id')
@@ -92,7 +90,7 @@ class DashboardController extends Controller
             ->orderByDesc('total')
             ->get()
             ->map(fn ($r) => ['municipio' => $r->municipio, 'total' => (int) $r->total, 'monto' => (float) $r->monto]);
- 
+
         // ── Evolución mensual ─────────────────────────────────────────────────
         $evolucionMensual = [];
         for ($i = 5; $i >= 0; $i--) {
@@ -110,7 +108,7 @@ class DashboardController extends Controller
                 'monto' => (float) (clone $base)->sum('pagos.monto_recibido'),
             ];
         }
- 
+
         // ── Cartera vencida ───────────────────────────────────────────────────
         $cartaVencidaMonto = (float) DB::table('amortizaciones')
             ->join('creditos', 'creditos.id', '=', 'amortizaciones.credito_id')
@@ -119,9 +117,9 @@ class DashboardController extends Controller
             ->where('amortizaciones.fecha_vencimiento', '<', $hoy)
             ->when($modId, fn ($q) => $q->where('creditos.modalidad_id', $modId))
             ->sum('amortizaciones.pago_restante');
- 
+
         $capitalPendiente = round($colocado - $recuperado, 2);
- 
+
         // ── Pagos recientes ───────────────────────────────────────────────────
         $pagosRecientes = DB::table('pagos')
             ->join('acreditados', 'pagos.acreditado_id', '=', 'acreditados.id')
@@ -140,18 +138,18 @@ class DashboardController extends Controller
                 'users.name as cajero'
             )
             ->get();
- 
+
         // ── Mora pendiente (calculada dinámicamente) ──────────────────────────
         $esMysql = DB::getDriverName() === 'mysql';
- 
+
         $diasVencido = $esMysql
             ? 'DATEDIFF(?, amortizaciones.fecha_vencimiento)'
             : 'julianday(?) - julianday(date(amortizaciones.fecha_vencimiento))';
- 
+
         $saldoPendiente = $esMysql
             ? 'GREATEST(0, amortizaciones.saldo_insoluto - amortizaciones.capital_pagado)'
             : 'MAX(0, amortizaciones.saldo_insoluto - amortizaciones.capital_pagado)';
- 
+
         $moraPendiente = (float) (DB::table('amortizaciones')
             ->join('creditos as c_mp', 'amortizaciones.credito_id', '=', 'c_mp.id')
             ->whereNotIn('amortizaciones.estado', ['Pagado', 'Condonado', 'Reestructurada'])
@@ -170,7 +168,7 @@ class DashboardController extends Controller
             ", [$hoy, $hoy])
             ->first()
             ->mora_calc ?? 0);
- 
+
         $pagosMes = DB::table('pagos')
             ->where('cancelado', false)
             ->whereYear('fecha_pago', now()->year)
@@ -178,7 +176,7 @@ class DashboardController extends Controller
             ->when($modId, fn ($q) => $q->join('creditos as c_pm', 'pagos.credito_id', '=', 'c_pm.id')
                 ->where('c_pm.modalidad_id', $modId))
             ->count();
- 
+
         // ── Índice de Morosidad (IM) y recuperación ────────────────────────
         $carteraBruta = (float) $credQ()->whereIn('estatus', ['Activo', 'Moroso'])->sum('monto_otorgado');
         $cartaVencidaIMO = (float) DB::table('amortizaciones')
@@ -188,9 +186,9 @@ class DashboardController extends Controller
             ->where('amortizaciones.fecha_vencimiento', '<', $hoy)
             ->when($modId, fn ($q) => $q->where('c_im.modalidad_id', $modId))
             ->sum('amortizaciones.pago_restante');
- 
+
         $indiceMorosidad = $carteraBruta > 0 ? round(($cartaVencidaIMO / $carteraBruta) * 100, 2) : 0;
- 
+
         $pagosMesEsperados = (float) DB::table('amortizaciones')
             ->join('creditos as c_pe', 'amortizaciones.credito_id', '=', 'c_pe.id')
             ->whereNotIn('amortizaciones.estado', ['Pagado', 'Condonado', 'Reestructurada'])
@@ -198,7 +196,7 @@ class DashboardController extends Controller
             ->whereMonth('amortizaciones.fecha_vencimiento', now()->month)
             ->when($modId, fn ($q) => $q->where('c_pe.modalidad_id', $modId))
             ->sum('amortizaciones.cuota_fija');
- 
+
         $pagosMesRecibidos = (float) DB::table('pagos')
             ->where('cancelado', false)
             ->whereYear('fecha_pago', now()->year)
@@ -206,9 +204,9 @@ class DashboardController extends Controller
             ->when($modId, fn ($q) => $q->join('creditos as c_pr2', 'pagos.credito_id', '=', 'c_pr2.id')
                 ->where('c_pr2.modalidad_id', $modId))
             ->sum('pagos.monto_recibido');
- 
+
         $indiceRecuperacion = $pagosMesEsperados > 0 ? round(($pagosMesRecibidos / $pagosMesEsperados) * 100, 1) : 0;
- 
+
         // ── Alertas ──────────────────────────────────────────────────────
         $creditosCandidatosJuridico = (int) DB::table('creditos')
             ->join('amortizaciones', 'creditos.id', '=', 'amortizaciones.credito_id')
@@ -218,12 +216,12 @@ class DashboardController extends Controller
             ->whereNotExists(fn ($q) => $q->from('expedientes_juridicos')->whereColumn('expedientes_juridicos.credito_id', 'creditos.id'))
             ->when($modId, fn ($q) => $q->where('creditos.modalidad_id', $modId))
             ->distinct()->count('creditos.id');
- 
+
         $solicitudesSinMovimiento = (int) DB::table('solicitudes_credito')
             ->whereIn('estatus', ['Enviada', 'En_Revision'])
             ->where('updated_at', '<', now()->subDays(5))
             ->count();
- 
+
         // ── Semáforo de cartera ──────────────────────────────────────────
         $semaforoPorDias = function (int $desde, ?int $hasta = null) use ($modId): int {
             return (int) DB::table('creditos')
@@ -235,7 +233,7 @@ class DashboardController extends Controller
                 ->when($modId, fn ($q) => $q->where('creditos.modalidad_id', $modId))
                 ->distinct()->count('creditos.id');
         };
- 
+
         return Inertia::render('Dashboard', [
             'modalidades' => $modalidades,
             'modalidad_activa' => $modId,
@@ -290,4 +288,3 @@ class DashboardController extends Controller
         ]);
     }
 }
- 
