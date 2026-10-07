@@ -3,8 +3,8 @@ import AppLayout from '@/layouts/AppLayout.vue';
 import { Head, Link, useForm } from '@inertiajs/vue3';
 import { computed } from 'vue';
 import {
-    ArrowLeft, RefreshCw, AlertTriangle, History, User,
-    Calendar, DollarSign, Percent, FileText
+    ArrowLeft, RefreshCw, AlertTriangle, History,
+    Calendar, DollarSign, Percent
 } from 'lucide-vue-next';
 
 const props = defineProps<{
