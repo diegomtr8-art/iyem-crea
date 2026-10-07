@@ -6,7 +6,7 @@ import {
     XCircle, Clock, ExternalLink, Sparkles, MapPin, Phone, Mail, Calendar
 } from 'lucide-vue-next';
 
-const props = defineProps<{
+defineProps<{
     solicitud: {
         id: number;
         estatus: string;
