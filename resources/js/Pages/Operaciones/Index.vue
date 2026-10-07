@@ -9,7 +9,7 @@ import {
     Download
 } from 'lucide-vue-next';
 
-const props = defineProps({
+defineProps({
     acreditado:  Object,
     credito:     Object,
     operaciones: Array,
@@ -56,11 +56,6 @@ const confirmarCancelar = () => {
     formCancelar.post(route('pagos.cancelar', pagoACancelar.value.id), {
         onSuccess: () => { modalCancelar.value = false; },
     });
-};
-
-// Exportar Excel
-const exportarExcel = () => {
-    window.location.href = route('operaciones.export', acreditado.value?.id ?? props.acreditado.id);
 };
 </script>
 
