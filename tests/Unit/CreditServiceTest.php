@@ -1,7 +1,5 @@
 <?php
 
-uses(TestCase::class, RefreshDatabase::class);
-
 use App\Models\Acreditado;
 use App\Models\Credito;
 use App\Models\ModalidadCrea;
@@ -10,6 +8,8 @@ use App\Services\CreditService;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
+
+uses(TestCase::class, RefreshDatabase::class);
 
 /**
  * Crea un crédito completo con relaciones para tests.
