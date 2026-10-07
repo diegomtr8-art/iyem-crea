@@ -31,6 +31,7 @@ use App\Http\Controllers\Portal\WizardSolicitudController;
 use App\Http\Controllers\Portal\MiCreditoController;
 use App\Http\Controllers\Portal\ExpedienteController;
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\BitacoraTareasController;
 
 // --- RUTAS PÚBLICAS (LANDING PAGE INFORMATIVA) ---
 Route::get('/', [PublicController::class, 'index'])->name('welcome');
@@ -174,7 +175,8 @@ Route::middleware(['auth', 'verified', 'operativo'])->group(function () {
 
     // AUDITORÍA
     Route::get('auditoria', [AuditoriaController::class, 'index'])->name('auditoria.index');
-
+    Route::get('admin/tareas-programadas', [BitacoraTareasController::class, 'index'])->middleware('role:Administrador')->name('bitacora-tareas.index');
+    
     // PRESUPUESTO — módulo eliminado
     // Route::get('presupuesto', [PresupuestoController::class, 'index'])->name('presupuesto.index');
     // Route::post('presupuesto', [PresupuestoController::class, 'store'])->name('presupuesto.store');
