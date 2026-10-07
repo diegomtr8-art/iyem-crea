@@ -2,7 +2,7 @@
 import AppLayout from '@/layouts/app/AppSidebarLayout.vue';
 import { computed, ref, onMounted } from 'vue';
 import { router } from '@inertiajs/vue3';
-import { Doughnut, Bar, Line } from 'vue-chartjs';
+import { Doughnut, Line } from 'vue-chartjs';
 import {
     Chart as ChartJS, Title, Tooltip, Legend, ArcElement,
     CategoryScale, LinearScale, BarElement, LineElement, PointElement, Filler
@@ -87,7 +87,6 @@ const modalidadData = computed(() => {
         datasets: [{ data: items.map(m => m.total), backgroundColor: colors, borderWidth: 0, cutout: '75%' }]
     };
 });
-const modalidadColors = ['bg-zinc-900 dark:bg-zinc-100', 'bg-zinc-500 dark:bg-zinc-400', 'bg-zinc-300 dark:bg-zinc-500', 'bg-zinc-200 dark:bg-zinc-600'];
 
 // ─── Evolución mensual ───────────────────────────────────────────────────────
 const evolucionData = computed(() => {
