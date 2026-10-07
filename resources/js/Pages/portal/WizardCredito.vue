@@ -30,7 +30,6 @@ const props = defineProps<{
 
 // ─── Estado de la solicitud ───────────────────────────────────────────────────
 const estatusSolicitud = computed(() => props.solicitud?.estatus ?? null);
-const puedeEditar = computed(() => !estatusSolicitud.value || ['Borrador', 'Documentacion_Incompleta'].includes(estatusSolicitud.value));
 const enRevision  = computed(() => ['Enviada', 'En_Revision'].includes(estatusSolicitud.value ?? ''));
 const aprobada    = computed(() => estatusSolicitud.value === 'Aprobada');
 const rechazada   = computed(() => estatusSolicitud.value === 'Rechazada');
@@ -351,12 +350,6 @@ const addRow = (arr: any[], tpl: any) => arr.push({ ...tpl });
 const removeRow = (arr: any[], i: number) => arr.splice(i, 1);
 
 const fmt = (v: any) => new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(+(v || 0));
-
-function onMoneyInput(e: Event, obj: any, key: string) {
-    const raw = (e.target as HTMLInputElement).value.replace(/[^0-9.]/g, '');
-    obj[key] = raw;
-    (e.target as HTMLInputElement).value = raw ? fmt(raw) : '';
-}
 
 // ─── Guardar paso individual ──────────────────────────────────────────────────
 async function postPaso(paso: number, extra: Record<string, any> = {}, modo: 'borrador' | 'envio' = 'borrador') {
