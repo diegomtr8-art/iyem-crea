@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import AppLayout from '@/layouts/app/AppSidebarLayout.vue';
 import { Head, router } from '@inertiajs/vue3';
-import { FileText, ArrowLeft, CheckCircle2, Printer } from 'lucide-vue-next';
+import { FileText, ArrowLeft, CheckCircle2 } from 'lucide-vue-next';
 
-const props = defineProps({ pago: Object });
+defineProps({ pago: Object });
 
 const fmt = (val) => new Intl.NumberFormat('es-MX', {
     style: 'currency', currency: 'MXN', minimumFractionDigits: 2
