@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import AppLayout from '@/layouts/app/AppSidebarLayout.vue';
-import { Head, router } from '@inertiajs/vue3';
+import { Head } from '@inertiajs/vue3';
 import { FileText, ArrowLeft, CheckCircle2, TrendingUp } from 'lucide-vue-next';
 
-const props = defineProps({
+defineProps({
     credito:  Object,
     acreditado: Object,
     resumen:  Object,
