@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import AppLayout from '@/layouts/AppLayout.vue';
-import { Head, Link, useForm, router } from '@inertiajs/vue3';
+import { Head, Link, useForm } from '@inertiajs/vue3';
 import { ref } from 'vue';
 import {
     ArrowLeft, User, Briefcase, FileText, CheckCircle2, XCircle,
@@ -109,7 +109,6 @@ const docsRechazados = props.solicitud.documentos.filter(d => d.estatus === 'Rec
 const docsPendientes = props.solicitud.documentos.filter(d => d.estatus === 'Pendiente').length;
 
 const inputClass = 'w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-zinc-700 dark:bg-zinc-800 text-sm focus:ring-2 focus:ring-red-500/20 focus:border-red-500 transition-all text-slate-900 dark:text-white';
-const labelClass = 'block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5';
 </script>
 
 <template>

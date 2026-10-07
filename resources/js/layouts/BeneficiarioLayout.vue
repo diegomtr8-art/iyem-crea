@@ -72,7 +72,7 @@ async function marcarLeido(id: number) {
 
 async function marcarTodas() {
     try {
-        const { data } = await axios.post(route('portal.anuncios.leer-todos'), {}, { headers: { Accept: 'application/json' } });
+        await axios.post(route('portal.anuncios.leer-todos'), {}, { headers: { Accept: 'application/json' } });
         notifs.value.forEach(n => { n.leido = true; });
         noLeidos.value = 0;
     } catch { /* silent */ }

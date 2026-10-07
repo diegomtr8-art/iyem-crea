@@ -1,25 +1,38 @@
-<script setup>
-import { ref, computed } from 'vue';
-import { Head, Link, router } from '@inertiajs/vue3';
-import { Search, UserPlus, FileText, MapPin, Users, Filter, ChevronRight, Wallet, CheckCircle2, AlertTriangle, Award, X, FolderX } from 'lucide-vue-next';
+<script setup lang="ts">
 import AppLayout from '@/layouts/app/AppSidebarLayout.vue';
+import { Head, Link, router } from '@inertiajs/vue3';
 import debounce from 'lodash/debounce';
+import {
+    AlertTriangle,
+    Award,
+    CheckCircle2,
+    ChevronRight,
+    FileText,
+    Filter,
+    FolderX,
+    MapPin,
+    Search,
+    UserPlus,
+    Users,
+    X,
+} from 'lucide-vue-next';
+import { computed, ref } from 'vue';
 
-const props = defineProps({
-    acreditados: Object,  // paginated
-    filters: Object,
-    kpis: Object,
-    municipios: Array,
-});
+const props = defineProps<{
+    acreditados?: any;
+    filters?: any;
+    kpis?: any;
+    municipios?: any[];
+}>();
 
-const search    = ref(props.filters?.search    ?? '');
-const estatus   = ref(props.filters?.estatus   ?? '');
+const search = ref(props.filters?.search ?? '');
+const estatus = ref(props.filters?.estatus ?? '');
 const municipio = ref(props.filters?.municipio ?? '');
 
 const applyFilters = () => {
     router.get(route('acreditados.index'), {
-        search:    search.value || undefined,
-        estatus:   estatus.value || undefined,
+        search: search.value || undefined,
+        estatus: estatus.value || undefined,
         municipio: municipio.value || undefined,
     }, { preserveState: true, replace: true });
 };
@@ -27,19 +40,19 @@ const applyFilters = () => {
 const limpiarFiltros = () => { search.value = ''; estatus.value = ''; municipio.value = ''; applyFilters(); };
 const hayFiltros = computed(() => !!(search.value || estatus.value || municipio.value));
 
-let debounced = debounce(applyFilters, 300);
+const debounced = debounce(applyFilters, 300);
 const onSearchInput = () => debounced();
 
-const modalidadEstilo = (nombre) => {
+const modalidadEstilo = (nombre?: string) => {
     if (!nombre) return { bg: 'bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400', dot: 'bg-zinc-400' };
-    if (nombre.includes('Artesanal'))   return { bg: 'bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400', dot: 'bg-blue-500' };
+    if (nombre.includes('Artesanal')) return { bg: 'bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400', dot: 'bg-blue-500' };
     if (nombre.includes('Sustentable')) return { bg: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400', dot: 'bg-emerald-500' };
     return { bg: 'bg-purple-50 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400', dot: 'bg-purple-500' };
 };
 
-const estatusEstilo = (e) => {
-    if (e === 'Activo')    return { bg: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400', bar: 'bg-emerald-500' };
-    if (e === 'Moroso')    return { bg: 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400', bar: 'bg-orange-500' };
+const estatusEstilo = (e?: string) => {
+    if (e === 'Activo') return { bg: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400', bar: 'bg-emerald-500' };
+    if (e === 'Moroso') return { bg: 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400', bar: 'bg-orange-500' };
     if (e === 'Liquidado') return { bg: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400', bar: 'bg-blue-500' };
     return { bg: 'bg-zinc-100 text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400', bar: 'bg-zinc-300' };
 };
@@ -53,20 +66,22 @@ const avatarPalette = [
     { bg: 'bg-purple-100 dark:bg-purple-900/30', text: 'text-purple-700 dark:text-purple-400' },
     { bg: 'bg-teal-100 dark:bg-teal-900/30', text: 'text-teal-700 dark:text-teal-400' },
 ];
-const iniciales = (nombre) => (nombre ?? '')
+
+const iniciales = (nombre?: string) => (nombre ?? '')
     .trim().split(/\s+/).slice(0, 2).map(p => p[0]?.toUpperCase() ?? '').join('') || '—';
-const avatarColor = (nombre) => {
+
+const avatarColor = (nombre?: string) => {
     const idx = (nombre ?? '').split('').reduce((s, c) => s + c.charCodeAt(0), 0) % avatarPalette.length;
     return avatarPalette[idx];
 };
 
-const money = (v) => new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN', minimumFractionDigits: 0 }).format(v || 0);
+const money = (v?: number) => new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN', minimumFractionDigits: 0 }).format(v || 0);
 
 const kpiCards = computed(() => [
     { label: 'Total Acreditados', value: props.kpis?.total ?? 0, icon: Users, color: 'text-slate-700 dark:text-white', bg: 'bg-slate-100 dark:bg-zinc-800' },
-    { label: 'Activos',    value: props.kpis?.activos ?? 0,    icon: CheckCircle2,  color: 'text-emerald-700 dark:text-emerald-400', bg: 'bg-emerald-50 dark:bg-emerald-900/20' },
-    { label: 'Morosos',    value: props.kpis?.morosos ?? 0,    icon: AlertTriangle, color: 'text-orange-700 dark:text-orange-400',  bg: 'bg-orange-50 dark:bg-orange-900/20' },
-    { label: 'Liquidados', value: props.kpis?.liquidados ?? 0, icon: Award,         color: 'text-blue-700 dark:text-blue-400',      bg: 'bg-blue-50 dark:bg-blue-900/20' },
+    { label: 'Activos', value: props.kpis?.activos ?? 0, icon: CheckCircle2, color: 'text-emerald-700 dark:text-emerald-400', bg: 'bg-emerald-50 dark:bg-emerald-900/20' },
+    { label: 'Morosos', value: props.kpis?.morosos ?? 0, icon: AlertTriangle, color: 'text-orange-700 dark:text-orange-400', bg: 'bg-orange-50 dark:bg-orange-900/20' },
+    { label: 'Liquidados', value: props.kpis?.liquidados ?? 0, icon: Award, color: 'text-blue-700 dark:text-blue-400', bg: 'bg-blue-50 dark:bg-blue-900/20' },
 ]);
 </script>
 
@@ -85,7 +100,7 @@ const kpiCards = computed(() => [
                     <div>
                         <h1 class="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white tracking-tight">Cartera de Acreditados</h1>
                         <p class="text-slate-500 dark:text-zinc-400 text-sm mt-0.5">
-                            {{ acreditados.total }} acreditados registrados · {{ money(kpis?.cartera) }} en cartera activa
+                            {{ acreditados?.total ?? 0 }} acreditados registrados · {{ money(kpis?.cartera) }} en cartera activa
                         </p>
                     </div>
                 </div>
@@ -140,11 +155,11 @@ const kpiCards = computed(() => [
             </div>
 
             <!-- Cards (mobile) -->
-            <div v-if="acreditados.data?.length" class="sm:hidden space-y-3">
+            <div v-if="acreditados?.data?.length" class="sm:hidden space-y-3">
                 <div v-for="a in acreditados.data" :key="a.id"
-                    class="relative overflow-hidden bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-4 shadow-sm active:scale-[0.99] transition-transform"
+                    class="relative overflow-hidden bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-4 shadow-sm active:scale-[0.99] transition-transform cursor-pointer"
                     @click="router.visit(route('acreditados.show', a.id))">
-                    <div :class="['absolute left-0 top-0 bottom-0 w-1', estatusEstilo(a.creditos[0]?.estatus).bar]"></div>
+                    <div :class="['absolute left-0 top-0 bottom-0 w-1', estatusEstilo(a.creditos?.[0]?.estatus).bar]"></div>
                     <div class="flex items-center justify-between gap-2 mb-3 pl-1.5">
                         <div class="flex items-center gap-3 min-w-0">
                             <div :class="['h-10 w-10 rounded-full flex items-center justify-center text-xs font-black shrink-0', avatarColor(a.nombre_completo).bg, avatarColor(a.nombre_completo).text]">
@@ -152,22 +167,22 @@ const kpiCards = computed(() => [
                             </div>
                             <div class="min-w-0">
                                 <p class="font-bold text-slate-900 dark:text-white text-sm truncate">{{ a.nombre_completo }}</p>
-                                <p class="text-[10px] text-slate-400 font-mono">{{ a.creditos[0]?.clave_contrato ?? 'Sin contrato' }}</p>
+                                <p class="text-[10px] text-slate-400 font-mono">{{ a.creditos?.[0]?.clave_contrato ?? 'Sin contrato' }}</p>
                             </div>
                         </div>
-                        <span v-if="a.creditos[0]?.estatus"
+                        <span v-if="a.creditos?.[0]?.estatus"
                             class="shrink-0 px-2.5 py-1 rounded-full text-[10px] font-bold"
-                            :class="estatusEstilo(a.creditos[0]?.estatus).bg">
-                            {{ a.creditos[0]?.estatus }}
+                            :class="estatusEstilo(a.creditos?.[0]?.estatus).bg">
+                            {{ a.creditos?.[0]?.estatus }}
                         </span>
                     </div>
                     <div class="grid grid-cols-2 gap-2 text-xs text-slate-500 dark:text-slate-400 pl-1.5">
                         <div class="flex items-center gap-1"><MapPin :size="12" class="text-slate-400 shrink-0" /> <span class="truncate">{{ a.municipio }}</span></div>
-                        <div v-if="a.creditos[0]?.modalidad" class="flex items-center gap-1.5">
-                            <span :class="['w-1.5 h-1.5 rounded-full', modalidadEstilo(a.creditos[0]?.modalidad?.nombre).dot]"></span>
-                            {{ a.creditos[0]?.modalidad?.nombre?.split(' ')[0] }}
+                        <div v-if="a.creditos?.[0]?.modalidad" class="flex items-center gap-1.5">
+                            <span :class="['w-1.5 h-1.5 rounded-full', modalidadEstilo(a.creditos?.[0]?.modalidad?.nombre).dot]"></span>
+                            {{ a.creditos?.[0]?.modalidad?.nombre?.split(' ')[0] }}
                         </div>
-                        <div class="col-span-2 font-black text-slate-900 dark:text-white text-base mt-1">{{ money(a.creditos[0]?.monto_otorgado) }}</div>
+                        <div class="col-span-2 font-black text-slate-900 dark:text-white text-base mt-1">{{ money(a.creditos?.[0]?.monto_otorgado) }}</div>
                     </div>
                     <Link :href="route('acreditados.show', a.id)" @click.stop
                         class="mt-3 flex items-center justify-center gap-1.5 w-full py-2.5 bg-slate-100 dark:bg-zinc-800 rounded-xl text-xs font-bold text-slate-700 dark:text-zinc-300">
@@ -175,7 +190,7 @@ const kpiCards = computed(() => [
                     </Link>
                 </div>
             </div>
-            <div v-if="!acreditados.data?.length" class="sm:hidden bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 py-16 px-6 text-center">
+            <div v-if="!acreditados?.data?.length" class="sm:hidden bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 py-16 px-6 text-center">
                 <FolderX :size="32" class="mx-auto text-slate-300 dark:text-zinc-700 mb-3" />
                 <p class="text-slate-400 text-sm">No hay acreditados con los filtros seleccionados.</p>
             </div>
@@ -195,18 +210,18 @@ const kpiCards = computed(() => [
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-slate-50 dark:divide-slate-800/70">
-                            <tr v-for="a in acreditados.data" :key="a.id"
+                            <tr v-for="a in acreditados?.data" :key="a.id"
                                 class="relative hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors group cursor-pointer"
                                 @click="router.visit(route('acreditados.show', a.id))">
                                 <td class="p-5">
                                     <div class="flex items-center gap-3">
-                                        <span :class="['w-1 h-8 rounded-full shrink-0', estatusEstilo(a.creditos[0]?.estatus).bar]"></span>
+                                        <span :class="['w-1 h-8 rounded-full shrink-0', estatusEstilo(a.creditos?.[0]?.estatus).bar]"></span>
                                         <div :class="['h-10 w-10 rounded-full flex items-center justify-center text-xs font-black shrink-0 transition-transform group-hover:scale-105', avatarColor(a.nombre_completo).bg, avatarColor(a.nombre_completo).text]">
                                             {{ iniciales(a.nombre_completo) }}
                                         </div>
                                         <div class="min-w-0">
                                             <p class="font-bold text-slate-900 dark:text-white text-sm leading-tight truncate">{{ a.nombre_completo }}</p>
-                                            <p class="text-[10px] text-slate-400 font-mono mt-0.5">{{ a.creditos[0]?.clave_contrato ?? 'Sin contrato' }}</p>
+                                            <p class="text-[10px] text-slate-400 font-mono mt-0.5">{{ a.creditos?.[0]?.clave_contrato ?? 'Sin contrato' }}</p>
                                         </div>
                                     </div>
                                 </td>
@@ -217,22 +232,22 @@ const kpiCards = computed(() => [
                                     </div>
                                 </td>
                                 <td class="p-5">
-                                    <span v-if="a.creditos[0]?.modalidad"
+                                    <span v-if="a.creditos?.[0]?.modalidad"
                                         class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold"
-                                        :class="modalidadEstilo(a.creditos[0]?.modalidad?.nombre).bg">
-                                        <span :class="['w-1.5 h-1.5 rounded-full', modalidadEstilo(a.creditos[0]?.modalidad?.nombre).dot]"></span>
-                                        {{ a.creditos[0]?.modalidad?.nombre?.split(' ')[0] }}
+                                        :class="modalidadEstilo(a.creditos?.[0]?.modalidad?.nombre).bg">
+                                        <span :class="['w-1.5 h-1.5 rounded-full', modalidadEstilo(a.creditos?.[0]?.modalidad?.nombre).dot]"></span>
+                                        {{ a.creditos?.[0]?.modalidad?.nombre?.split(' ')[0] }}
                                     </span>
                                     <span v-else class="text-slate-300 dark:text-zinc-700 text-xs">—</span>
                                 </td>
                                 <td class="p-5 text-right font-black text-slate-900 dark:text-white text-sm">
-                                    {{ money(a.creditos[0]?.monto_otorgado) }}
+                                    {{ money(a.creditos?.[0]?.monto_otorgado) }}
                                 </td>
                                 <td class="p-5 text-center">
-                                    <span v-if="a.creditos[0]?.estatus"
+                                    <span v-if="a.creditos?.[0]?.estatus"
                                         class="px-2.5 py-1 rounded-full text-[11px] font-bold"
-                                        :class="estatusEstilo(a.creditos[0]?.estatus).bg">
-                                        {{ a.creditos[0]?.estatus }}
+                                        :class="estatusEstilo(a.creditos?.[0]?.estatus).bg">
+                                        {{ a.creditos?.[0]?.estatus }}
                                     </span>
                                     <span v-else class="text-slate-300 dark:text-zinc-700 text-xs">—</span>
                                 </td>
@@ -244,7 +259,7 @@ const kpiCards = computed(() => [
                     </table>
                 </div>
 
-                <div v-if="!acreditados.data?.length" class="py-20 text-center">
+                <div v-if="!acreditados?.data?.length" class="py-20 text-center">
                     <FolderX :size="36" class="mx-auto text-slate-300 dark:text-zinc-700 mb-3" />
                     <p class="text-slate-400 text-sm">No hay acreditados con los filtros seleccionados.</p>
                     <button v-if="hayFiltros" @click="limpiarFiltros" class="mt-3 text-xs font-bold text-red-600 dark:text-red-400 hover:underline">Limpiar filtros</button>
@@ -252,19 +267,23 @@ const kpiCards = computed(() => [
             </div>
 
             <!-- Paginación -->
-            <div v-if="acreditados.data?.length" class="flex flex-col sm:flex-row items-center justify-between gap-3">
+            <div v-if="acreditados?.data?.length" class="flex flex-col sm:flex-row items-center justify-between gap-3">
                 <p class="text-xs text-slate-400">
                     Mostrando {{ acreditados.from }}–{{ acreditados.to }} de {{ acreditados.total }}
                 </p>
                 <div class="flex flex-wrap justify-center gap-1.5">
-                    <Link v-for="link in acreditados.links" :key="link.label"
-                        :href="link.url || '#'"
-                        v-html="link.label"
-                        class="px-3 py-2 rounded-xl text-sm font-bold transition-all"
-                        :class="[
-                            link.active ? 'bg-red-600 text-white shadow' : 'bg-white dark:bg-slate-900 text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800 border border-slate-100 dark:border-slate-800',
-                            !link.url ? 'opacity-40 pointer-events-none' : ''
-                        ]" />
+                    <template v-for="link in acreditados.links" :key="link.label">
+                        <Link
+                            :href="link.url || '#'"
+                            class="px-3 py-2 rounded-xl text-sm font-bold transition-all"
+                            :class="[
+                                link.active ? 'bg-red-600 text-white shadow' : 'bg-white dark:bg-slate-900 text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800 border border-slate-100 dark:border-slate-800',
+                                !link.url ? 'opacity-40 pointer-events-none' : ''
+                            ]"
+                        >
+                            <span v-html="link.label"></span>
+                        </Link>
+                    </template>
                 </div>
             </div>
 

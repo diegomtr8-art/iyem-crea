@@ -1,11 +1,24 @@
 <script setup lang="ts">
-import AppLayout from '@/layouts/AppLayout.vue';
+import AppLayout from '@/layouts/app/AppSidebarLayout.vue';
 import { Head, Link } from '@inertiajs/vue3';
 import {
-    ArrowLeft, User, Briefcase, FileText, CreditCard, DollarSign,
-    CheckCircle2, XCircle, Clock, ExternalLink, AlertTriangle,
-    MapPin, Mail, IdCard, Building2, Leaf, BadgeCheck, TrendingDown,
-    CalendarDays, Receipt, Scale, Eye, Download, Printer
+    AlertTriangle,
+    ArrowLeft,
+    BadgeCheck,
+    Briefcase,
+    CheckCircle2,
+    Clock,
+    CreditCard,
+    DollarSign,
+    Eye,
+    FileText,
+    IdCard,
+    MapPin,
+    Receipt,
+    Scale,
+    TrendingDown,
+    User,
+    XCircle,
 } from 'lucide-vue-next';
 
 const props = defineProps<{
@@ -249,7 +262,7 @@ const progreso = props.stats && props.stats.total_cuotas > 0
                         </div>
                     </div>
 
-                    <!-- Datos del Negocio (solo si hay solicitud vinculada) -->
+                    <!-- Datos del Negocio -->
                     <div v-if="solicitud" class="bg-white dark:bg-zinc-900 rounded-2xl border border-slate-100 dark:border-zinc-800 overflow-hidden shadow-sm">
                         <div class="px-5 py-4 border-b border-slate-100 dark:border-zinc-800 flex items-center gap-3">
                             <div class="w-9 h-9 rounded-xl bg-red-50 dark:bg-red-900/20 flex items-center justify-center text-red-700">

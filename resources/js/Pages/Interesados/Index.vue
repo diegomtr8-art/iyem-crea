@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 import AppLayout from '@/layouts/app/AppSidebarLayout.vue'; 
 import { Head, Link, router } from '@inertiajs/vue3';
 import { ref, watch } from 'vue';
@@ -227,7 +227,7 @@ const convertirInteresado = (id) => {
             </div>
 
             <div class="mt-6 flex justify-center gap-2">
-                <Link v-for="link in interesados.links" :key="link.label" :href="link.url || '#'" v-html="link.label" class="px-4 py-2 rounded-xl text-sm font-bold transition-all" :class="link.active ? 'bg-red-600 text-white shadow-lg' : 'bg-white dark:bg-slate-900 text-slate-500 hover:bg-slate-50 border border-slate-100 dark:border-slate-800'" />
+                <Link v-for="link in interesados.links" :key="link.label" :href="link.url || '#'" class="px-4 py-2 rounded-xl text-sm font-bold transition-all" :class="link.active ? 'bg-red-600 text-white shadow-lg' : 'bg-white dark:bg-slate-900 text-slate-500 hover:bg-slate-50 border border-slate-100 dark:border-slate-800'"><span v-html="link.label" /></Link>
             </div>
         </div>
     </AppLayout>

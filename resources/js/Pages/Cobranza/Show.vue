@@ -1,11 +1,11 @@
 <script setup lang="ts">
 import AppLayout from '@/layouts/AppLayout.vue';
-import { Head, Link, router, useForm } from '@inertiajs/vue3';
+import { Head, Link, useForm } from '@inertiajs/vue3';
 import { ref, computed } from 'vue';
 import {
-    ArrowLeft, User, DollarSign, Clock, Phone, Mail, MapPin,
-    Gavel, Plus, CheckCircle2, AlertTriangle, PhoneCall, MessageSquare,
-    Send, Calendar, FileText, ChevronDown, ChevronUp, Building2
+    ArrowLeft, User, Clock, Mail, MapPin,
+    Gavel, Plus, CheckCircle2, PhoneCall, MessageSquare,
+    Send, Calendar, FileText, ChevronUp
 } from 'lucide-vue-next';
 
 const props = defineProps<{

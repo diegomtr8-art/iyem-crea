@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import AppLayout from '@/layouts/AppLayout.vue';
 import { Head, Link, useForm } from '@inertiajs/vue3';
-import { ArrowLeft, User, Briefcase, CreditCard, CheckCircle2, Sparkles, AlertTriangle, XCircle } from 'lucide-vue-next';
+import { ArrowLeft, User, CreditCard, CheckCircle2, Sparkles, AlertTriangle, XCircle } from 'lucide-vue-next';
 
 const props = defineProps<{
     solicitud: {

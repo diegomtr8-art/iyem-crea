@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import AppLayout from '@/layouts/AppLayout.vue';
 import { Head, Link, router } from '@inertiajs/vue3';
-import { ref, watch, computed } from 'vue';
+import { ref, watch } from 'vue';
 import {
     Search, Eye, Filter, AlertTriangle, DollarSign, Clock,
-    Shield, Users, TrendingDown, Gavel, PhoneCall, RefreshCw
+    Users, TrendingDown, Gavel, PhoneCall, RefreshCw
 } from 'lucide-vue-next';
 
 interface Credito {

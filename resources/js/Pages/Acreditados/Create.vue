@@ -1,28 +1,39 @@
-<script setup>
+<script setup lang="ts">
 import AppLayout from '@/layouts/app/AppSidebarLayout.vue';
-import { useForm, Head } from '@inertiajs/vue3';
-import { computed } from 'vue';
+import { Head, useForm } from '@inertiajs/vue3';
 import {
-    User, CreditCard, Calendar, DollarSign,
-    CheckCircle2, AlertCircle, Building2, Wallet,
-    Mail, Phone, IdCard, MapPin, FileSignature, UserPlus
+    AlertCircle,
+    Building2,
+    Calendar,
+    CheckCircle2,
+    CreditCard,
+    DollarSign,
+    FileSignature,
+    IdCard,
+    Mail,
+    MapPin,
+    Phone,
+    User,
+    UserPlus,
+    Wallet,
 } from 'lucide-vue-next';
+import { computed } from 'vue';
 
-const props = defineProps({
-    modalidades: Array,
-    regimenes_sat: Array,
-    nombre: String,
-    municipio: String,
-    modalidad: String,
-    sexo: String,
-    telefono: String,
-    correo: String,
-    interesado_id: [Number, String],
-});
+const props = defineProps<{
+    modalidades?: any[];
+    regimenes_sat?: any[];
+    nombre?: string;
+    municipio?: string;
+    modalidad?: string;
+    sexo?: string;
+    telefono?: string;
+    correo?: string;
+    interesado_id?: number | string | null;
+}>();
 
 // --- LÓGICA PARA CAPTURAR EL ID DE LA URL ---
-const params = new URLSearchParams(window.location.search);
-const idUrl = params.get('interesado_id');
+const params = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
+const idUrl = params ? params.get('interesado_id') : null;
 
 const municipiosYucatan = [
     "Abalá", "Acanceh", "Akil", "Baca", "Bokobá", "Buctzotz", "Cacalchén", "Calotmul", "Cansahcab", "Cantamayec",
@@ -39,7 +50,7 @@ const municipiosYucatan = [
 ];
 
 const form = useForm({
-    // Aquí está el cambio clave: Priorizamos el ID de la URL
+    // Priorizamos el ID de la URL
     interesado_id: idUrl || props.interesado_id || null,
     nombre_completo: props.nombre || '',
     municipio: props.municipio || '',
@@ -51,15 +62,15 @@ const form = useForm({
     domicilio_fiscal: '',
     regimen_fiscal: '',
     clave_pago: '',
-    modalidad_id: props.modalidades.find(m => m.nombre === props.modalidad)?.id || '',
+    modalidad_id: props.modalidades?.find((m: any) => m.nombre === props.modalidad)?.id || '',
     monto_otorgado: '',
     plazo_meses: 12,
-    fecha_entrega: new Date().toISOString().substr(0, 10),
+    fecha_entrega: new Date().toISOString().substring(0, 10),
     clave_contrato: '',
 });
 
 const infoModalidad = computed(() => {
-    const seleccionada = props.modalidades.find(m => m.id == form.modalidad_id);
+    const seleccionada = props.modalidades?.find((m: any) => m.id == form.modalidad_id);
     if (!seleccionada) return null;
 
     let datos = { min: 0, max: 0, tasa: 0, moratoria: 0 };
@@ -79,6 +90,12 @@ const submit = () => {
     form.post(route('acreditados.store'), {
         preserveScroll: true,
     });
+};
+
+const goBack = () => {
+    if (typeof window !== 'undefined') {
+        window.history.back();
+    }
 };
 
 // Clases reutilizables para consistencia visual
@@ -246,7 +263,7 @@ const lbl = 'block text-xs font-black text-slate-500 dark:text-zinc-400 uppercas
                             <select v-model="form.modalidad_id"
                                     :class="[inp, 'appearance-none', form.errors.modalidad_id ? '!border-red-500 ring-1 ring-red-500' : '']">
                                 <option value="" disabled>Seleccione modalidad...</option>
-                                <option v-for="mod in modalidades" :key="mod.id" :value="mod.id">{{ mod.nombre }}</option>
+                                <option v-for="mod in props.modalidades" :key="mod.id" :value="mod.id">{{ mod.nombre }}</option>
                             </select>
                         </div>
 
@@ -316,7 +333,7 @@ const lbl = 'block text-xs font-black text-slate-500 dark:text-zinc-400 uppercas
                         </div>
 
                         <div class="flex gap-2">
-                            <button type="button" @click="$window.history.back()"
+                            <button type="button" @click="goBack"
                                     class="flex-1 sm:flex-none px-6 py-3.5 text-xs font-black text-slate-400 hover:text-white uppercase transition-colors">
                                 Atrás
                             </button>
