@@ -10,7 +10,6 @@ import {
     Briefcase, 
     Save, 
     ArrowLeft,
-    CheckCircle2,
     Info
 } from 'lucide-vue-next';
 
