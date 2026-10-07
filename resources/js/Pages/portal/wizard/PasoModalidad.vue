@@ -2,13 +2,13 @@
 import { ListChecks, ChevronDown, ChevronUp } from 'lucide-vue-next';
 import { card, lbl, sHead, sIcon } from './wizardStyles';
 
-const props = defineProps<{
-    datos: Record<string, any>;
+defineProps<{
     modalidades: Array<{ id: number; nombre: string; tasa_interes: string; monto_minimo: number; monto_maximo: number }>;
     isArtesanal: boolean | undefined;
     modalidadActual: { nombre?: string } | undefined;
     isOpen: boolean;
 }>();
+const datos = defineModel<Record<string, any>>('datos', { required: true });
 defineEmits<{ toggle: [] }>();
 </script>
 
