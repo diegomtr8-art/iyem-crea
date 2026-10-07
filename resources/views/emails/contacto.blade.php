@@ -44,7 +44,7 @@
   </div>
   <div class="footer">
     Mensaje recibido el {{ now()->setTimezone('America/Merida')->format('d/m/Y \a \l\a\s H:i') }} hrs (hora Mérida).
-    Para responder, usa la dirección de reply-to: {{ $datos['email'] }}.
+    Para responder, contesta este correo: la respuesta le llegará a {{ $datos['email'] }}.
   </div>
 </div>
 </body>
