@@ -14,12 +14,18 @@ class ExpedienteController extends Controller
         $user = auth()->user();
         $solicitud = $user->solicitudCredito()->with(['documentos', 'modalidad'])->first();
 
+        // Mismos documentos que pide el wizard para esta solicitud (modalidad, aval, etc.)
+        $requeridos = $solicitud
+            ? DocumentoSolicitud::tiposRequeridosParaSolicitud($solicitud, igualarWizard: true)
+            : DocumentoSolicitud::tiposRequeridos();
+        $etiquetas = DocumentoSolicitud::etiquetas();
+
         $documentos = null;
         if ($solicitud) {
             $documentos = $solicitud->documentos->map(fn($d) => [
                 'id'             => $d->id,
                 'tipo_documento' => $d->tipo_documento,
-                'label'          => DocumentoSolicitud::tiposRequeridos()[$d->tipo_documento] ?? $d->tipo_documento,
+                'label'          => $requeridos[$d->tipo_documento] ?? $etiquetas[$d->tipo_documento] ?? $d->tipo_documento,
                 'nombre_original'=> $d->nombre_original,
                 'estatus'        => $d->estatus,
                 'observacion'    => $d->observacion,
@@ -51,7 +57,7 @@ class ExpedienteController extends Controller
                 'created_at'      => $solicitud->created_at->format('d/m/Y'),
             ] : null,
             'documentos'      => $documentos,
-            'tipos_documentos'=> DocumentoSolicitud::tiposRequeridos(),
+            'tipos_documentos'=> $requeridos,
             'usuario'         => [
                 'name'  => $user->name,
                 'email' => $user->email,
