@@ -4,10 +4,10 @@ import { Head } from '@inertiajs/vue3';
 import { ref, computed } from 'vue';
 import {
     BadgeCheck, CalendarDays, CreditCard, DollarSign, TrendingUp,
-    FileText, Clock, CheckCircle2, AlertCircle, Minus,
+    FileText, AlertCircle, Minus,
     Download, Calculator, X, ClipboardCheck, Plus, Trash2, ExternalLink
 } from 'lucide-vue-next';
-import { router, useForm } from '@inertiajs/vue3';
+import { useForm } from '@inertiajs/vue3';
 import { parseDate } from '@/utils/dateUtils';
 
 const props = defineProps<{
@@ -125,7 +125,7 @@ const calcularLiquidacion = async () => {
     try {
         const resp = await fetch(route('portal.credito.liquidacion'));
         liquidacion.value = await resp.json();
-    } catch (e) {
+    } catch {
         liquidacion.value = null;
     } finally {
         cargandoLiquidacion.value = false;
