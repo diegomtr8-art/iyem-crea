@@ -33,6 +33,7 @@ use App\Http\Controllers\Portal\ExpedienteController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\BitacoraTareasController;
 use App\Http\Controllers\RespaldoExcelController;
+use App\Http\Controllers\RecordatoriosAdminController;
 
 // --- RUTAS PÚBLICAS (LANDING PAGE INFORMATIVA) ---
 Route::get('/', [PublicController::class, 'index'])->name('welcome');
@@ -178,7 +179,8 @@ Route::middleware(['auth', 'verified', 'operativo'])->group(function () {
     // AUDITORÍA
     Route::get('auditoria', [AuditoriaController::class, 'index'])->name('auditoria.index');
     Route::get('admin/tareas-programadas', [BitacoraTareasController::class, 'index'])->middleware('role:Administrador')->name('bitacora-tareas.index');
-
+    Route::get('admin/recordatorios', [RecordatoriosAdminController::class, 'index'])->middleware('role:Administrador')->name('recordatorios.index');
+    Route::post('admin/recordatorios', [RecordatoriosAdminController::class, 'enviar'])->middleware('role:Administrador')->name('recordatorios.enviar');
     // PRESUPUESTO — módulo eliminado
     // Route::get('presupuesto', [PresupuestoController::class, 'index'])->name('presupuesto.index');
     // Route::post('presupuesto', [PresupuestoController::class, 'store'])->name('presupuesto.store');
