@@ -2,11 +2,10 @@
 
 namespace App\Console\Commands;
 
+use App\Jobs\EnviarRecordatorioPago;
 use App\Models\Amortizacion;
-use App\Mail\RecordatorioPagoMail;
 use Carbon\Carbon;
 use Illuminate\Console\Command;
-use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\DB;
 
 class RecordatoriosPago extends Command
@@ -14,7 +13,7 @@ class RecordatoriosPago extends Command
     // Días de anticipación del aviso. El botón del administrador usa este mismo límite.
     public const DIAS_ANTICIPACION = 3;
     protected $signature   = 'crea:recordatorios-pago';
-    protected $description = 'Envía recordatorio por correo a acreditados con cuota que vence en 3 días';
+    protected $description = 'Encola el recordatorio por correo a acreditados con cuota que vence en 3 días';
 
     public function handle(): void
     {
@@ -26,7 +25,7 @@ class RecordatoriosPago extends Command
             ->whereDate('fecha_vencimiento', $en3dias)
             ->get();
 
-        $enviados = 0;
+        $encolados = 0;
 
         foreach ($cuotas as $cuota) {
             $acreditado = $cuota->credito?->acreditado;
@@ -40,15 +39,12 @@ class RecordatoriosPago extends Command
 
             if ($reservada === 0) continue;
 
-            try {
-                Mail::to($acreditado->correo)->send(RecordatorioPagoMail::desdeCuota($cuota));
-                $enviados++;
-            } catch (\Exception $e) {
-                DB::table('amortizaciones')->where('id', $cuota->id)->update(['recordatorio_enviado_at' => null]);
-                $this->warn("No se pudo notificar a {$acreditado->nombre_completo}: {$e->getMessage()}");
-            }
+            // Lo manda la cola, igual que el botón: con reintentos y, si se agotan,
+            // la tarea procesar-cola falla y queda en la bitácora (ver routes/console.php)
+            EnviarRecordatorioPago::dispatch($cuota);
+            $encolados++;
         }
 
-        $this->info("Recordatorios enviados: {$enviados}");
+        $this->info("Recordatorios encolados: {$encolados}");
     }
 }
