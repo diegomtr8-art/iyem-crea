@@ -4,7 +4,7 @@ import { Head, router, useForm } from '@inertiajs/vue3';
 import { ref, computed } from 'vue';
 import {
     DollarSign, TrendingUp, PlusCircle, BarChart2,
-    CheckCircle2, AlertTriangle, ChevronDown, ChevronUp,
+    CheckCircle2, AlertTriangle, ChevronUp,
     Calendar, Target, Save, RefreshCw, Layers
 } from 'lucide-vue-next';
 
