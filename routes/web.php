@@ -116,6 +116,7 @@ Route::middleware(['auth', 'verified', 'operativo'])->group(function () {
     // DESEMBOLSO
     Route::get('creditos/{credito}/desembolso', [DesembolsoController::class, 'create'])->name('creditos.desembolso.create');
     Route::post('creditos/{credito}/desembolso', [DesembolsoController::class, 'store'])->name('creditos.desembolso.store');
+    Route::get('desembolso/{desembolso}/comprobante', [DesembolsoController::class, 'descargarComprobante'])->name('desembolso.comprobante'); //ruta para descargar comprobante de desembolso
 
     // COMPROBACIÓN DE USO DEL CRÉDITO
     Route::get('comprobaciones', [ComprobacionController::class, 'index'])->name('comprobaciones.index');
