@@ -4,7 +4,7 @@ import { Head, router } from '@inertiajs/vue3';
 import { ref, watch, computed } from 'vue';
 import {
     Search, Filter, Shield, User, Clock, Eye, RefreshCw,
-    AlertTriangle, FileText, Database, ChevronLeft, ChevronRight,
+    Database,
     Edit, Trash2, Plus, LogIn, LogOut, Settings, ToggleLeft
 } from 'lucide-vue-next';
 import debounce from 'lodash/debounce';
