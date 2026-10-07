@@ -8,12 +8,16 @@ use App\Models\Amortizacion;
 use App\Models\ModalidadCrea;
 use App\Models\Pago;
 use App\Models\User;
+use App\Services\CreditService;
 use Carbon\Carbon;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
 
 class TestCreditosSeeder extends Seeder
 {
+    // Cuotas que ya no se cobran. 'Gracia' son las filas de prórroga que genera CreditService.
+    private const ESTADOS_CERRADOS = ['Pagado', 'Condonado', 'Reestructurada', 'Gracia'];
+
     public function run(): void
     {
         $cajero = User::first();
@@ -194,43 +198,15 @@ class TestCreditosSeeder extends Seeder
             'estatus'                => 'Activo',
         ]);
 
-        // 3. Tabla de amortización
-        $monto        = (float) $caso['credito']['monto_otorgado'];
-        $plazo        = (int) $caso['credito']['plazo_meses'];
-        $tasaMensual  = ($tasaOrdinario / 100) / 12;
-        $fechaInicial = Carbon::parse($caso['credito']['fecha_entrega']);
-        $mesesProrroga = str_contains($mod->nombre, 'Sustentable') ? 3 : 0;
-
-        $cuotaFija = ($tasaMensual > 0)
-            ? $monto * ($tasaMensual / (1 - pow(1 + $tasaMensual, -$plazo)))
-            : $monto / $plazo;
-
-        $saldoInsoluto = $monto;
-
-        for ($i = 1; $i <= $plazo; $i++) {
-            $interesMes = round($saldoInsoluto * $tasaMensual, 2);
-            $capitalMes = ($i === $plazo)
-                ? round($saldoInsoluto, 2)
-                : round($cuotaFija - $interesMes, 2);
-            $cuotaTotal = round($capitalMes + $interesMes, 2);
-
-            $credito->amortizaciones()->create([
-                'numero_cuota'               => $i,
-                'fecha_vencimiento'          => $fechaInicial->copy()->addMonths($i + $mesesProrroga)->format('Y-m-d'),
-                'saldo_insoluto'             => round($saldoInsoluto, 2),
-                'capital_esperado'           => $capitalMes,
-                'interes_ordinario_esperado' => $interesMes,
-                'cuota_fija'                 => $cuotaTotal,
-                'pago_restante'              => $cuotaTotal,
-                'estado'                     => 'Pendiente',
-                'capital_pagado'             => 0,
-                'interes_ordinario_pagado'   => 0,
-                'interes_moratorio_pagado'   => 0,
-                'interes_moratorio_generado' => 0,
-            ]);
-
-            $saldoInsoluto -= $capitalMes;
-        }
+        // 3. Tabla de amortización (la genera el motor, incluida la gracia de Sustentable)
+        (new CreditService())->generarTablaAmortizacion(
+            $credito,
+            (float) $caso['credito']['monto_otorgado'],
+            (int) $caso['credito']['plazo_meses'],
+            $tasaOrdinario,
+            Carbon::parse($caso['credito']['fecha_entrega']),
+            $mod->nombre
+        );
 
         // 4. Aplicar pagos de prueba
         foreach ($caso['pagos'] as $pagoConfig) {
@@ -258,7 +234,7 @@ class TestCreditosSeeder extends Seeder
         }
 
         $cuotas = $credito->amortizaciones()
-            ->where('estado', '!=', 'Pagado')
+            ->whereNotIn('estado', self::ESTADOS_CERRADOS)
             ->orderBy('numero_cuota')
             ->get();
 
@@ -360,7 +336,7 @@ class TestCreditosSeeder extends Seeder
 
         // Abono a capital extra (Reducir Plazo)
         if ($montoRestante > 0.01 && !$esLiquidacion && !empty($cfg['extra_capital'])) {
-            $pendientes = $credito->amortizaciones()->where('estado', '!=', 'Pagado')->orderBy('numero_cuota')->get()->reverse();
+            $pendientes = $credito->amortizaciones()->whereNotIn('estado', self::ESTADOS_CERRADOS)->orderBy('numero_cuota')->get()->reverse();
             $resto = $montoRestante;
             foreach ($pendientes as $cuota) {
                 if ($resto < 0.01) break;
@@ -412,11 +388,11 @@ class TestCreditosSeeder extends Seeder
 
         // Actualizar estatus crédito
         $credito->refresh();
-        $pendientes = $credito->amortizaciones()->where('estado', '!=', 'Pagado')->count();
+        $pendientes = $credito->amortizaciones()->whereNotIn('estado', self::ESTADOS_CERRADOS)->count();
         $nuevoEstatus = 'Activo';
         if ($pendientes === 0) {
             $nuevoEstatus = 'Liquidado';
-        } elseif ($credito->amortizaciones()->where('estado', '!=', 'Pagado')->where('fecha_vencimiento', '<', now())->exists()) {
+        } elseif ($credito->amortizaciones()->whereNotIn('estado', self::ESTADOS_CERRADOS)->where('fecha_vencimiento', '<', now())->exists()) {
             $nuevoEstatus = 'Moroso';
         }
         $credito->update(['estatus' => $nuevoEstatus]);
