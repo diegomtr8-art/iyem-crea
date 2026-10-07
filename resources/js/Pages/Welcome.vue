@@ -46,7 +46,10 @@ let touchStartX = 0;
 const onTouchStart = (e: TouchEvent) => { touchStartX = e.touches[0].clientX; };
 const onTouchEnd = (e: TouchEvent) => {
     const diff = touchStartX - e.changedTouches[0].clientX;
-    if (Math.abs(diff) > 50) diff > 0 ? nextSlide() : prevSlide();
+    if (Math.abs(diff) > 50) {
+        if (diff > 0) nextSlide();
+        else prevSlide();
+    }
 };
 const prevSlide = () => { if (currentSlide.value > 0) currentSlide.value--; };
 const nextSlide = () => { if (currentSlide.value < 2) currentSlide.value++; };
