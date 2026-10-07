@@ -17,11 +17,19 @@ use App\Services\CreditService;
 use Carbon\Carbon;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Storage;
 
 class TestDataSeeder extends Seeder
 {
     public function run(): void
     {
+        // PDF de ejemplo en la ruta que guardan los documentos de prueba
+        // (disco local = storage/app/private), para que el ícono ↗ del expediente abra.
+        Storage::disk('local')->put(
+            'solicitudes/placeholder.pdf',
+            file_get_contents(database_path('seeders/files/placeholder.pdf'))
+        );
+
         $password = Hash::make('password123');
         $modalidades = ModalidadCrea::all()->keyBy('nombre');
         $artesanal    = $modalidades['Artesanal']->id ?? 1;
