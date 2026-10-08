@@ -155,7 +155,12 @@ class DesembolsoController extends Controller
     {
         $user = auth()->user();
         abort_if(!$user->esOperativo(), 403);
-        abort_if(!Storage::disk('local')->exists($desembolso->comprobante_ruta), 404);
+        abort_if(
+            blank($desembolso->comprobante_ruta) ||
+            !Storage::disk('local')->exists($desembolso->comprobante_ruta), 
+            404,
+            'El desembolso no tiene un comprobante disponible.'
+        );
 
         return Storage::disk('local')->response($desembolso->comprobante_ruta);
     }

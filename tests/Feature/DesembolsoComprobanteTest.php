@@ -84,3 +84,43 @@ test('usuario operativo puede descargar el comprobante de desembolso', function 
 
     $response->assertOk();
 });
+
+//Comprobante con una ruta null
+test('retorna 404 si el desembolso no tiene comprobante', function () {
+    Storage::fake('local');
+
+    $user = User::factory()->create([
+        'tipo' => 'operativo',
+        'email_verified_at' => now(),
+    ]);
+
+    $desembolso = crearDesembolsoConComprobante();
+
+    $desembolso->update([
+        'comprobante_ruta' => null,
+    ]);
+
+    $this
+        ->actingAs($user)
+        ->get(route('desembolso.comprobante', $desembolso))
+        ->assertNotFound();
+});
+
+//Comprobante con ruta existente en la BD, pero archivo inexistente
+test('retorna 404 si el archivo del comprobante no existe', function () {
+    Storage::fake('local');
+
+    $user = User::factory()->create([
+        'tipo' => 'operativo',
+        'email_verified_at' => now(),
+    ]);
+
+    $desembolso = crearDesembolsoConComprobante();
+
+    // No se crea el archivo en el almacenamiento simulado.
+
+    $this
+        ->actingAs($user)
+        ->get(route('desembolso.comprobante', $desembolso))
+        ->assertNotFound();
+});
