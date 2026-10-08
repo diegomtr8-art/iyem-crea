@@ -142,7 +142,7 @@ class DashboardController extends Controller
         //se pasan los valores de configuracion de los dias a variables
         $diasGraciaMora = config('credito.dias_gracia_mora');
         $diasAnioComercial = config('credito.dias_anio_comercial');
-        
+
         // ── Mora pendiente (calculada dinámicamente) ──────────────────────────
         $moraPendiente = (float) (DB::table('amortizaciones')
             ->join('creditos as c_mp', 'amortizaciones.credito_id', '=', 'c_mp.id')
