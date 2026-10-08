@@ -284,7 +284,7 @@ class ReporteController extends Controller
             : Carbon::now('America/Merida')->startOfDay();
 
         $hoy        = $fechaCalculo;
-        $tasaDiaria = ($credito->tasa_interes_moratorio / 100) / 360;
+        $tasaDiaria = ($credito->tasa_interes_moratorio / 100) / config('credito.dias_anio_comercial');
 
         $amortizaciones = [];
         $totalCapitalPendiente = 0;
@@ -308,7 +308,7 @@ class ReporteController extends Controller
 
             if ($hoy->gt($vencimiento)) {
                 $diasAtraso = (int) $vencimiento->diffInDays($hoy);
-                if ($diasAtraso > 5) {
+                if ($diasAtraso > config('credito.dias_gracia_mora')) {
                     $sv         = max(0, (float)$fila->saldo_insoluto - (float)$fila->capital_pagado);
                     $moraActual = round($sv * $tasaDiaria * $diasAtraso, 2);
                 }
