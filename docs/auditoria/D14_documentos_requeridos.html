@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>D.14 Documentos requeridos</title>
+<style>
+  :root { --bg:#f6f4f1; --card:#fff; --ink:#1f1a1c; --mut:#6b6468; --line:#e6e1dd; --brand:#6B1938;
+          --ok-bg:#e3f4e8; --ok:#17663a; --bad-bg:#fde6e6; --bad:#a32121; --ask-bg:#fff2d6; --ask:#8a5a00; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink); font:15px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; }
+  main { max-width:1000px; margin:0 auto; padding:32px 16px 64px; }
+  h1 { font-size:26px; margin:0 0 6px; color:var(--brand); }
+  h2 { font-size:18px; margin:36px 0 10px; padding-bottom:6px; border-bottom:2px solid var(--brand); }
+  p, li { color:var(--mut); margin:4px 0; }
+  .meta { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:14px 18px; margin:16px 0; }
+  .meta b { color:var(--ink); }
+  .wrap { background:var(--card); border:1px solid var(--line); border-radius:10px; overflow-x:auto; }
+  table { width:100%; border-collapse:collapse; }
+  th { text-align:left; background:#f1ece8; font-size:12px; text-transform:uppercase; letter-spacing:.04em; color:var(--mut); }
+  th, td { padding:9px 12px; border-bottom:1px solid var(--line); vertical-align:top; }
+  tr:last-child td { border-bottom:0; }
+  td:first-child { font-weight:600; width:34%; }
+  code { background:#f1ece8; padding:1px 5px; border-radius:4px; font-size:13px; }
+  .t { display:inline-block; padding:2px 9px; border-radius:99px; font-size:12.5px; font-weight:600; white-space:nowrap; }
+  .ok { background:var(--ok-bg); color:var(--ok); }
+  .bad { background:var(--bad-bg); color:var(--bad); }
+  .ask { background:var(--ask-bg); color:var(--ask); }
+  .leg .t { margin-right:8px; }
+  .note { margin-top:28px; padding:12px 16px; border-left:4px solid var(--brand); background:var(--card); border-radius:0 8px 8px 0; }
+  @media print { body { background:#fff; } h2 { break-after:avoid; } .wrap { break-inside:avoid; } }
+</style>
+</head>
+<body>
+<main>
+  <h1>D.14 · Documentos requeridos vs. Arts. 10, 18 y 26</h1>
+
+  <div class="meta">
+    <p><b>Artículos:</b> Reglas de Operación, Diario Oficial 31/10/2025 (<code>public/formatos/RO.pdf</code>).</p>
+    <p><b>Sistema:</b> <code>DocumentoSolicitud::tiposRequeridos()</code>, ejecutado por combinación.</p>
+    <p><b>Estado:</b> diagnóstico, sin cambios de código. Lo marcado en rojo o amarillo espera respuesta de Diego.</p>
+    <p class="leg"><b>Leyenda:</b> <span class="t ok">Coincide</span><span class="t bad">Diferencia</span><span class="t ask">Confirmar con Diego</span> · PF = persona física · PM = persona moral</p>
+  </div>
+
+  <h2>1. Artesanal · Art. 10 (solo persona física)</h2>
+  <div class="wrap"><table>
+    <tr><th>Documento</th><th>Art. 10</th><th>Sistema</th><th>Resultado</th></tr>
+    <tr><td>Acta de nacimiento</td><td>b)</td><td>Pide</td><td><span class="t ok">Coincide</span></td></tr>
+    <tr><td>Acta de matrimonio</td><td>No la lista</td><td>Pide si es casado</td><td><span class="t bad">Pide de más</span></td></tr>
+    <tr><td>Comprobante de domicilio del solicitante <u>y</u> del negocio</td><td>c)</td><td>Pide uno solo</td><td><span class="t bad">Falta el del negocio</span></td></tr>
+    <tr><td>INE (frente y reverso)</td><td>d)</td><td>Pide</td><td><span class="t ok">Coincide</span></td></tr>
+    <tr><td>Propiedad o posesión del negocio</td><td>h)</td><td>Pide</td><td><span class="t ok">Coincide</span></td></tr>
+    <tr><td>2 cotizaciones</td><td>i)</td><td>Pide 2</td><td><span class="t ok">Coincide</span></td></tr>
+    <tr><td>Carta de no ser empleado público</td><td>j)</td><td>Pide</td><td><span class="t ok">Coincide</span></td></tr>
+    <tr><td>Constancia de repatriados (solo si falta acta o INE)</td><td>k)</td><td>No existe</td><td><span class="t ask">Confirmar</span></td></tr>
+    <tr><td>CURP, foto del negocio, constancia de artesano</td><td>No las lista</td><td>Pide</td><td><span class="t ask">Confirmar</span></td></tr>
+  </table></div>
+
+  <h2>2. Emprendedores · Art. 18</h2>
+  <div class="wrap"><table>
+    <tr><th>Documento</th><th>Art. 18</th><th>Sistema</th><th>Resultado</th></tr>
+    <tr><td>Constancia de situación fiscal (PF y PM)</td><td>a.2 / b.2</td><td>Pide</td><td><span class="t ok">Coincide</span></td></tr>
+    <tr><td>Acta de nacimiento (solo PF)</td><td>a.3</td><td>PF y PM</td><td>PF <span class="t ok">Coincide</span> PM <span class="t bad">Pide de más</span></td></tr>
+    <tr><td>Acta de matrimonio, si es casado (solo PF)</td><td>a.4</td><td>PF y PM</td><td>PF <span class="t ok">Coincide</span> PM <span class="t bad">Pide de más</span></td></tr>
+    <tr><td>Comprobante de domicilio del solicitante <u>y</u> del negocio</td><td>a.5 / b.3</td><td>Pide uno solo</td><td><span class="t bad">Falta el del negocio</span></td></tr>
+    <tr><td>INE del solicitante (PF) o del representante legal (PM)</td><td>a.6 / b.4</td><td>PF: INE<br>PM: INE personal <u>y</u> <code>id_rep_legal</code></td><td>PF <span class="t ok">Coincide</span> PM <span class="t bad">INE personal sobra</span></td></tr>
+    <tr><td>Propiedad o posesión del negocio</td><td>a.10 / b.7</td><td>Pide</td><td><span class="t ok">Coincide</span></td></tr>
+    <tr><td>3 cotizaciones</td><td>a.11 / b.9</td><td>Pide 3</td><td><span class="t ok">Coincide</span></td></tr>
+    <tr><td>Factura del bien (si la garantía es prendaria)</td><td>a.12 / b.11</td><td>Pide</td><td><span class="t ok">Coincide</span></td></tr>
+    <tr><td>Buró de crédito (máx. 180 días)</td><td>a.13 / b.12</td><td>Pide</td><td><span class="t ok">Coincide</span></td></tr>
+    <tr><td>Carta de no ser empleado público</td><td>a.14 / b.13</td><td>Pide</td><td><span class="t ok">Coincide</span></td></tr>
+    <tr><td>Acta constitutiva y poderes (PM)</td><td>b.8 (un solo documento)</td><td><code>acta_constitutiva</code> y <code>poder_rep_legal</code> por separado</td><td><span class="t ask">Confirmar</span></td></tr>
+    <tr><td>Balance general y estado de resultados (PM)</td><td>b.6</td><td>Pide</td><td><span class="t ok">Coincide</span></td></tr>
+    <tr><td>Constancia de repatriados (solo si falta acta o INE)</td><td>a.15</td><td>No existe</td><td><span class="t ask">Confirmar</span></td></tr>
+    <tr><td>CURP y foto del negocio</td><td>No las lista</td><td>Pide</td><td><span class="t ask">Confirmar</span></td></tr>
+  </table></div>
+
+  <h2>3. Sustentable · Art. 26</h2>
+  <div class="wrap"><table>
+    <tr><th>Documento</th><th>Art. 26</th><th>Sistema</th><th>Resultado</th></tr>
+    <tr><td>Constancia de situación fiscal (PF y PM), con 1 año de antigüedad y máx. 30 días</td><td>a.2 / b.2</td><td><b>No la pide</b></td><td><span class="t bad">Falta</span></td></tr>
+    <tr><td>Acta de nacimiento (solo PF)</td><td>a.3</td><td>PF y PM</td><td>PF <span class="t ok">Coincide</span> PM <span class="t bad">Pide de más</span></td></tr>
+    <tr><td>Acta de matrimonio, si es casado (solo PF)</td><td>a.4</td><td>PF y PM</td><td>PF <span class="t ok">Coincide</span> PM <span class="t bad">Pide de más</span></td></tr>
+    <tr><td>Comprobante de domicilio del solicitante <u>y</u> del negocio</td><td>a.5 / b.3</td><td>Pide uno solo</td><td><span class="t bad">Falta el del negocio</span></td></tr>
+    <tr><td>INE del solicitante (PF) o del representante legal (PM)</td><td>a.6 / b.4</td><td>PF: INE<br>PM: INE personal <u>y</u> <code>id_rep_legal</code></td><td>PF <span class="t ok">Coincide</span> PM <span class="t bad">INE personal sobra</span></td></tr>
+    <tr><td>Plan de trabajo sostenible</td><td>a.8 / b.6</td><td>Pide</td><td><span class="t ok">Coincide</span></td></tr>
+    <tr><td>Propiedad o posesión del negocio</td><td>a.11 / b.8</td><td>Pide</td><td><span class="t ok">Coincide</span></td></tr>
+    <tr><td>3 cotizaciones</td><td>a.12 / b.10</td><td>Pide 3</td><td><span class="t ok">Coincide</span></td></tr>
+    <tr><td>Factura del bien (si la garantía es prendaria)</td><td>a.13 / b.12</td><td>Pide</td><td><span class="t ok">Coincide</span></td></tr>
+    <tr><td>Escritura del inmueble (<u>solo</u> si la garantía es hipotecaria)</td><td>a.14 / b.13</td><td>Pide si el monto es ≥ $200 mil, <b>sea cual sea la garantía</b>. Con hipotecaria pide además <code>doc_propiedad_inmueble</code></td><td><span class="t bad">Mal condicionada y duplicada</span></td></tr>
+    <tr><td>Buró de crédito (máx. 180 días)</td><td>a.15 / b.14</td><td>Pide</td><td><span class="t ok">Coincide</span></td></tr>
+    <tr><td>Opinión de cumplimiento SAT (32-D)</td><td>a.16 / b.15</td><td>Pide</td><td><span class="t ok">Coincide</span></td></tr>
+    <tr><td>Carta de no ser empleado público</td><td>a.17 / b.16</td><td>Pide</td><td><span class="t ok">Coincide</span></td></tr>
+    <tr><td>Acta constitutiva y poderes (PM)</td><td>b.9 (un solo documento)</td><td>Por separado</td><td><span class="t ask">Confirmar</span></td></tr>
+    <tr><td>Balance general y estado de resultados (PM)</td><td>b.7</td><td>Pide</td><td><span class="t ok">Coincide</span></td></tr>
+    <tr><td>Constancia de repatriados (solo si falta acta o INE)</td><td>a.18</td><td>No existe</td><td><span class="t ask">Confirmar</span></td></tr>
+    <tr><td>CURP y foto del negocio</td><td>No las lista</td><td>Pide</td><td><span class="t ask">Confirmar</span></td></tr>
+  </table></div>
+
+  <h2>4. Aval (garantía personal)</h2>
+  <div class="wrap"><table>
+    <tr><th>Documento</th><th>Art. 10 · 18 · 26 (II)</th><th>Sistema</th><th>Resultado</th></tr>
+    <tr><td>Acta de nacimiento</td><td>a)</td><td>Pide</td><td><span class="t ok">Coincide</span></td></tr>
+    <tr><td>Acta de matrimonio, si es casado</td><td>b)</td><td>Pide según el estado civil del aval</td><td><span class="t ok">Coincide</span></td></tr>
+    <tr><td>Comprobante de domicilio</td><td>c)</td><td>Pide</td><td><span class="t ok">Coincide</span></td></tr>
+    <tr><td>Identificación oficial</td><td>d)</td><td>Pide</td><td><span class="t ok">Coincide</span></td></tr>
+    <tr><td>Declaración de bienes (anexo 4)</td><td>e)</td><td>Se genera en el ZIP de formatos</td><td><span class="t ask">Confirmar que no se sube</span></td></tr>
+    <tr><td>Escritura, título o factura del bien del aval (solo Emprendedores y Sustentable)</td><td>f)</td><td>No existe</td><td><span class="t bad">Falta</span> <span class="t ask">Confirmar</span></td></tr>
+  </table></div>
+
+  <h2>5. Garantía × modalidad</h2>
+  <div class="wrap"><table>
+    <tr><th>Combinación</th><th>Sistema</th><th>Artículo</th><th>Resultado</th></tr>
+    <tr><td>Hipotecaria en Artesanal o Emprendedores</td><td>Se acepta y pide <code>doc_propiedad_inmueble</code></td><td>Solo existe en Sustentable</td><td><span class="t bad">El front la bloquea, el modelo no</span></td></tr>
+    <tr><td>Hipotecaria en Sustentable con monto &lt; $200 mil</td><td>Se acepta</td><td>Solo aplica con monto ≥ $200 mil</td><td><span class="t bad">Combinación inválida aceptada</span></td></tr>
+    <tr><td>Sustentable ≥ $200 mil con aval</td><td>Pide <code>escritura_hipotecaria</code></td><td>No aplica, no hay hipoteca</td><td><span class="t bad">Pide de más</span></td></tr>
+  </table></div>
+
+  <h2>6. Documentos posteriores a la aprobación</h2>
+  <div class="wrap"><table>
+    <tr><th>Documento</th><th>Artículo</th><th>Sistema</th><th>Resultado</th></tr>
+    <tr><td>Fotografía de fachada</td><td>10 l) · 18 a.16 / b.14 · 26 a.19 / b.17</td><td><code>foto_fachada</code></td><td><span class="t ok">Coincide</span></td></tr>
+    <tr><td>Enlace de Google Maps</td><td>ídem</td><td><code>google_maps_negocio</code></td><td><span class="t ok">Coincide</span></td></tr>
+    <tr><td>Carátula de estado de cuenta</td><td>ídem</td><td><code>cuenta_bancaria_caratula</code></td><td><span class="t ok">Coincide</span> (el «últimos 3 meses» no viene en el artículo)</td></tr>
+  </table></div>
+  <p><b>Visibilidad, comprobada en el servidor local:</b> con cualquier estatus distinto de <code>Aprobada</code> la subida responde 403; con <code>Aprobada</code> pasa. Estos tipos nunca aparecen en Mi Expediente como requeridos.</p>
+
+  <h2>7. Diferencias abiertas</h2>
+  <div class="wrap"><table>
+    <tr><th>#</th><th>Diferencia</th><th>Acción</th></tr>
+    <tr><td>1</td><td>Falta el comprobante de domicilio del negocio</td><td><span class="t ask">Confirmar con Diego</span> ¿se pide uno solo si es el mismo domicilio?</td></tr>
+    <tr><td>2</td><td>PM pide acta de nacimiento, acta de matrimonio e INE personal</td><td><span class="t bad">Corregir</span> quitarlos en PM</td></tr>
+    <tr><td>3</td><td>Artesanal pide acta de matrimonio del solicitante</td><td><span class="t ask">Confirmar con Diego</span></td></tr>
+    <tr><td>4</td><td>Sustentable: escritura atada al monto y duplicada</td><td><span class="t bad">Corregir</span> atarla a la garantía hipotecaria</td></tr>
+    <tr><td>5</td><td>Sustentable no pide constancia de situación fiscal</td><td><span class="t bad">Corregir</span></td></tr>
+    <tr><td>6</td><td>Falta escritura o factura del bien del aval (Emprendedores y Sustentable)</td><td><span class="t ask">Confirmar con Diego</span></td></tr>
+    <tr><td>7</td><td>Hipotecaria aceptada en Artesanal, Emprendedores y Sustentable &lt; $200 mil</td><td><span class="t ask">Confirmar con Diego</span></td></tr>
+    <tr><td>8</td><td>Extras: CURP, foto del negocio, constancia de artesano; poder separado del acta</td><td><span class="t ask">Confirmar con Diego</span></td></tr>
+    <tr><td>9</td><td>Repatriados y excepciones por «innovación» o «sin operaciones» no modeladas</td><td><span class="t ask">Confirmar con Diego</span> (probable fuera de alcance)</td></tr>
+  </table></div>
+
+  <div class="note"><b>Nota técnica:</b> la lista está duplicada en <code>DocumentoSolicitud::tiposRequeridos()</code> (backend) y en <code>tiposDocRequeridos</code> de <code>resources/js/Pages/portal/WizardCredito.vue</code> (frontend). Cualquier corrección debe aplicarse en los dos.</div>
+</main>
+</body>
+</html>
