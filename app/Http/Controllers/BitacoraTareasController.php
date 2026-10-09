@@ -4,12 +4,13 @@ namespace App\Http\Controllers;
 
 use App\Models\BitacoraTareaProgramada;
 use Inertia\Inertia;
+use App\Jobs\CalcularCarteraActiva;
 
 class BitacoraTareasController extends Controller
 {
     // Las tareas de routes/console.php. Si agregan una tarea nueva, sumarla aquí:
     // así aparece en rojo aunque nunca haya corrido.
-    private const TAREAS_ESPERADAS = ['crea:update-moratorio', 'crea:recordatorios-pago'];
+    private const TAREAS_ESPERADAS = ['crea:update-moratorio', 'crea:recordatorios-pago', CalcularCarteraActiva::class, 'crea:respaldo-base'];
 
     private const HORAS_ALERTA = 24;
 
@@ -33,7 +34,8 @@ class BitacoraTareasController extends Controller
                 'ultimo_mensaje'   => $ultima?->mensaje_error,
                 'errores_7_dias'   => BitacoraTareaProgramada::where('tarea', $nombre)
                     ->where('estado', 'error')->where('inicio', '>=', $desde)->count(),
-                'sin_correr'       => ! $ultima || $ultima->inicio->lt($limite),
+                // Solo las tareas diarias deben correr cada 24 h; procesar-cola corre solo cuando hay correos
+                'sin_correr'       => in_array($nombre, self::TAREAS_ESPERADAS, true) && (! $ultima || $ultima->inicio->lt($limite)),
                 'horas_sin_correr' => $ultima ? (int) $ultima->inicio->diffInHours($ahora) : null,
             ];
         });

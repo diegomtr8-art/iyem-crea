@@ -1,5 +1,6 @@
 <script setup>
 import AppLayout from '@/layouts/app/AppSidebarLayout.vue';
+import TarjetaCarteraActiva from '@/components/TarjetaCarteraActiva.vue';
 import { computed, ref, onMounted } from 'vue';
 import { router } from '@inertiajs/vue3';
 import { Doughnut, Bar, Line } from 'vue-chartjs';
@@ -14,6 +15,7 @@ const props = defineProps({
     stats: Object,
     modalidades: Array,
     modalidad_activa: Number,
+    cartera_activa: Object,
 });
 
 function filtrarModalidad(id) {
@@ -344,6 +346,9 @@ const municipiosSinMapa = computed(() =>
                     <p class="text-[10px] text-zinc-400 mt-1">Rend. {{ stats?.kpis?.rendimiento_total }}% sobre colocado</p>
                 </div>
             </div>
+
+            <!-- ── Cartera activa: calculada una vez al día y leída de caché ── -->
+            <TarjetaCarteraActiva :cartera="cartera_activa" class="mb-4" />
 
             <!-- ── FILA 3: Mapa + Género + Top Municipios ────────────────── -->
             <div class="grid grid-cols-1 lg:grid-cols-12 gap-4 mb-4">

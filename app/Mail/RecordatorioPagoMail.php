@@ -47,7 +47,7 @@ class RecordatorioPagoMail extends Mailable
     public function envelope(): Envelope
     {
         return new Envelope(
-            subject: "Recordatorio de pago: cuota {$this->cuota} vence el {$this->vence}",
+            subject: "Recordatorio de pago CREA: tu cuota {$this->cuota} vence el {$this->vence}",
         );
     }
 
