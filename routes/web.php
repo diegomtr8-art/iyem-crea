@@ -32,6 +32,7 @@ use App\Http\Controllers\Portal\MiCreditoController;
 use App\Http\Controllers\Portal\ExpedienteController;
 use App\Http\Controllers\Portal\MensajeContactoController;
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\Admin\MensajesCiudadanoController;
 use App\Http\Controllers\BitacoraTareasController;
 use App\Http\Controllers\RespaldoExcelController;
 use App\Http\Controllers\RecordatoriosAdminController;
@@ -186,6 +187,9 @@ Route::middleware(['auth', 'verified', 'operativo'])->group(function () {
     Route::get('admin/tareas-programadas', [BitacoraTareasController::class, 'index'])->middleware('role:Administrador')->name('bitacora-tareas.index');
     Route::get('admin/recordatorios', [RecordatoriosAdminController::class, 'index'])->middleware('role:Administrador')->name('recordatorios.index');
     Route::post('admin/recordatorios', [RecordatoriosAdminController::class, 'enviar'])->middleware('role:Administrador')->name('recordatorios.enviar');
+    Route::get('admin/mensajes-ciudadanos', [MensajesCiudadanoController::class, 'index'])->middleware('role:Administrador')->name('mensajes-ciudadanos.index');
+    Route::get('admin/mensajes-ciudadanos/{mensaje}', [MensajesCiudadanoController::class, 'show'])->middleware('role:Administrador')->name('mensajes-ciudadanos.show');
+    Route::post('admin/mensajes-ciudadanos/{mensaje}/atendido', [MensajesCiudadanoController::class, 'marcarAtendido'])->middleware('role:Administrador')->name('mensajes-ciudadanos.atendido');
     // PRESUPUESTO — módulo eliminado
     // Route::get('presupuesto', [PresupuestoController::class, 'index'])->name('presupuesto.index');
     // Route::post('presupuesto', [PresupuestoController::class, 'store'])->name('presupuesto.store');
