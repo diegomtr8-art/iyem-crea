@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\AuditoriaLog;
 use App\Models\CondonacionFormal;
 use App\Models\Credito;
+use App\Enums\EstadoCredito;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -17,9 +18,10 @@ class CondonacionFormalController extends Controller
     {
         $credito->load(['acreditado', 'modalidad', 'amortizaciones', 'condonaciones.autorizadoPor']);
 
-        $saldoCapital   = $credito->amortizaciones->whereNotIn('estado', ['Pagado', 'Condonado', 'Reestructurada', 'Gracia'])->sum('capital_esperado');
-        $saldoIntereses = $credito->amortizaciones->whereNotIn('estado', ['Pagado', 'Condonado', 'Reestructurada', 'Gracia'])->sum('interes_ordinario_esperado');
-        $saldoMora      = $credito->amortizaciones->whereNotIn('estado', ['Pagado', 'Condonado', 'Reestructurada', 'Gracia'])->sum('moratorio_acumulado');
+        $amortizacionesPendientes = $credito->amortizaciones->whereNotIn('estado', ['Pagado', 'Condonado', 'Reestructurada', 'Gracia']);
+        $saldoCapital   = $amortizacionesPendientes->sum('capital_esperado') - $amortizacionesPendientes->sum('capital_pagado');
+        $saldoIntereses = $amortizacionesPendientes->sum('interes_ordinario_esperado');
+        $saldoMora      = $amortizacionesPendientes->sum('moratorio_acumulado');
 
         return Inertia::render('Creditos/CondonacionFormal', [
             'credito' => [
@@ -74,7 +76,7 @@ class CondonacionFormalController extends Controller
                 $credito->amortizaciones()
                     ->whereNotIn('estado', ['Pagado', 'Condonado', 'Reestructurada', 'Gracia'])
                     ->update(['estado' => 'Condonado', 'pago_restante' => 0, 'moratorio_acumulado' => 0]);
-                $credito->update(['estatus' => 'Liquidado']);
+                $credito->update(['estatus' => EstadoCredito::LIQUIDADO]);
             }
 
             $montoTotal = ($data['monto_condonado_capital'] ?? 0)

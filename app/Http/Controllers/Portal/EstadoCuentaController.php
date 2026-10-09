@@ -23,7 +23,10 @@ class EstadoCuentaController extends Controller
     public function pdf(): \Symfony\Component\HttpFoundation\Response
     {
         $credito = $this->getCreditoUsuario();
-        abort_if(!$credito, 404, 'No tienes un crédito activo.');
+        if (!$credito) {
+            return redirect()->route('portal.dashboard')
+                ->with('info', 'Aún no tienes un crédito registrado.');
+        }
 
         $pagos = Pago::where('credito_id', $credito->id)
             ->where('cancelado', false)

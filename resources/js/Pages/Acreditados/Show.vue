@@ -43,8 +43,10 @@ const irAPagar = (id) => {
 
 const formatDate = (dateStr) => {
     if (!dateStr) return '—';
-    const [y, m, d] = dateStr.split('-');
-    return `${d}/${m}/${y}`;
+    //debido a que desde el modelo se define el formato d/m/Y, no hace falta reformatearlo
+    /*const [y, m, d] = dateStr.split('-');
+    return `${d}/${m}/${y}`;*/
+    return dateStr; 
 };
 
 const imprimirExpediente = () => window.print();

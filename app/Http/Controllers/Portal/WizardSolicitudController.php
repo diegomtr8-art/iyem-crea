@@ -635,18 +635,7 @@ class WizardSolicitudController extends Controller
 
     private function tiposRequeridosSolicitud(SolicitudCredito $solicitud): array
     {
-        $wizard          = $solicitud->datos_wizard ?? [];
-        $estadoCivil     = $wizard['datos_personales_ext']['estado_civil'] ?? null;
-        $estadoCivilAval = $solicitud->aval?->estado_civil;
-
-        return DocumentoSolicitud::tiposRequeridos(
-            $solicitud->modalidad_id,
-            $solicitud->tipo_persona,
-            $solicitud->tipo_garantia,
-            $estadoCivil,
-            $estadoCivilAval,
-            $solicitud->monto_solicitado ? (float) $solicitud->monto_solicitado : null
-        );
+        return DocumentoSolicitud::tiposRequeridosParaSolicitud($solicitud);
     }
 
     /**

@@ -24,12 +24,12 @@ class UpdateMoratorio extends Command
 
         foreach ($pendientes as $fila) {
             $credito     = $fila->credito;
-            $tasaDiaria  = (((float)($credito->tasa_interes_moratorio ?? 0)) / 100) / 360;
+            $tasaDiaria  = (((float)($credito->tasa_interes_moratorio ?? 0)) / 100) / config('credito.dias_anio_comercial');
             $vencimiento = Carbon::parse($fila->fecha_vencimiento)->startOfDay();
             $dias        = (int) $vencimiento->diffInDays($hoy);
 
             $mora = 0.0;
-            if ($dias > 5) {
+            if ($dias > config('credito.dias_gracia_mora')) {
                 $saldoVencido = round(max(0, (float)$fila->saldo_insoluto - (float)$fila->capital_pagado), 2);
                 $mora = round($saldoVencido * $tasaDiaria * $dias, 2);
             }

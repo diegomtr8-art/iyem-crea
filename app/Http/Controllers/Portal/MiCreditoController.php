@@ -5,13 +5,14 @@ namespace App\Http\Controllers\Portal;
 use App\Http\Controllers\Controller;
 use App\Models\ComprobacionUso;
 use App\Models\Credito;
+use Illuminate\Http\RedirectResponse;
 use Inertia\Inertia;
 use Inertia\Response;
 use Illuminate\Support\Carbon;
 
 class MiCreditoController extends Controller
 {
-    public function index(): Response
+    public function index(): Response|RedirectResponse
     {
         $user = auth()->user();
         $solicitud = $user->solicitudCredito;
@@ -46,7 +47,7 @@ class MiCreditoController extends Controller
 
         $proximaCuota = $proxima ? [
             'numero'            => $proxima->numero_cuota,
-            'fecha_vencimiento' => $proxima->fecha_vencimiento,
+            'fecha_vencimiento' => $proxima->fecha_vencimiento?->format('d/m/Y'), //se pasa el formato para que lo respete MiCredito.vue
             'capital'           => round((float) $proxima->capital_esperado - (float) $proxima->capital_pagado, 2),
             'interes'           => round((float) $proxima->interes_ordinario_esperado - (float) $proxima->interes_ordinario_pagado, 2),
             'mora'              => $mora,
@@ -99,7 +100,7 @@ class MiCreditoController extends Controller
                 ],
                 'tabla' => $credito->amortizaciones->map(fn($a) => [
                     'numero_cuota'   => $a->numero_cuota,
-                    'fecha_vencimiento' => $a->fecha_vencimiento,
+                    'fecha_vencimiento' => $a->fecha_vencimiento?->format('d/m/Y'), //se cambia el formato para que lo respete MiCredito.vue
                     'saldo_insoluto' => $a->saldo_insoluto,
                     'capital'        => $a->capital_esperado,
                     'ordinario'      => $a->interes_ordinario_esperado,
@@ -112,7 +113,7 @@ class MiCreditoController extends Controller
                 'pagos' => $credito->pagos->map(fn($p) => [
                     'id'            => $p->id,
                     'folio'         => $p->folio,
-                    'fecha_pago'    => $p->fecha_pago,
+                    'fecha_pago'    => $p->fecha_pago?->format('d/m/Y'),
                     'monto_recibido'=> $p->monto_recibido,
                     'forma_pago'    => $p->forma_pago,
                 ]),

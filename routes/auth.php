@@ -8,7 +8,6 @@ use App\Http\Controllers\Auth\EmailVerificationPromptController;
 use App\Http\Controllers\Auth\GoogleAuthController;
 use App\Http\Controllers\Auth\NewPasswordController;
 use App\Http\Controllers\Auth\PasswordResetLinkController;
-use App\Http\Controllers\Auth\RegisteredUserController;
 use App\Http\Controllers\Auth\VerifyEmailController;
 use Illuminate\Support\Facades\Route;
 
@@ -19,11 +18,16 @@ Route::middleware('guest')->group(function () {
     Route::get('auth/google/callback', [GoogleAuthController::class, 'callback'])
         ->name('auth.google.callback');
 
-    // Registro restringido para operativos (solo admin)
-    Route::get('register', [RegisteredUserController::class, 'create'])
-        ->name('register');
-
-    Route::post('register', [RegisteredUserController::class, 'store']);
+    // NOTA DE SEGURIDAD (21-09-2026)
+    // Aquí vivían GET/POST /register. Estaban dentro del grupo 'guest', es decir
+    // abiertos a cualquiera, y RegisteredUserController::store creaba el usuario
+    // sin asignar 'tipo', por lo que tomaba el valor por defecto de la tabla:
+    // 'operativo'. Resultado: cualquiera podía darse de alta como operativo y,
+    // con el único filtro que tiene el sistema (EsOperativo), condonar adeudos,
+    // registrar o cancelar pagos y autorizar desembolsos.
+    // La única protección era que ninguna vista enlazaba la ruta.
+    // Se eliminan: la creación de usuarios operativos ya existe y está protegida
+    // en POST /users (UserController@store, dentro de auth+verified+operativo).
 
     // Auto-registro para ciudadanos
     Route::get('ciudadano/registro', [CiudadanoRegisterController::class, 'create'])
