@@ -9,6 +9,7 @@ use App\Enums\EstadoCredito;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -77,6 +78,18 @@ class CondonacionFormalController extends Controller
                     ->whereNotIn('estado', ['Pagado', 'Condonado', 'Reestructurada', 'Gracia'])
                     ->update(['estado' => 'Condonado', 'pago_restante' => 0, 'moratorio_acumulado' => 0]);
                 $credito->update(['estatus' => EstadoCredito::LIQUIDADO]);
+            } elseif ($data['tipo'] === 'Parcial_Capital') {
+                $this->aplicarCondonacionParcial(
+                    $credito, 'capital_esperado', (float) ($data['monto_condonado_capital'] ?? 0)
+                );
+            } elseif ($data['tipo'] === 'Parcial_Intereses') {
+                $this->aplicarCondonacionParcial(
+                    $credito, 'interes_ordinario_esperado', (float) ($data['monto_condonado_intereses'] ?? 0)
+                );
+            } elseif ($data['tipo'] === 'Parcial_Mora') {
+                $this->aplicarCondonacionParcial(
+                    $credito, 'moratorio_acumulado', (float) ($data['monto_condonado_mora'] ?? 0), 'interes_moratorio_generado'
+                );
             }
 
             $montoTotal = ($data['monto_condonado_capital'] ?? 0)
@@ -97,5 +110,63 @@ class CondonacionFormalController extends Controller
             return redirect()->route('acreditados.show', $credito->acreditado_id)
                 ->with('success', 'Condonación formal registrada correctamente.');
         });
+    }
+
+    private function aplicarCondonacionParcial(
+        Credito $credito,
+        string $columna,
+        float $monto,
+        ?string $columnaSecundaria = null
+    ): void {
+        if ($monto < 0.01) {
+            throw ValidationException::withMessages([
+                'monto' => 'El monto a condonar debe ser mayor a cero.',
+            ]);
+        }
+
+        $pendientes = $credito->amortizaciones()
+            ->whereNotIn('estado', ['Pagado', 'Condonado', 'Reestructurada', 'Gracia'])
+            ->orderBy('numero_cuota')
+            ->lockForUpdate()
+            ->get();
+
+        $baseReducible = function ($cuota) use ($columna) {
+            return match ($columna) {
+                'capital_esperado'           => max(0, (float) $cuota->capital_esperado - (float) $cuota->capital_pagado),
+                'interes_ordinario_esperado' => max(0, (float) $cuota->interes_ordinario_esperado - (float) $cuota->interes_ordinario_pagado),
+                default                      => (float) $cuota->{$columna},
+            };
+        };
+
+        $disponible = round($pendientes->sum($baseReducible), 2);
+
+        if ($monto > $disponible + 0.001) {
+            throw ValidationException::withMessages([
+                'monto' => "El monto a condonar (\${$monto}) excede lo pendiente (\${$disponible}).",
+            ]);
+        }
+
+        $restante = round($monto, 2);
+
+        foreach ($pendientes as $cuota) {
+            if ($restante < 0.01) {
+                break;
+            }
+
+            $base = round($baseReducible($cuota), 2);
+            if ($base < 0.01) {
+                continue;
+            }
+
+            $descuento = round(min($restante, $base), 2);
+
+            $cambios = [$columna => round((float) $cuota->{$columna} - $descuento, 2)];
+            if ($columnaSecundaria !== null) {
+                $cambios[$columnaSecundaria] = max(0, round((float) $cuota->{$columnaSecundaria} - $descuento, 2));
+            }
+
+            $cuota->update($cambios);
+            $restante = round($restante - $descuento, 2);
+        }
     }
 }
