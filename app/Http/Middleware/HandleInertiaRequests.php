@@ -4,6 +4,7 @@ namespace App\Http\Middleware;
 
 use App\Models\AnuncioCiudadano;
 use App\Models\ComprobacionUso;
+use App\Models\MensajeCiudadano;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
@@ -58,6 +59,10 @@ class HandleInertiaRequests extends Middleware
                 ? ComprobacionUso::where('estatus', 'Pendiente')
                     ->whereDate('fecha_limite_comprobacion', '<=', now()->addDays(7))
                     ->count()
+                : null,
+
+            'mensajes_pendientes' => ($request->user() && $request->user()->tipo === 'operativo' && $request->user()->hasRole('Administrador'))
+                ? MensajeCiudadano::pendientes()->count()
                 : null,
 
             // --- NOTIFICACIONES FLASH ---
