@@ -129,19 +129,11 @@ function crearOperativoReducirPlazoInteres(): User
 }
 
 /**
- * Reproduce el problema:
- *
- * Al utilizar "Reducir Plazo", el sobrante se aplica al capital de
- * las últimas cuotas. Cuando alcanza para liquidar completamente
- * el capital de una cuota, aplicarAbonoCapital() también marca su
- * interés ordinario como pagado.
- *
- * Sin embargo, ese interés no está respaldado por
- * pagos.aplicado_ordinario.
- *
- * El test mide cuánto interés queda registrado de más.
+ * Verifica que al aplicar un abono anticipado con Reducir Plazo,
+ * el interés ordinario registrado en las amortizaciones coincida
+ * con el interés respaldado por los pagos.
  */
-test('reducir plazo registra interes ordinario sin respaldo en el pago', function () {
+test('reducir plazo mantiene conciliado el interes ordinario entre pagos y amortizaciones', function () {
 
     $this->actingAs(crearOperativoReducirPlazoInteres());
 
@@ -209,53 +201,22 @@ test('reducir plazo registra interes ordinario sin respaldo en el pago', functio
     );
 
     /*
-     * ---------------------------------------------------------
-     * 4. CUOTAS LIQUIDADAS POR EL ABONO A CAPITAL
-     * ---------------------------------------------------------
-     *
-     * Esto permite identificar específicamente qué cuotas
-     * recibieron el interés "fantasma".
-     */
-    $cuotasLiquidadasPorAbono = Amortizacion::where(
-        'credito_id',
-        $credito->id
-    )
-        ->where(
-            'observaciones',
-            'Liquidada por abono anticipado a capital'
-        )
-        ->orderBy('numero_cuota')
-        ->get();
+    |--------------------------------------------------------------------------
+    | 4. INTERÉS MARCADO COMO PAGADO POR EL ABONO ANTICIPADO
+    |--------------------------------------------------------------------------
+    |
+    | El abono de $3,000 debe aplicarse exclusivamente al capital.
+    | Por lo tanto, ninguna cuota futura debe registrar interés
+    | ordinario pagado como consecuencia de este abono.
+    |
+    */
 
     $interesMarcadoPorAbono = round(
-        (float) $cuotasLiquidadasPorAbono
+        (float) Amortizacion::where('credito_id', $credito->id)
+            ->where('numero_cuota', '>', 1)
             ->sum('interes_ordinario_pagado'),
         2
     );
-
-    /*
-     * Mostramos los resultados para medir el efecto exacto
-     * en la base de prueba.
-     */
-    dump([
-        'pago_total' => 5000.00,
-
-        'sobrante_aplicado' => (float) $pago->sobrante_aplicado,
-
-        'interes_segun_pagos' => $interesSegunPagos,
-
-        'interes_segun_amortizaciones' => $interesSegunAmortizaciones,
-
-        'interes_cobrado_de_mas' => $interesCobradoDeMas,
-
-        'cuotas_liquidadas_por_abono' =>
-            $cuotasLiquidadasPorAbono
-                ->pluck('numero_cuota')
-                ->values()
-                ->all(),
-
-        'interes_marcado_por_abono' => $interesMarcadoPorAbono,
-    ]);
 
     /*
      * ---------------------------------------------------------
@@ -263,38 +224,16 @@ test('reducir plazo registra interes ordinario sin respaldo en el pago', functio
      * ---------------------------------------------------------
      */
 
-    /*// Debe existir al menos una cuota liquidada por el abono.
-    expect($cuotasLiquidadasPorAbono->count())
-        ->toBeGreaterThan(0);
-
-    // Esas cuotas tienen interés marcado como pagado.
-    expect($interesMarcadoPorAbono)
-        ->toBeGreaterThan(0);
-
-    // Las amortizaciones registran más interés que los pagos.
-    expect($interesSegunAmortizaciones)
-        ->toBeGreaterThan($interesSegunPagos);
-
-    // Por lo tanto, existe interés registrado de más.
-    expect($interesCobradoDeMas)
-        ->toBeGreaterThan(0);*/
-    // El pago normal de la cuota 1 registra correctamente $260.58 de interés.
+    // El pago normal de la cuota 1 registra $260.58 de interés.
     expect($interesSegunPagos)->toBe(260.58);
 
-    // Reducir Plazo provoca que las amortizaciones registren $272.19.
-    expect($interesSegunAmortizaciones)->toBe(272.19);
+    // Las amortizaciones deben registrar únicamente el interés pagado.
+    expect($interesSegunAmortizaciones)->toBe(260.58);
 
-    // La diferencia no respaldada por pagos es exactamente $11.61.
-    expect($interesCobradoDeMas)->toBe(11.61);
+    // No debe existir diferencia entre pagos y amortizaciones.
+    expect($interesCobradoDeMas)->toBe(0.0);
 
-    // El sobrante alcanzó para liquidar completamente la cuota 24.
-    expect(
-        $cuotasLiquidadasPorAbono
-            ->pluck('numero_cuota')
-            ->values()
-            ->all()
-    )->toBe([24]);
+    // El abono anticipado no debe pagar intereses futuros.
+    expect($interesMarcadoPorAbono)->toBe(0.0);
 
-    // Los $11.61 adicionales provienen precisamente de esa cuota.
-    expect($interesMarcadoPorAbono)->toBe(11.61);
 });
