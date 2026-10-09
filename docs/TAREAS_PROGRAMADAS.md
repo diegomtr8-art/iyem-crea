@@ -39,6 +39,10 @@ Después de cambiar el `.env` hay que correr `php artisan config:cache` (el depl
 
 ### El paso: crear el cron
 
+> **⚠️ Este cron se activa solo con la autorización de Diego.** Desde el minuto en que se activa, CREA manda correos reales a los acreditados y recalcula cada día la mora de las cuotas vencidas. Hasta entonces, no lo actives ni lo pruebes en producción; las pruebas se hacen en local con `MAIL_MAILER=log` (sección 5).
+>
+> Antes de activarlo, revisa la tabla `jobs`: si tiene filas, son recordatorios que alguien pidió con el botón de **Recordatorios de pago** y que todavía no salen. Se enviarán en el primer minuto.
+
 En hPanel ve a **Avanzado → Cron Jobs** y crea uno nuevo:
 
 - **Frecuencia:** cada minuto (`* * * * *`).
