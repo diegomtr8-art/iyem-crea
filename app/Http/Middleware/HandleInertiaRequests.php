@@ -53,6 +53,13 @@ class HandleInertiaRequests extends Middleware
                 ];
             })() : null,
 
+            // --- DATOS DE CONTACTO DEL IYEM (config/contacto.php) ---
+            'contacto' => [
+                'telefono' => config('contacto.telefono'),
+                'correo'   => config('contacto.correo'),
+                'horario'  => config('contacto.horario'),
+            ],
+
             // --- BADGES OPERATIVOS ---
             'comprobaciones_pendientes' => ($request->user() && $request->user()->tipo === 'operativo')
                 ? ComprobacionUso::where('estatus', 'Pendiente')

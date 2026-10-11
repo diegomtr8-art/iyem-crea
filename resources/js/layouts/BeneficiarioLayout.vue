@@ -321,7 +321,7 @@ onMounted(notify);
                         <div class="space-y-1 text-sm text-slate-500 dark:text-zinc-400">
                             <p>Av. Industrias No Contaminantes Tablaje 13613</p>
                             <p>Col. Sodzil Norte, Mérida, Yucatán</p>
-                            <p class="font-medium text-slate-700 dark:text-zinc-300">999 941 2170</p>
+                            <p v-if="page.props.contacto?.telefono" class="font-medium text-slate-700 dark:text-zinc-300">{{ page.props.contacto.telefono }}</p>
                         </div>
                     </div>
                 </div>

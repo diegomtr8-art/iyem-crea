@@ -30,7 +30,7 @@ class MensajeContactoController extends Controller
 
         // El aviso al equipo es secundario: si el correo falla, el mensaje ya quedó guardado.
         try {
-            Mail::to('crea@iyemyucatan.com')->send(new MensajeCiudadanoMail($mensaje));
+            Mail::to(config('contacto.correo'))->send(new MensajeCiudadanoMail($mensaje));
         } catch (\Throwable $e) {
             Log::error('No se pudo enviar el aviso de mensaje de ciudadano', [
                 'mensaje_id' => $mensaje->id,
