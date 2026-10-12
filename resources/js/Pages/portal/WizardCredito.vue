@@ -124,6 +124,7 @@ const datos = ref({
     municipio_empresa:    wiz.datos_negocio_ext?.municipio_empresa ?? '',
     fecha_inicio_negocio: wiz.datos_negocio_ext?.fecha_inicio_negocio ?? '',
     regimen_fiscal:       wiz.datos_negocio_ext?.regimen_fiscal ?? '',
+    mismo_domicilio:      wiz.datos_negocio_ext?.mismo_domicilio ?? false,
     propiedad_intelectual:wiz.datos_negocio_ext?.propiedad_intelectual ?? false,
     detalle_pi:           wiz.datos_negocio_ext?.detalle_pi ?? '',
     ventas_mensuales:     wiz.datos_negocio_ext?.ventas_mensuales ?? '',
@@ -257,6 +258,15 @@ const rfcCurpWarning = computed(() => {
 
 const modalidadActual = computed(() => props.modalidades.find(m => m.id == datos.value.modalidad_id));
 const isArtesanal     = computed(() => modalidadActual.value?.nombre?.toLowerCase().includes('artesanal'));
+// Arts. 9, 17 y 25 (el servidor valida lo mismo): Artesanal solo aval; Emprendedores aval o
+// prendaria; Sustentable las tres, y la hipotecaria solo con monto de $200,000 o más.
+const MONTO_MIN_HIPOTECARIA = 200000;
+const garantiaPermitida = (g: string): boolean => {
+    const nombre = modalidadActual.value?.nombre?.toLowerCase() ?? '';
+    if (nombre.includes('artesanal')) return g === 'aval';
+    if (nombre.includes('emprendedores')) return g !== 'hipotecaria';
+    return true;
+};
 const isSustentable   = computed(() => modalidadActual.value?.nombre?.toLowerCase().includes('sustentable'));
 const plazosDisponibles = computed(() => isArtesanal.value ? [6, 12, 18] : [12, 18, 24]);
 
@@ -278,46 +288,51 @@ function calcIE(ie: any) {
     return { utilBruta, totalGastos, utilAnteImp, utilNeta };
 }
 
-// Tipos de documentos requeridos (debe reflejar DocumentoSolicitud::tiposRequeridos())
+// Tipos de documentos requeridos (debe reflejar DocumentoSolicitud::armarTipos(), D.14)
 const tiposDocRequeridos = computed((): Record<string, string> => {
-    const base: Record<string, string> = {
-        ine_frente:            'INE / Credencial (Frente)',
-        ine_reverso:           'INE / Credencial (Reverso)',
-        curp:                  'Documento CURP oficial',
-        comprobante_domicilio: 'Comprobante de Domicilio',
-        foto_negocio:          'Fotografía del Negocio o Proyecto',
-        acta_nacimiento:       'Acta de nacimiento',
-        propiedad_negocio:     'Documento de propiedad/posesión del negocio',
-        carta_no_servidor:     'Carta de no ser servidor público',
-    };
-
-    if (datos.value.estado_civil === 'Casado(a)') base.acta_matrimonio = 'Acta de matrimonio';
-
+    const esMoral = datos.value.tipo_persona === 'moral';
     const mod = modalidadActual.value;
     const nombreMod = mod?.nombre?.toLowerCase() ?? '';
+    const esArtesanal     = !!mod && isArtesanal.value;
     const esEmprendedores = nombreMod.includes('emprendedores');
     const esSustentable   = nombreMod.includes('sustentable');
 
-    if (mod) {
-        if (isArtesanal.value) {
-            base.constancia_artesano = 'Constancia de Artesano';
-            base.cotizaciones_proveedor = '2 cotizaciones de proveedores';
-        }
-        if (esEmprendedores || esSustentable) {
-            base.cotizaciones_proveedor = '3 cotizaciones de proveedores';
-            base.buro_credito = 'Reporte buró de crédito vigente (≤180 días)';
-        }
-        if (esEmprendedores) base.constancia_situacion = 'Constancia de Situación Fiscal';
-        if (esSustentable) {
-            base.opinion_cumplimiento = 'Opinión de Cumplimiento SAT';
-            base.plan_trabajo_sostenible = 'Plan de trabajo sostenible con impacto ambiental';
-            if (Number(datos.value.monto_solicitado || 0) >= 200000) {
-                base.escritura_hipotecaria = 'Escritura de garantía hipotecaria';
-            }
-        }
+    const base: Record<string, string> = {};
+
+    // Persona moral: sin INE, CURP ni actas del solicitante (se pide la del representante legal).
+    if (!esMoral) {
+        base.ine_frente  = 'INE / Credencial (Frente)';
+        base.ine_reverso = 'INE / Credencial (Reverso)';
+        base.curp        = 'Documento CURP oficial';
     }
 
-    if (datos.value.tipo_persona === 'moral') {
+    base.comprobante_domicilio = 'Comprobante de Domicilio';
+    // Domicilio del solicitante Y del negocio; basta uno si el negocio opera en el mismo domicilio.
+    if (!datos.value.mismo_domicilio) base.comprobante_domicilio_negocio = 'Comprobante de domicilio del negocio';
+
+    base.foto_negocio = 'Fotografía del Negocio o Proyecto';
+    if (!esMoral) base.acta_nacimiento = 'Acta de nacimiento';
+    base.propiedad_negocio = 'Documento de propiedad/posesión del negocio';
+    base.carta_no_servidor = 'Carta de no ser servidor público';
+
+    // El Art. 10-I (Artesanal) no pide el acta de matrimonio del solicitante.
+    if (datos.value.estado_civil === 'Casado(a)' && !esMoral && !esArtesanal) base.acta_matrimonio = 'Acta de matrimonio';
+
+    if (esArtesanal) {
+        base.constancia_artesano = 'Constancia de Artesano';
+        base.cotizaciones_proveedor = '2 cotizaciones de proveedores';
+    }
+    if (esEmprendedores || esSustentable) {
+        base.cotizaciones_proveedor = '3 cotizaciones de proveedores';
+        base.buro_credito = 'Reporte buró de crédito vigente (≤180 días)';
+        base.constancia_situacion = 'Constancia de Situación Fiscal';
+    }
+    if (esSustentable) {
+        base.opinion_cumplimiento = 'Opinión de Cumplimiento SAT';
+        base.plan_trabajo_sostenible = 'Plan de trabajo sostenible con impacto ambiental';
+    }
+
+    if (esMoral) {
         base.acta_constitutiva = 'Acta Constitutiva';
         base.poder_rep_legal = 'Poder del Representante Legal';
         base.id_rep_legal = 'Identificación del Representante Legal';
@@ -329,6 +344,8 @@ const tiposDocRequeridos = computed((): Record<string, string> => {
         base.comprobante_domicilio_aval = 'Comprobante de Domicilio del Aval';
         base.acta_nacimiento_aval = 'Acta de nacimiento del aval';
         if (aval.value.estado_civil === 'Casado(a)') base.acta_matrimonio_aval = 'Acta de matrimonio del aval';
+        // Arts. 18-II-f y 26-II-f (no aplica a Artesanal).
+        if (esEmprendedores || esSustentable) base.doc_bien_aval = 'Escritura, título, certificado o factura del bien del aval';
     }
     if (datos.value.tipo_garantia === 'prendaria')   base.factura_bien_mueble = 'Factura del Bien Mueble en Garantía';
     if (datos.value.tipo_garantia === 'hipotecaria') base.doc_propiedad_inmueble = 'Documento de Propiedad del Inmueble';
@@ -790,12 +807,15 @@ const sIcon= 'w-9 h-9 rounded-xl flex items-center justify-center shrink-0 bg-[#
                     <label :class="lbl">Tipo de garantía *</label>
                     <div class="grid grid-cols-3 gap-2 mt-1">
                         <button v-for="g in ['aval','prendaria','hipotecaria']" :key="g" type="button"
-                            :disabled="g === 'hipotecaria' && !modalidadActual?.nombre?.toLowerCase().includes('sustentable')"
+                            :disabled="!garantiaPermitida(g)"
                             @click="datos.tipo_garantia = g"
                             :class="['rounded-xl border-2 py-2.5 px-2 font-bold text-xs transition-all capitalize min-h-[44px]', datos.tipo_garantia === g ? 'border-[#6B1938] bg-[#6B1938]/5 dark:bg-[#6B1938]/10 text-[#6B1938] dark:text-[#f4a8c4]' : 'border-slate-200 dark:border-zinc-700 text-slate-600 dark:text-zinc-400 hover:border-[#6B1938]/60 disabled:opacity-40']">
                             {{ g === 'aval' ? 'Aval' : g === 'prendaria' ? 'Prendaria' : 'Hipotecaria' }}
                         </button>
                     </div>
+                    <p v-if="datos.tipo_garantia === 'hipotecaria' && Number(datos.monto_solicitado || 0) < MONTO_MIN_HIPOTECARIA" class="text-red-600 text-xs mt-1">
+                        La garantía hipotecaria solo aplica para montos de {{ fmt(MONTO_MIN_HIPOTECARIA) }} o más.
+                    </p>
                 </div>
             </div>
         </div>
@@ -940,6 +960,10 @@ const sIcon= 'w-9 h-9 rounded-xl flex items-center justify-center shrink-0 bg-[#
                 <label class="flex items-center gap-3 cursor-pointer">
                     <div class="relative"><input type="checkbox" v-model="datos.alta_sat" class="sr-only peer" /><div class="w-9 h-5 bg-slate-200 dark:bg-zinc-700 peer-checked:bg-emerald-600 rounded-full transition-colors"></div><div class="absolute left-1 top-1 w-3 h-3 bg-white rounded-full transition-transform peer-checked:translate-x-4 shadow-sm"></div></div>
                     <span class="text-sm font-medium text-slate-700 dark:text-zinc-300">Dado de alta en el SAT</span>
+                </label>
+                <label class="flex items-center gap-3 cursor-pointer">
+                    <div class="relative"><input type="checkbox" v-model="datos.mismo_domicilio" class="sr-only peer" /><div class="w-9 h-5 bg-slate-200 dark:bg-zinc-700 peer-checked:bg-emerald-600 rounded-full transition-colors"></div><div class="absolute left-1 top-1 w-3 h-3 bg-white rounded-full transition-transform peer-checked:translate-x-4 shadow-sm"></div></div>
+                    <span class="text-sm font-medium text-slate-700 dark:text-zinc-300">Mi negocio opera en mi mismo domicilio</span>
                 </label>
                 <label class="flex items-center gap-3 cursor-pointer">
                     <div class="relative"><input type="checkbox" v-model="datos.propiedad_intelectual" class="sr-only peer" /><div class="w-9 h-5 bg-slate-200 dark:bg-zinc-700 peer-checked:bg-emerald-600 rounded-full transition-colors"></div><div class="absolute left-1 top-1 w-3 h-3 bg-white rounded-full transition-transform peer-checked:translate-x-4 shadow-sm"></div></div>
