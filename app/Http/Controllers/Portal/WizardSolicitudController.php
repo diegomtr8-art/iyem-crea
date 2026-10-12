@@ -101,6 +101,17 @@ class WizardSolicitudController extends Controller
         $curp  = strtoupper(trim($request->curp));
         $userId = auth()->id();
 
+                // CURP que no es del usuario en sesión: la respuesta es idéntica exista o no
+        // un crédito o una solicitud, para no revelar datos de terceros (C-14).
+        $curpPropia = strtoupper((string) (auth()->user()->solicitudCredito?->curp ?? ''));
+        if ($curp !== $curpPropia) {
+            return response()->json([
+                'bloqueado'  => false,
+                'renovacion' => false,
+                'mensaje'    => 'Verificamos tu CURP',
+            ]);
+        }
+
         // Bloquear si otro usuario tiene crédito activo o solicitud en proceso con esa CURP
         $conflicto = SolicitudCredito::where('curp', $curp)
             ->where('user_id', '!=', $userId)
