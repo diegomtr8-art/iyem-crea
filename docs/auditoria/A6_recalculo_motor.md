@@ -15,7 +15,7 @@ Recalculé desde cero las tablas de amortización con un script en Python (`deci
 | Diferencias de cálculo en `cuota_fija`, `capital_esperado`, `interes_ordinario_esperado`, `saldo_insoluto` | 0 |
 | Créditos sintéticos generados con el motor y comparados | 2,000 (41,347 cuotas), 0 diferencias |
 
-La base local tiene 35 créditos, no 2,000. El script corre igual sobre cualquier exportación.
+La base local tiene 35 créditos, no 2,000. El script corre igual sobre cualquier exportación. Los 2,000 créditos sintéticos los generé en local con un script aparte que no se incluye en el repositorio, así que esa prueba no se puede repetir con lo que hay aquí; la comparación de los 35 créditos sí.
 
 ---
 
