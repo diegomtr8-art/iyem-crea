@@ -12,7 +12,7 @@ use Database\Seeders\TestDataSeeder;
 test('los seeders de prueba se niegan a correr en producción', function (string $seeder) {
     app()->detectEnvironment(fn () => 'production');
 
-    expect(fn () => $this->seed($seeder))
+    expect(fn () => app($seeder)->run())
         ->toThrow(RuntimeException::class, 'no se puede correr en producción');
 
     expect(Acreditado::count())->toBe(0)
