@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Acreditado;
+use App\Models\Credito;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Redirect;
@@ -27,33 +28,34 @@ class PublicController extends Controller
         return Inertia::render('Legal/AvisoPrivacidad');
     }
 
-    /**
-     * Procesa la consulta del acreditado mediante CURP y RFC.
+        /**
+     * Procesa la consulta del acreditado mediante CURP y número de contrato.
      */
     public function consultar(Request $request)
     {
         // 1. Validamos la entrada del ciudadano
         $request->validate([
-            'curp' => 'required|string|size:18',
-            'rfc' => 'required|string'
+            'curp'           => 'required|string|size:18',
+            'clave_contrato' => 'required|string|max:50',
         ], [
-            'curp.required' => 'La CURP es obligatoria para la consulta.',
-            'curp.size' => 'La CURP debe tener exactamente 18 caracteres.',
-            'rfc.required' => 'El RFC es necesario para validar su identidad.'
+            'curp.required'           => 'La CURP es obligatoria para la consulta.',
+            'curp.size'               => 'La CURP debe tener exactamente 18 caracteres.',
+            'clave_contrato.required' => 'El número de contrato es obligatorio para la consulta.',
+            'clave_contrato.max'      => 'El número de contrato es demasiado largo.',
         ]);
 
-        // 2. Buscamos al acreditado por identidad
-        $acreditado = Acreditado::where('curp', strtoupper($request->curp))
-            ->where('rfc', strtoupper($request->rfc)) 
+        // 2. Buscamos el crédito por número de contrato y CURP del acreditado
+        $credito = Credito::where('clave_contrato', trim($request->clave_contrato))
+            ->whereHas('acreditado', fn ($q) => $q->where('curp', strtoupper(trim($request->curp))))
+            ->with('acreditado')
             ->first();
 
-        // 3. Si no existe, regresamos con error
-        if (!$acreditado) {
-            return Redirect::back()->with('error', 'Los datos ingresados no coinciden con nuestros registros. Verifique su CURP y RFC.');
+        // 3. Mensaje único: no revela si la persona existe ni si tiene crédito
+        if (!$credito) {
+            return Redirect::back()->with('error', 'No encontramos un crédito con esos datos. Verifica tu CURP y tu número de contrato.');
         }
 
-        // 4. Obtenemos el crédito relacionado
-        $credito = $acreditado->creditos()->first();
+        $acreditado = $credito->acreditado;
 
         /**
          * 5. Obtenemos la Tabla de Amortización (Proyección)
