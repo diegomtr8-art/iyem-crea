@@ -1,19 +1,22 @@
 <script setup lang="ts">
 import BeneficiarioLayout from '@/layouts/BeneficiarioLayout.vue';
-import { Head, Link } from '@inertiajs/vue3';
+import { Head, Link, usePage } from '@inertiajs/vue3';
 import { computed } from 'vue';
 import { AlertTriangle } from 'lucide-vue-next';
 
 const props = defineProps<{ status: number }>();
 
-const mensajes: Record<number, { titulo: string; detalle: string }> = {
-    403: { titulo: 'No tienes permiso para ver esta página', detalle: 'Si crees que es un error, comunícate con el IYEM al 999 941 2170.' },
+const page = usePage<any>();
+const telefono = computed<string>(() => page.props.contacto?.telefono || '');
+
+const mensajes = computed<Record<number, { titulo: string; detalle: string }>>(() => ({
+    403: { titulo: 'No tienes permiso para ver esta página', detalle: telefono.value ? `Si crees que es un error, comunícate con el IYEM al ${telefono.value}.` : 'Si crees que es un error, comunícate con el IYEM.' },
     404: { titulo: 'No encontramos esta página', detalle: 'Es posible que la dirección esté mal escrita o que la página ya no exista.' },
     419: { titulo: 'Tu sesión expiró', detalle: 'Por seguridad cerramos tu sesión después de un tiempo sin actividad. Inicia sesión de nuevo para continuar.' },
-    500: { titulo: 'Algo salió mal de nuestro lado', detalle: 'Ya estamos al tanto. Inténtalo de nuevo en unos minutos; si sigue pasando, llama al 999 941 2170.' },
-};
+    500: { titulo: 'Algo salió mal de nuestro lado', detalle: 'Ya estamos al tanto. Inténtalo de nuevo en unos minutos' + (telefono.value ? `; si sigue pasando, llama al ${telefono.value}.` : '.') },
+}));
 
-const mensaje = computed(() => mensajes[props.status] ?? mensajes[500]);
+const mensaje = computed(() => mensajes.value[props.status] ?? mensajes.value[500]);
 </script>
 
 <template>

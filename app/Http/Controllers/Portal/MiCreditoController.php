@@ -127,8 +127,8 @@ class MiCreditoController extends Controller
                 'beneficiario'  => 'Instituto Yucateco de Emprendedores',
                 'rfc'           => 'IIC991117V18',
                 'concepto'      => 'Número de contrato: ' . ($credito->clave_contrato ?? '—'),
-                'caja_horario'  => 'Lunes a Viernes, 9:00 a 14:00 hrs.',
-                'correo'        => 'crea@iyemyucatan.com',
+                'caja_horario'  => config('contacto.horario'),
+                'correo'        => config('contacto.correo'),
                 'whatsapp'      => '9992342693',
             ],
         ]);

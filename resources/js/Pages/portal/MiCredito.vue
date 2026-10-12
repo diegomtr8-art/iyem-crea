@@ -241,7 +241,7 @@ const enviarComprobacion = () => {
                     </span>
                 </div>
                 <p v-if="credito.proxima_cuota.vencida" class="text-xs text-red-500 mt-2">
-                    Contáctanos para regularizar tu crédito: 999 941 2170
+                    Contáctanos para regularizar tu crédito<template v-if="$page.props.contacto.telefono">: {{ $page.props.contacto.telefono }}</template>.
                 </p>
             </div>
 
@@ -416,7 +416,7 @@ const enviarComprobacion = () => {
                     </div>
                     <div class="rounded-2xl bg-slate-50 dark:bg-zinc-800/50 p-4 space-y-2">
                         <p class="text-xs font-bold uppercase tracking-wider text-slate-400">Pago en oficinas IYEM</p>
-                        <p class="text-slate-600 dark:text-zinc-300">Horario de caja: <strong class="text-slate-900 dark:text-white">{{ datos_pago.caja_horario }}</strong></p>
+                        <p v-if="datos_pago.caja_horario" class="text-slate-600 dark:text-zinc-300">Horario de caja: <strong class="text-slate-900 dark:text-white">{{ datos_pago.caja_horario }}</strong></p>
                         <p class="text-slate-600 dark:text-zinc-300">Correo: <strong class="text-slate-900 dark:text-white">{{ datos_pago.correo }}</strong></p>
                         <p class="text-slate-600 dark:text-zinc-300">WhatsApp: <strong class="text-slate-900 dark:text-white">{{ datos_pago.whatsapp }}</strong></p>
                     </div>
@@ -472,7 +472,7 @@ const enviarComprobacion = () => {
                             class="px-5 py-2 rounded-xl bg-red-700 text-white text-sm font-bold hover:bg-red-800 transition-colors">
                             Reintentar
                         </button>
-                        <p class="text-xs text-slate-400">Si el problema continúa, llama al <strong>999 941 2170</strong></p>
+                        <p v-if="$page.props.contacto.telefono" class="text-xs text-slate-400">Si el problema continúa, llama al <strong>{{ $page.props.contacto.telefono }}</strong></p>
                     </div>
 
                     <div v-else-if="liquidacion" class="space-y-4">
@@ -499,7 +499,7 @@ const enviarComprobacion = () => {
                             <p class="text-xs text-slate-400 mt-2">Este cálculo puede variar si no liquidas el mismo día.</p>
                         </div>
 
-                        <p class="text-xs text-center text-slate-400">Para liquidar, acude a nuestras oficinas o llama al <strong>999 941 2170</strong></p>
+                        <p class="text-xs text-center text-slate-400">Para liquidar, acude a nuestras oficinas<template v-if="$page.props.contacto.telefono"> o llama al <strong>{{ $page.props.contacto.telefono }}</strong></template>.</p>
                     </div>
                 </div>
             </div>
@@ -610,7 +610,7 @@ const enviarComprobacion = () => {
                 <!-- Nota informativa -->
                 <div class="border-t border-slate-100 dark:border-zinc-800 px-6 py-4 bg-slate-50 dark:bg-zinc-800/50">
                     <p class="text-xs text-slate-400 dark:text-zinc-500 text-center">
-                        Para realizar tus pagos visita nuestras oficinas o comunícate al <strong class="text-slate-600 dark:text-zinc-300">999 941 2170</strong>.
+                        Para realizar tus pagos visita nuestras oficinas<template v-if="$page.props.contacto.telefono"> o comunícate al <strong class="text-slate-600 dark:text-zinc-300">{{ $page.props.contacto.telefono }}</strong></template>.
                         Los pagos se reflejan en 24-48 horas hábiles.
                     </p>
                 </div>
