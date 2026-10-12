@@ -2,7 +2,9 @@
 
 namespace App\Console\Commands;
 
+use App\Enums\EstadoCredito;
 use App\Models\Amortizacion;
+use App\Models\Credito;
 use Carbon\Carbon;
 use Illuminate\Console\Command;
 
@@ -43,5 +45,21 @@ class UpdateMoratorio extends Command
         }
 
         $this->info("Moratorios actualizados: {$actualizados} cuotas.");
+
+        // Estatus Moroso: alguna cuota vencida hace más de los días de gracia
+        // (misma regla que PagoController). Solo se mueve entre Activo y Moroso;
+        // Liquidado, Cancelado y demás estatus no se tocan.
+        $limite = $hoy->copy()->subDays((int) config('credito.dias_gracia_mora'))->toDateString();
+        $conCuotaVencida = fn ($q) => $q
+            ->whereNotIn('estado', ['Pagado', 'Condonado', 'Reestructurada', 'Gracia'])
+            ->where('fecha_vencimiento', '<', $limite);
+
+        $morosos = Credito::where('estatus', EstadoCredito::ACTIVO)->whereHas('amortizaciones', $conCuotaVencida)->get();
+        $morosos->each->update(['estatus' => EstadoCredito::MOROSO]);
+
+        $alCorriente = Credito::where('estatus', EstadoCredito::MOROSO)->whereDoesntHave('amortizaciones', $conCuotaVencida)->get();
+        $alCorriente->each->update(['estatus' => EstadoCredito::ACTIVO]);
+
+        $this->info("Créditos a Moroso: {$morosos->count()}. De Moroso a Activo: {$alCorriente->count()}.");
     }
 }
