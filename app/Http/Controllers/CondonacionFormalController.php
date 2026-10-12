@@ -58,6 +58,12 @@ class CondonacionFormalController extends Controller
             'observaciones'             => 'nullable|string|max:2000',
         ]);
 
+        if ($data['tipo'] === 'Parcial_Mora') {
+            throw ValidationException::withMessages([
+                'tipo' => 'La condonación parcial de mora todavía no está disponible.',
+            ]);
+        }
+
         return DB::transaction(function () use ($credito, $data) {
             $condonacion = CondonacionFormal::create([
                 'credito_id'                => $credito->id,
@@ -80,15 +86,19 @@ class CondonacionFormalController extends Controller
                 $credito->update(['estatus' => EstadoCredito::LIQUIDADO]);
             } elseif ($data['tipo'] === 'Parcial_Capital') {
                 $this->aplicarCondonacionParcial(
-                    $credito, 'capital_esperado', (float) ($data['monto_condonado_capital'] ?? 0)
+                    $credito,
+                    'monto_condonado_capital',
+                    'capital_esperado',
+                    (float) ($data['monto_condonado_capital'] ?? 0),
+                    true
                 );
             } elseif ($data['tipo'] === 'Parcial_Intereses') {
                 $this->aplicarCondonacionParcial(
-                    $credito, 'interes_ordinario_esperado', (float) ($data['monto_condonado_intereses'] ?? 0)
-                );
-            } elseif ($data['tipo'] === 'Parcial_Mora') {
-                $this->aplicarCondonacionParcial(
-                    $credito, 'moratorio_acumulado', (float) ($data['monto_condonado_mora'] ?? 0), 'interes_moratorio_generado'
+                    $credito,
+                    'monto_condonado_intereses',
+                    'interes_ordinario_esperado',
+                    (float) ($data['monto_condonado_intereses'] ?? 0),
+                    false
                 );
             }
 
@@ -114,13 +124,14 @@ class CondonacionFormalController extends Controller
 
     private function aplicarCondonacionParcial(
         Credito $credito,
+        string $campo,
         string $columna,
         float $monto,
-        ?string $columnaSecundaria = null
+        bool $ajustaSaldoInsoluto
     ): void {
         if ($monto < 0.01) {
             throw ValidationException::withMessages([
-                'monto' => 'El monto a condonar debe ser mayor a cero.',
+                $campo => 'El monto a condonar debe ser mayor a cero.',
             ]);
         }
 
@@ -142,31 +153,49 @@ class CondonacionFormalController extends Controller
 
         if ($monto > $disponible + 0.001) {
             throw ValidationException::withMessages([
-                'monto' => "El monto a condonar (\${$monto}) excede lo pendiente (\${$disponible}).",
+                $campo => "El monto a condonar (\${$monto}) excede lo pendiente (\${$disponible}).",
             ]);
         }
 
-        $restante = round($monto, 2);
+        $restante   = round($monto, 2);
+        $descuentos = [];
 
         foreach ($pendientes as $cuota) {
-            if ($restante < 0.01) {
-                break;
+            $descuento = 0.0;
+
+            if ($restante >= 0.01) {
+                $base = round($baseReducible($cuota), 2);
+                if ($base >= 0.01) {
+                    $descuento = round(min($restante, $base), 2);
+                }
             }
 
-            $base = round($baseReducible($cuota), 2);
-            if ($base < 0.01) {
-                continue;
+            $descuentos[$cuota->id] = $descuento;
+
+            if ($descuento >= 0.01) {
+                $cuota->update([
+                    $columna        => round((float) $cuota->{$columna} - $descuento, 2),
+                    'pago_restante' => max(0, round((float) $cuota->pago_restante - $descuento, 2)),
+                ]);
+
+                $restante = round($restante - $descuento, 2);
             }
+        }
 
-            $descuento = round(min($restante, $base), 2);
+        if ($ajustaSaldoInsoluto) {
+            $acumulado = 0.0;
 
-            $cambios = [$columna => round((float) $cuota->{$columna} - $descuento, 2)];
-            if ($columnaSecundaria !== null) {
-                $cambios[$columnaSecundaria] = max(0, round((float) $cuota->{$columnaSecundaria} - $descuento, 2));
+            foreach ($pendientes as $cuota) {
+                $acumulado = round($acumulado + ($descuentos[$cuota->id] ?? 0), 2);
+
+                if ($acumulado < 0.01) {
+                    continue;
+                }
+
+                $cuota->update([
+                    'saldo_insoluto' => max(0, round((float) $cuota->saldo_insoluto - $acumulado, 2)),
+                ]);
             }
-
-            $cuota->update($cambios);
-            $restante = round($restante - $descuento, 2);
         }
     }
 }
