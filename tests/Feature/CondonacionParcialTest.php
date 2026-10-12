@@ -66,7 +66,7 @@ function postCondonacion(Credito $credito, array $datos)
     );
 }
 
-test('la condonacion parcial de capital reduce el capital esperado', function () {
+test('la condonacion parcial de capital reduce el capital esperado y el saldo', function () {
     $credito = crearCreditoCondonacion();
 
     postCondonacion($credito, [
@@ -74,13 +74,22 @@ test('la condonacion parcial de capital reduce el capital esperado', function ()
         'monto_condonado_capital' => 500,
     ])->assertRedirect();
 
-    $suma = (float) Amortizacion::where('credito_id', $credito->id)->sum('capital_esperado');
+    $cuota = fn (int $n) => Amortizacion::where('credito_id', $credito->id)
+        ->where('numero_cuota', $n)
+        ->first();
 
-    expect($suma)->toBe(2500.0);
+    expect((float) Amortizacion::where('credito_id', $credito->id)->sum('capital_esperado'))->toBe(2500.0);
+    expect((float) Amortizacion::where('credito_id', $credito->id)->sum('pago_restante'))->toBe(3100.0);
+
+    // El saldo insoluto baja en la cuota condonada y en las siguientes
+    expect((float) $cuota(1)->saldo_insoluto)->toBe(2500.0);
+    expect((float) $cuota(2)->saldo_insoluto)->toBe(1500.0);
+    expect((float) $cuota(3)->saldo_insoluto)->toBe(500.0);
+
     expect(CondonacionFormal::where('credito_id', $credito->id)->count())->toBe(1);
 });
 
-test('la condonacion parcial de intereses reduce el interes esperado', function () {
+test('la condonacion parcial de intereses reduce el interes esperado y el saldo', function () {
     $credito = crearCreditoCondonacion();
 
     postCondonacion($credito, [
@@ -88,26 +97,30 @@ test('la condonacion parcial de intereses reduce el interes esperado', function 
         'monto_condonado_intereses' => 500,
     ])->assertRedirect();
 
-    $suma = (float) Amortizacion::where('credito_id', $credito->id)->sum('interes_ordinario_esperado');
+    expect((float) Amortizacion::where('credito_id', $credito->id)->sum('interes_ordinario_esperado'))->toBe(100.0);
+    expect((float) Amortizacion::where('credito_id', $credito->id)->sum('pago_restante'))->toBe(3100.0);
 
-    expect($suma)->toBe(100.0);
+    // El capital proyectado y el saldo insoluto no se tocan en intereses
+    expect((float) Amortizacion::where('credito_id', $credito->id)->sum('capital_esperado'))->toBe(3000.0);
+    expect((float) Amortizacion::where('credito_id', $credito->id)->sum('saldo_insoluto'))->toBe(6000.0);
+
     expect(CondonacionFormal::where('credito_id', $credito->id)->count())->toBe(1);
 });
 
-test('la condonacion parcial de mora reduce la mora acumulada', function () {
+test('la condonacion parcial de mora se rechaza sin registrar nada', function () {
     $credito = crearCreditoCondonacion();
 
     postCondonacion($credito, [
         'tipo'                 => 'Parcial_Mora',
         'monto_condonado_mora' => 150,
-    ])->assertRedirect();
+    ])->assertSessionHasErrors('tipo');
 
-    $moraAcumulada = (float) Amortizacion::where('credito_id', $credito->id)->sum('moratorio_acumulado');
-    $moraGenerada  = (float) Amortizacion::where('credito_id', $credito->id)->sum('interes_moratorio_generado');
+    expect(CondonacionFormal::where('credito_id', $credito->id)->count())->toBe(0);
 
-    expect($moraAcumulada)->toBe(150.0);
-    expect($moraGenerada)->toBe(150.0);
-    expect(CondonacionFormal::where('credito_id', $credito->id)->count())->toBe(1);
+    expect((float) Amortizacion::where('credito_id', $credito->id)->sum('capital_esperado'))->toBe(3000.0);
+    expect((float) Amortizacion::where('credito_id', $credito->id)->sum('interes_ordinario_esperado'))->toBe(600.0);
+    expect((float) Amortizacion::where('credito_id', $credito->id)->sum('pago_restante'))->toBe(3600.0);
+    expect((float) Amortizacion::where('credito_id', $credito->id)->sum('moratorio_acumulado'))->toBe(300.0);
 });
 
 test('no se puede condonar mas de lo pendiente', function () {
@@ -116,7 +129,7 @@ test('no se puede condonar mas de lo pendiente', function () {
     postCondonacion($credito, [
         'tipo'                      => 'Parcial_Intereses',
         'monto_condonado_intereses' => 9999,
-    ])->assertSessionHasErrors();
+    ])->assertSessionHasErrors('monto_condonado_intereses');
 
     $suma = (float) Amortizacion::where('credito_id', $credito->id)->sum('interes_ordinario_esperado');
 
