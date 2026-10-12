@@ -39,7 +39,7 @@ use App\Http\Controllers\RecordatoriosAdminController;
 // --- RUTAS PÚBLICAS (LANDING PAGE INFORMATIVA) ---
 Route::get('/', [PublicController::class, 'index'])->name('welcome');
 Route::get('/consultar-credito', fn() => redirect('/'))->name('public.consultar.redirect');
-Route::post('/consultar-credito', [PublicController::class, 'consultar'])->name('public.consultar');
+Route::post('/consultar-credito', [PublicController::class, 'consultar'])->middleware('throttle:5,1')->name('public.consultar');
 Route::post('/contacto', [ContactoController::class, 'enviar'])->middleware('throttle:5,1')->name('contacto.enviar');
 Route::get('/aviso-privacidad', [PublicController::class, 'avisoPrivacidad'])->name('aviso-privacidad');
 
@@ -61,7 +61,7 @@ Route::middleware(['auth', 'verified', 'ciudadano'])->prefix('mi-portal')->name(
 
     // Wizard de solicitud (flujo principal en /solicitud)
     Route::get('solicitud', [WizardSolicitudController::class, 'index'])->name('solicitud.index');
-    Route::post('solicitud/verificar-curp', [WizardSolicitudController::class, 'verificarCurp'])->name('solicitar.verificar-curp');
+    Route::post('solicitud/verificar-curp', [WizardSolicitudController::class, 'verificarCurp'])->middleware('throttle:5,1')->name('solicitar.verificar-curp');
     Route::post('solicitud/paso', [WizardSolicitudController::class, 'guardarPaso'])->name('solicitar.paso');
     Route::post('solicitud/documento', [WizardSolicitudController::class, 'subirDocumento'])->name('solicitar.documento');
     Route::post('solicitud/documento-post-aprobacion', [WizardSolicitudController::class, 'subirDocumentoPostAprobacion'])->name('solicitar.documento-post-aprobacion');
