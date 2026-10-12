@@ -1,5 +1,7 @@
 <?php
 
+use App\Models\Acreditado;
+use App\Models\ModalidadCrea;
 use App\Models\User;
 
 /**
@@ -46,6 +48,18 @@ test('con el portal cerrado el personal entra a login, dashboard y recuperar con
     $this->get('/dashboard')->assertOk();
     // Operativo: /solicitudes (bandeja del personal) no debe confundirse con el portal.
     $this->get('/solicitudes')->assertOk();
+
+    // Pagos.
+    $modalidad = ModalidadCrea::create(['nombre' => 'Emprendedores', 'tasa_interes' => 7, 'tasa_moratoria' => 17.5]);
+    $credito = Acreditado::create([
+        'nombre_completo' => 'Portal Cerrado', 'municipio' => 'Mérida', 'sexo' => 'M',
+        'rfc' => 'PCER000101AA0', 'curp' => 'PCER000101MYNRRR00',
+    ])->creditos()->create([
+        'modalidad_id' => $modalidad->id, 'clave_contrato' => 'PCER-1', 'monto_otorgado' => 12000,
+        'plazo_meses' => 12, 'fecha_entrega' => now()->toDateString(), 'tasa_interes_ordinario' => 7,
+        'tasa_interes_moratorio' => 17.5, 'estatus' => 'Activo',
+    ]);
+    $this->get(route('pagos.create', $credito))->assertOk();
 });
 
 test('con el portal abierto todo funciona como antes', function () {
