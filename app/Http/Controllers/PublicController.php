@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Acreditado;
 use App\Models\Credito;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -47,15 +46,12 @@ class PublicController extends Controller
         // 2. Buscamos el crédito por número de contrato y CURP del acreditado
         $credito = Credito::where('clave_contrato', trim($request->clave_contrato))
             ->whereHas('acreditado', fn ($q) => $q->where('curp', strtoupper(trim($request->curp))))
-            ->with('acreditado')
             ->first();
 
         // 3. Mensaje único: no revela si la persona existe ni si tiene crédito
         if (!$credito) {
             return Redirect::back()->with('error', 'No encontramos un crédito con esos datos. Verifica tu CURP y tu número de contrato.');
         }
-
-        $acreditado = $credito->acreditado;
 
         /**
          * 5. Obtenemos la Tabla de Amortización (Proyección)
@@ -79,27 +75,28 @@ class PublicController extends Controller
                         ];
                     });
 
-        // 6. Retornamos la vista con la data estructurada
+                // 6. Cuotas pendientes (misma regla de estados que "Mi crédito" del portal)
+        $pendientes = $credito->amortizaciones()
+            ->whereNotIn('estado', ['Pagado', 'Condonado', 'Reestructurada', 'Gracia'])
+            ->orderBy('fecha_vencimiento')
+            ->get();
+
+        $proxima = $pendientes->first();
+        $saldoPendiente = round((float) $pendientes->sum('pago_restante'), 2);
+
+        // 7. Solo se devuelve lo necesario: sin domicilio ni datos de contacto
         return Inertia::render('Welcome', [
             'acreditado' => [
-                'id'              => $acreditado->id,
-                'nombre'          => $acreditado->nombre_completo,
-                'curp'            => $acreditado->curp,
-                'rfc'             => $acreditado->rfc,
-                'municipio'       => $acreditado->municipio,
-                'domicilio'       => $acreditado->domicilio_fiscal,
-                
-                // Datos del crédito
-                'monto_otorgado'  => $credito ? $credito->monto_otorgado : 0,
-                'estatus'         => $credito ? $credito->estatus : 'No disponible',
-                
-                // TABLA DE AMORTIZACIÓN (Lo que quieres mostrar)
-                'tabla'           => $tablaAmortizacion, 
-                
-                // PAGOS REALIZADOS (Vacío por ahora para evitar errores)
-                'pagos'           => [], 
+                'clave_contrato'  => $credito->clave_contrato,
+                'estatus'         => $credito->estatus,
+                'saldo_pendiente' => $saldoPendiente,
+                'proxima_cuota'   => $proxima ? [
+                    'fecha_vencimiento' => $proxima->fecha_vencimiento?->format('d/m/Y'),
+                    'monto'             => round((float) $proxima->pago_restante, 2),
+                ] : null,
+                'tabla'           => $tablaAmortizacion,
             ],
-            'filters' => $request->only(['curp'])
+            'filters' => $request->only(['curp']),
         ])->with('success', 'Información recuperada correctamente.');
     }
-}
+};
