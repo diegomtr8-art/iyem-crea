@@ -118,15 +118,25 @@ const cuotasPendientes = computed(() => cuotasActivas.value.filter(c => estadoCu
 const mostrarLiquidacion = ref(false);
 const liquidacion = ref<null | { capital_pendiente: number; interes_proyectado: number; mora_acumulada: number; total_liquidacion: number; fecha_calculo: string }>(null);
 const cargandoLiquidacion = ref(false);
+const errorLiquidacion = ref('');
 
 const calcularLiquidacion = async () => {
     cargandoLiquidacion.value = true;
     mostrarLiquidacion.value = true;
+    errorLiquidacion.value = '';
+    liquidacion.value = null;
     try {
-        const resp = await fetch(route('portal.credito.liquidacion'));
-        liquidacion.value = await resp.json();
+        const resp = await fetch(route('portal.credito.liquidacion'), { headers: { Accept: 'application/json' } });
+        if (resp.status === 401 || resp.status === 419) {
+            errorLiquidacion.value = 'Tu sesión expiró. Inicia sesión de nuevo para ver tu liquidación.';
+            return;
+        }
+        if (!resp.ok) throw new Error('respuesta no válida');
+        const datos = await resp.json();
+        if (typeof datos?.total_liquidacion !== 'number') throw new Error('respuesta incompleta');
+        liquidacion.value = datos;
     } catch (e) {
-        liquidacion.value = null;
+        errorLiquidacion.value = 'No pudimos calcular tu liquidación. Revisa tu conexión e inténtalo de nuevo.';
     } finally {
         cargandoLiquidacion.value = false;
     }
@@ -231,7 +241,7 @@ const enviarComprobacion = () => {
                     </span>
                 </div>
                 <p v-if="credito.proxima_cuota.vencida" class="text-xs text-red-500 mt-2">
-                    Contáctanos para regularizar tu crédito: 999 941 2170
+                    Contáctanos para regularizar tu crédito<template v-if="$page.props.contacto.telefono">: {{ $page.props.contacto.telefono }}</template>.
                 </p>
             </div>
 
@@ -406,7 +416,7 @@ const enviarComprobacion = () => {
                     </div>
                     <div class="rounded-2xl bg-slate-50 dark:bg-zinc-800/50 p-4 space-y-2">
                         <p class="text-xs font-bold uppercase tracking-wider text-slate-400">Pago en oficinas IYEM</p>
-                        <p class="text-slate-600 dark:text-zinc-300">Horario de caja: <strong class="text-slate-900 dark:text-white">{{ datos_pago.caja_horario }}</strong></p>
+                        <p v-if="datos_pago.caja_horario" class="text-slate-600 dark:text-zinc-300">Horario de caja: <strong class="text-slate-900 dark:text-white">{{ datos_pago.caja_horario }}</strong></p>
                         <p class="text-slate-600 dark:text-zinc-300">Correo: <strong class="text-slate-900 dark:text-white">{{ datos_pago.correo }}</strong></p>
                         <p class="text-slate-600 dark:text-zinc-300">WhatsApp: <strong class="text-slate-900 dark:text-white">{{ datos_pago.whatsapp }}</strong></p>
                     </div>
@@ -455,6 +465,16 @@ const enviarComprobacion = () => {
                         <p class="text-sm">Calculando...</p>
                     </div>
 
+                    <div v-else-if="errorLiquidacion" class="text-center py-6 space-y-4">
+                        <AlertCircle size="32" class="text-red-600 mx-auto" />
+                        <p class="text-sm text-slate-600 dark:text-zinc-300">{{ errorLiquidacion }}</p>
+                        <button @click="calcularLiquidacion"
+                            class="px-5 py-2 rounded-xl bg-red-700 text-white text-sm font-bold hover:bg-red-800 transition-colors">
+                            Reintentar
+                        </button>
+                        <p v-if="$page.props.contacto.telefono" class="text-xs text-slate-400">Si el problema continúa, llama al <strong>{{ $page.props.contacto.telefono }}</strong></p>
+                    </div>
+
                     <div v-else-if="liquidacion" class="space-y-4">
                         <p class="text-xs text-slate-500 dark:text-zinc-400">Monto calculado al día de hoy ({{ liquidacion.fecha_calculo }})</p>
 
@@ -479,7 +499,7 @@ const enviarComprobacion = () => {
                             <p class="text-xs text-slate-400 mt-2">Este cálculo puede variar si no liquidas el mismo día.</p>
                         </div>
 
-                        <p class="text-xs text-center text-slate-400">Para liquidar, acude a nuestras oficinas o llama al <strong>999 941 2170</strong></p>
+                        <p class="text-xs text-center text-slate-400">Para liquidar, acude a nuestras oficinas<template v-if="$page.props.contacto.telefono"> o llama al <strong>{{ $page.props.contacto.telefono }}</strong></template>.</p>
                     </div>
                 </div>
             </div>
@@ -590,7 +610,7 @@ const enviarComprobacion = () => {
                 <!-- Nota informativa -->
                 <div class="border-t border-slate-100 dark:border-zinc-800 px-6 py-4 bg-slate-50 dark:bg-zinc-800/50">
                     <p class="text-xs text-slate-400 dark:text-zinc-500 text-center">
-                        Para realizar tus pagos visita nuestras oficinas o comunícate al <strong class="text-slate-600 dark:text-zinc-300">999 941 2170</strong>.
+                        Para realizar tus pagos visita nuestras oficinas<template v-if="$page.props.contacto.telefono"> o comunícate al <strong class="text-slate-600 dark:text-zinc-300">{{ $page.props.contacto.telefono }}</strong></template>.
                         Los pagos se reflejan en 24-48 horas hábiles.
                     </p>
                 </div>

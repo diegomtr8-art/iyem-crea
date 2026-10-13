@@ -30,7 +30,9 @@ use App\Http\Controllers\Portal\ComprobacionPortalController;
 use App\Http\Controllers\Portal\WizardSolicitudController;
 use App\Http\Controllers\Portal\MiCreditoController;
 use App\Http\Controllers\Portal\ExpedienteController;
+use App\Http\Controllers\Portal\MensajeContactoController;
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\Admin\MensajesCiudadanoController;
 use App\Http\Controllers\BitacoraTareasController;
 use App\Http\Controllers\RespaldoExcelController;
 use App\Http\Controllers\RecordatoriosAdminController;
@@ -54,6 +56,10 @@ Route::middleware(['auth', 'verified', 'ciudadano'])->prefix('mi-portal')->name(
 
     // Expediente digital
     Route::get('expediente', [ExpedienteController::class, 'index'])->name('expediente');
+
+    // Contacto con el equipo IYEM (ciudadano autenticado)
+    Route::get('contacto', [MensajeContactoController::class, 'create'])->name('contacto');
+    Route::post('contacto', [MensajeContactoController::class, 'store'])->middleware('throttle:5,1')->name('contacto.enviar');
 
     // Wizard de solicitud (flujo principal en /solicitud)
     Route::get('solicitud', [WizardSolicitudController::class, 'index'])->name('solicitud.index');
@@ -120,6 +126,7 @@ Route::middleware(['auth', 'verified', 'operativo'])->group(function () {
     // DESEMBOLSO
     Route::get('creditos/{credito}/desembolso', [DesembolsoController::class, 'create'])->name('creditos.desembolso.create');
     Route::post('creditos/{credito}/desembolso', [DesembolsoController::class, 'store'])->name('creditos.desembolso.store');
+    Route::get('desembolso/{desembolso}/comprobante', [DesembolsoController::class, 'descargarComprobante'])->name('desembolso.comprobante'); //ruta para descargar comprobante de desembolso
 
     // COMPROBACIÓN DE USO DEL CRÉDITO
     Route::get('comprobaciones', [ComprobacionController::class, 'index'])->name('comprobaciones.index');
@@ -182,6 +189,9 @@ Route::middleware(['auth', 'verified', 'operativo'])->group(function () {
     Route::get('admin/tareas-programadas', [BitacoraTareasController::class, 'index'])->middleware('role:Administrador')->name('bitacora-tareas.index');
     Route::get('admin/recordatorios', [RecordatoriosAdminController::class, 'index'])->middleware('role:Administrador')->name('recordatorios.index');
     Route::post('admin/recordatorios', [RecordatoriosAdminController::class, 'enviar'])->middleware('role:Administrador')->name('recordatorios.enviar');
+    Route::get('admin/mensajes-ciudadanos', [MensajesCiudadanoController::class, 'index'])->middleware('role:Administrador')->name('mensajes-ciudadanos.index');
+    Route::get('admin/mensajes-ciudadanos/{mensaje}', [MensajesCiudadanoController::class, 'show'])->middleware('role:Administrador')->name('mensajes-ciudadanos.show');
+    Route::post('admin/mensajes-ciudadanos/{mensaje}/atendido', [MensajesCiudadanoController::class, 'marcarAtendido'])->middleware('role:Administrador')->name('mensajes-ciudadanos.atendido');
     Route::get('admin/importar-acreditados', [ImportarAcreditadosController::class, 'index'])->middleware('role:Administrador')->name('importar-acreditados.index');
     Route::post('admin/importar-acreditados/previsualizar', [ImportarAcreditadosController::class, 'previsualizar'])->middleware('role:Administrador')->name('importar-acreditados.previsualizar');
     Route::post('admin/importar-acreditados/confirmar', [ImportarAcreditadosController::class, 'confirmar'])->middleware('role:Administrador')->name('importar-acreditados.confirmar');
