@@ -10,16 +10,26 @@ use App\Models\DocumentoSolicitud;
 use App\Models\GestionCobranza;
 use App\Models\ExpedienteJuridico;
 use App\Models\ModalidadCrea;
+use App\Models\Pago;
 use App\Models\SolicitudCredito;
 use App\Models\User;
+use App\Services\CreditService;
 use Carbon\Carbon;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Storage;
 
 class TestDataSeeder extends Seeder
 {
     public function run(): void
     {
+        // PDF de ejemplo en la ruta que guardan los documentos de prueba
+        // (disco local = storage/app/private), para que el ícono ↗ del expediente abra.
+        Storage::disk('local')->put(
+            'solicitudes/placeholder.pdf',
+            file_get_contents(database_path('seeders/files/placeholder.pdf'))
+        );
+
         $password = Hash::make('password123');
         $modalidades = ModalidadCrea::all()->keyBy('nombre');
         $artesanal    = $modalidades['Artesanal']->id ?? 1;
@@ -381,6 +391,105 @@ class TestDataSeeder extends Seeder
         ]);
 
         // =====================================================================
+        // CIUDADANO 8: Ricardo Tec Liquidado — Aprobada + Crédito Liquidado
+        // Emprendedores, $12,000 a 12 meses al 7%: 12/12 cuotas pagadas y 1 pago
+        // registrado. Sirve para probar los hallazgos C-01 y C-02 de la auditoría.
+        // =====================================================================
+        $u8 = User::create([
+            'name'              => 'Ricardo Tec Liquidado',
+            'email'             => 'liquidado@ejemplo.com',
+            'password'          => $password,
+            'tipo'              => 'ciudadano',
+            'email_verified_at' => now(),
+        ]);
+        $acr8 = Acreditado::create([
+            'nombre_completo'  => 'Ricardo Tec Liquidado',
+            'curp'             => 'TELR820714HYMCQC02',
+            'rfc'              => 'TELR820714KD6',
+            'sexo'             => 'H',
+            'municipio'        => 'Mérida',
+            'direccion_fiscal' => 'Calle 21 No. 118 x 14 y 16, Col. Itzimná',
+            'correo'           => 'liquidado@ejemplo.com',
+        ]);
+        $monto8  = 12000;
+        $plazo8  = 12;
+        $credito8 = $acr8->creditos()->create([
+            'modalidad_id'           => $emprendedores,
+            'clave_contrato'         => 'CREA-2026-102',
+            'monto_otorgado'         => $monto8,
+            'plazo_meses'            => $plazo8,
+            'fecha_entrega'          => '2025-01-15',
+            'tasa_interes_ordinario' => 7.0,
+            'tasa_interes_moratorio' => 17.5,
+            'estatus'                => 'Liquidado',
+        ]);
+        (new CreditService())->generarTablaAmortizacion(
+            $credito8, $monto8, $plazo8, 7.0, Carbon::parse('2025-01-15'), 'Emprendedores'
+        );
+        // Todas las cuotas pagadas. saldo_insoluto queda como saldo después de pagar,
+        // igual que lo deja PagoController al registrar un pago.
+        $totCap8 = $totInt8 = 0;
+        $cubiertas8 = [];
+        foreach ($credito8->amortizaciones()->orderBy('numero_cuota')->get() as $fila) {
+            $cap = (float) $fila->capital_esperado;
+            $int = (float) $fila->interes_ordinario_esperado;
+            $fila->update([
+                'saldo_insoluto'           => round((float) $fila->saldo_insoluto - $cap, 2),
+                'capital_pagado'           => $cap,
+                'interes_ordinario_pagado' => $int,
+                'pago_restante'            => 0,
+                'estado'                   => 'Pagado',
+                'fecha_ultimo_pago'        => '2026-01-15',
+            ]);
+            $totCap8 += $cap;
+            $totInt8 += $int;
+            $cubiertas8[] = ['cuota' => $fila->numero_cuota, 'cap' => $cap, 'int' => $int, 'mor' => 0];
+        }
+        Pago::create([
+            'credito_id'         => $credito8->id,
+            'acreditado_id'      => $acr8->id,
+            'folio'              => Pago::generarFolio(),
+            'monto_recibido'     => round($totCap8 + $totInt8, 2),
+            'aplicado_mora'      => 0,
+            'aplicado_ordinario' => round($totInt8, 2),
+            'aplicado_capital'   => round($totCap8, 2),
+            'forma_pago'         => 'Efectivo',
+            'fecha_pago'         => '2026-01-15',
+            'observaciones'      => 'Liquidación total (dato de prueba)',
+            'cuotas_cubiertas'   => $cubiertas8,
+            'registrado_por'     => User::where('tipo', 'operativo')->first()?->id ?? 1,
+        ]);
+        SolicitudCredito::create([
+            'user_id'           => $u8->id,
+            'nombre_completo'   => 'Ricardo Tec Liquidado',
+            'curp'              => 'TELR820714HYMCQC02',
+            'rfc'               => 'TELR820714KD6',
+            'fecha_nacimiento'  => '1982-07-14',
+            'sexo'              => 'M',
+            'municipio'         => 'Mérida',
+            'direccion'         => 'Calle 21 No. 118 x 14 y 16, Col. Itzimná',
+            'telefono'          => '9993344556',
+            'correo'            => 'liquidado@ejemplo.com',
+            'modalidad_id'      => $emprendedores,
+            'giro_comercial'    => 'Carpintería y muebles a la medida',
+            'destino_credito'   => 'Compra de herramienta y madera',
+            'descripcion_negocio'=> 'Taller de carpintería con venta de muebles a la medida para casas y comercios de Mérida.',
+            'monto_solicitado'  => 12000,
+            'alta_sat'          => true,
+            'mayahablante'      => false,
+            'discapacidad'      => false,
+            'estatus'           => 'Aprobada',
+            'acreditado_id'     => $acr8->id,
+            'credito_id'        => $credito8->id,
+        ]);
+        AnuncioCiudadano::create([
+            'user_id' => $u8->id,
+            'titulo'  => 'Crédito liquidado',
+            'mensaje' => 'Liquidaste tu crédito CREA-2026-102. ¡Gracias por cumplir con tus pagos!',
+            'tipo'    => 'exito',
+        ]);
+
+        // =====================================================================
         // GESTIONES DE COBRANZA — múltiples por crédito moroso
         // =====================================================================
         $creditosMorosos = \App\Models\Credito::where('estatus', 'Moroso')
@@ -470,8 +579,8 @@ class TestDataSeeder extends Seeder
         }
 
         $this->command->info('Test data created successfully!');
-        $this->command->info('Citizens: 7 users created (password: password123)');
-        $this->command->info('Solicitudes: Borrador, Doc.Incompleta, En_Revision, Aprobada, Aprobada+Credito, Rechazada, Sin solicitud');
+        $this->command->info('Citizens: 8 users created (password: password123)');
+        $this->command->info('Solicitudes: Borrador, Doc.Incompleta, En_Revision, Aprobada, Aprobada+Credito, Rechazada, Sin solicitud, Aprobada+Credito Liquidado');
         $this->command->info('Gestiones de cobranza: Added to first 5 morosos');
         $this->command->info('Expedientes jurídicos: 4 new expedientes created');
     }

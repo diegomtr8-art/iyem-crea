@@ -23,7 +23,10 @@ class EstadoCuentaController extends Controller
     public function pdf(): \Symfony\Component\HttpFoundation\Response
     {
         $credito = $this->getCreditoUsuario();
-        abort_if(!$credito, 404, 'No tienes un crédito activo.');
+        if (!$credito) {
+            return redirect()->route('portal.dashboard')
+                ->with('info', 'Aún no tienes un crédito registrado.');
+        }
 
         $pagos = Pago::where('credito_id', $credito->id)
             ->where('cancelado', false)
@@ -71,13 +74,13 @@ class EstadoCuentaController extends Controller
             if ($cuota->fecha_vencimiento >= $hoy) {
                 $diasRestantes = now()->diffInDays($cuota->fecha_vencimiento, false);
                 if ($diasRestantes > 0) {
-                    $tasaDiaria = ((float)$credito->tasa_interes_ordinario / 100) / 360;
+                    $tasaDiaria = ((float)$credito->tasa_interes_ordinario / 100) / config('credito.dias_anio_comercial');
                     $interesDias = ((float)$cuota->saldo_insoluto - (float)$cuota->capital_pagado) * $tasaDiaria * $diasRestantes;
                     $totalIntereses += max(0, round($interesDias, 2));
                 }
             } else {
                 $totalIntereses += max(0, (float)$cuota->interes_ordinario_esperado - (float)$cuota->interes_ordinario_pagado);
-                $totalMora += (float)($cuota->moratorio_acumulado ?? 0);
+                $totalMora += (float)($cuota->interes_moratorio_generado ?? 0);
             }
         }
 
