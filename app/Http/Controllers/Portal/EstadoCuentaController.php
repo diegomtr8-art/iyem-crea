@@ -57,6 +57,19 @@ class EstadoCuentaController extends Controller
         $credito = $this->getCreditoUsuario();
         abort_if(!$credito, 404, 'No tienes un crédito activo.');
 
+        // Solo se emite si el crédito está Activo y sin cuotas vencidas (misma regla que "vencida" en Mi crédito).
+        $hoy = now()->toDateString();
+        $conAtraso = $credito->amortizaciones
+            ->whereNotIn('estado', ['Pagado', 'Condonado', 'Reestructurada', 'Gracia'])
+            ->contains(fn ($cuota) => $cuota->fecha_vencimiento < $hoy);
+
+        if ($credito->estatus !== 'Activo' || $conAtraso) {
+            return redirect()->route('portal.credito')->with(
+                'warning',
+                'Tu crédito no está al corriente o ya se liquidó. Acércate al IYEM para solicitar tu constancia.'
+            );
+        }
+
         $pdf = app('dompdf.wrapper');
         $pdf->loadView('pdf.constancia-credito', [
             'credito'          => $credito,
