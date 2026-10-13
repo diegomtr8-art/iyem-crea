@@ -33,8 +33,10 @@ class ReestructuracionController extends Controller
                 'tasa_ordinaria' => $credito->tasa_interes_ordinario,
                 'acreditado'     => $credito->acreditado?->nombre_completo,
                 'acreditado_id'  => $credito->acreditado_id,
-                'saldo_pendiente'=> $calculo['base'],
-                'mora_acumulada' => $calculo['mora'],
+                'saldo_pendiente'   => $calculo['base'],
+                'mora_acumulada'    => $calculo['mora'],
+                'capital_pendiente' => $calculo['capital'],
+                'devengos'          => $calculo['devengos'],
             ],
             'reestructuraciones_previas' => $credito->reestructuraciones->map(fn($r) => [
                 'fecha'            => $r->fecha_reestructura->format('d/m/Y'),
@@ -65,7 +67,15 @@ class ReestructuracionController extends Controller
         $baseReestructuracion = $calculo['base'];
         $moraCondonada = $calculo['mora'];
 
-        return DB::transaction(function () use ($credito, $data, $baseReestructuracion, $moraCondonada) {
+        $monto = $baseReestructuracion;
+
+        if ($monto <= 0) {
+            throw ValidationException::withMessages([
+                'monto' => 'El monto a reestructurar debe ser mayor a cero: el crédito no tiene capital o interés devengado pendiente.',
+            ]);
+        }
+
+        return DB::transaction(function () use ($credito, $data, $baseReestructuracion, $moraCondonada, $monto) {
             $reestructuracion = Reestructuracion::create([
                 'credito_id'               => $credito->id,
                 'fecha_reestructura'       => $data['fecha_reestructura'],
@@ -84,14 +94,6 @@ class ReestructuracionController extends Controller
             $credito->amortizaciones()
                 ->whereNotIn('estado', ['Pagado', 'Condonado', 'Reestructurada', 'Gracia'])
                 ->update(['estado' => 'Reestructurada', 'pago_restante' => 0]);
-
-            $monto       = $baseReestructuracion;
-
-            if ($monto <= 0) {
-                throw ValidationException::withMessages([
-                    'monto' => 'El monto a reestructurar debe ser mayor a cero: el crédito no tiene capital o interés devengado pendiente.',
-                ]);
-            }
 
             $plazo       = (int) $data['nuevo_plazo_meses'];
             $tasa        = ((float) $data['nueva_tasa_interes'] / 100) / 12;
@@ -160,6 +162,13 @@ class ReestructuracionController extends Controller
 
         $capital = $cuotas->sum(fn ($c) => (float) $c->capital_esperado - (float) $c->capital_pagado);
 
+        // Interés pendiente por cuota, para que la vista previa pueda recalcular la
+        // base al cambiar la fecha de reestructuración.
+        $devengos = $cuotas->map(fn ($c) => [
+            'fecha'   => Carbon::parse($c->fecha_vencimiento)->format('Y-m-d'),
+            'interes' => max(0, round((float) $c->interes_ordinario_esperado - (float) $c->interes_ordinario_pagado, 2)),
+        ])->values();
+
         $devengado = $cuotas
             ->filter(fn ($c) => Carbon::parse($c->fecha_vencimiento)->startOfDay()->lte($fechaCorte))
             ->sum(fn ($c) => max(0, (float) $c->interes_ordinario_esperado - (float) $c->interes_ordinario_pagado));
@@ -169,8 +178,10 @@ class ReestructuracionController extends Controller
         );
 
         return [
-            'base' => round($capital + $devengado, 2),
-            'mora' => round($mora, 2),
+            'base'     => round($capital + $devengado, 2),
+            'capital'  => round($capital, 2),
+            'devengos' => $devengos,
+            'mora'     => round($mora, 2),
         ];
     }
 }

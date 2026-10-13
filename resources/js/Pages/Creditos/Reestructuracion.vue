@@ -18,6 +18,8 @@ const props = defineProps<{
         acreditado_id: number;
         saldo_pendiente: number;
         mora_acumulada: number;
+        capital_pendiente: number;
+        devengos: Array<{ fecha: string; interes: number }>;
     };
     reestructuraciones_previas: Array<{
         fecha: string;
@@ -43,7 +45,16 @@ const fmt = (val: number | string) =>
     new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN', minimumFractionDigits: 2 })
         .format(parseFloat(String(val)) || 0);
 
-const nuevoCapital = computed(() => Math.max(0, props.credito.saldo_pendiente || 0));
+// Vista previa: capital pendiente + interés devengado a la fecha elegida, igual que
+// store(). Si el operador cambia la fecha, el monto se recalcula en pantalla.
+const nuevoCapital = computed(() => {
+    const capital = Number(props.credito.capital_pendiente) || 0;
+    const fecha   = form.fecha_reestructura;
+    const interes = (props.credito.devengos || [])
+        .filter((d) => d.fecha <= fecha)
+        .reduce((suma, d) => suma + (Number(d.interes) || 0), 0);
+    return Math.max(0, capital + interes);
+});
 
 const cuotaEstimada = computed(() => {
     const monto = nuevoCapital.value;
