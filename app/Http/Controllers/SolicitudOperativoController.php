@@ -18,6 +18,7 @@ use App\Enums\EstadoCredito;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -233,14 +234,19 @@ class SolicitudOperativoController extends Controller
             ]);
         }
 
-        // Al aprobar, generar ZIP con los formatos oficiales
+        // Al aprobar, generar ZIP con los formatos oficiales o reinteta si no está disponible
         if ($request->estatus === 'Aprobada') {
-            try {
-                $zipRuta = FormatosService::generarZip($solicitud);
-                $solicitud->update(['formatos_zip_ruta' => $zipRuta]);
-            } catch (\Throwable $e) {
-                // No bloquear el cambio de estatus si falla la generación del ZIP
-                logger()->error('Error generando ZIP para solicitud ' . $solicitud->id . ': ' . $e->getMessage());
+
+            $zipExiste = $solicitud->formatos_zip_ruta && Storage::disk('local')->exists($solicitud->formatos_zip_ruta);
+
+            if(!$zipExiste) {
+                try {
+                    $zipRuta = FormatosService::generarZip($solicitud);
+                    $solicitud->update(['formatos_zip_ruta' => $zipRuta]);
+                } catch (\Throwable $e) {
+                    // No bloquear el cambio de estatus si falla la generación del ZIP
+                    logger()->error('Error generando ZIP para solicitud ' . $solicitud->id . ': ' . $e->getMessage());
+                }
             }
         }
 
