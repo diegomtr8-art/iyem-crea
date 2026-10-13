@@ -6,7 +6,7 @@ import axios from 'axios';
 import {
     Home, FolderOpen, FileText, BadgeCheck,
     Bell, LogOut, ChevronDown, Menu, X, Sun, Moon, User,
-    CheckCircle2, Info, AlertTriangle, XCircle, Check
+    MessageSquare, CheckCircle2, Info, AlertTriangle, XCircle, Check
 } from 'lucide-vue-next';
 
 const page = usePage<any>();
@@ -38,6 +38,7 @@ const navItems = computed(() => [
     { label: 'Mi Expediente',     href: route('portal.expediente'),      icon: FolderOpen, always: true },
     { label: 'Solicitar Crédito', href: route('portal.solicitud.index'), icon: FileText,   always: true },
     { label: 'Mi Crédito',        href: route('portal.credito'),         icon: BadgeCheck, always: false, show: tieneCredito.value },
+    { label: 'Contacto',          href: route('portal.contacto'),        icon: MessageSquare, always: true },
 ]);
 
 const isActive = (href: string) => page.url.startsWith(new URL(href).pathname);
@@ -320,7 +321,7 @@ onMounted(notify);
                         <div class="space-y-1 text-sm text-slate-500 dark:text-zinc-400">
                             <p>Av. Industrias No Contaminantes Tablaje 13613</p>
                             <p>Col. Sodzil Norte, Mérida, Yucatán</p>
-                            <p class="font-medium text-slate-700 dark:text-zinc-300">999 941 2170</p>
+                            <p v-if="page.props.contacto?.telefono" class="font-medium text-slate-700 dark:text-zinc-300">{{ page.props.contacto.telefono }}</p>
                         </div>
                     </div>
                 </div>

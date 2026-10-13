@@ -5,13 +5,14 @@ namespace App\Http\Controllers\Portal;
 use App\Http\Controllers\Controller;
 use App\Models\ComprobacionUso;
 use App\Models\Credito;
+use Illuminate\Http\RedirectResponse;
 use Inertia\Inertia;
 use Inertia\Response;
 use Illuminate\Support\Carbon;
 
 class MiCreditoController extends Controller
 {
-    public function index(): Response
+    public function index(): Response|RedirectResponse
     {
         $user = auth()->user();
         $solicitud = $user->solicitudCredito;
@@ -38,8 +39,8 @@ class MiCreditoController extends Controller
         if ($proxima && $proxima->fecha_vencimiento < $hoy) {
             // Portal ciudadano: mismo fix de signo que PagoController. Mantener consistencia con AcreditadoController:238 y UpdateMoratorio:29.
             $diasMora = (int) Carbon::parse($proxima->fecha_vencimiento)->diffInDays(now());
-            if ($diasMora > 5) {
-                $tasaDiaria = ($credito->tasaMoratoriaEfectiva() / 100) / 360;
+            if ($diasMora > config('credito.dias_gracia_mora')) {
+                $tasaDiaria = ($credito->tasaMoratoriaEfectiva() / 100) / config('credito.dias_anio_comercial');
                 $mora = round((float) $proxima->saldo_insoluto * $tasaDiaria * $diasMora, 2);
             }
         }
@@ -103,7 +104,7 @@ class MiCreditoController extends Controller
                     'saldo_insoluto' => $a->saldo_insoluto,
                     'capital'        => $a->capital_esperado,
                     'ordinario'      => $a->interes_ordinario_esperado,
-                    'moratorio'      => $a->moratorio_acumulado ?? 0,
+                    'moratorio'      => $a->interes_moratorio_generado ?? 0,
                     'capital_pagado' => $a->capital_pagado,
                     'ordinario_pagado'=> $a->interes_ordinario_pagado,
                     'total_pagado'   => ($a->capital_pagado ?? 0) + ($a->interes_ordinario_pagado ?? 0),
@@ -112,7 +113,7 @@ class MiCreditoController extends Controller
                 'pagos' => $credito->pagos->map(fn($p) => [
                     'id'            => $p->id,
                     'folio'         => $p->folio,
-                    'fecha_pago'    => $p->fecha_pago,
+                    'fecha_pago'    => $p->fecha_pago?->format('d/m/Y'),
                     'monto_recibido'=> $p->monto_recibido,
                     'forma_pago'    => $p->forma_pago,
                 ]),
@@ -126,8 +127,8 @@ class MiCreditoController extends Controller
                 'beneficiario'  => 'Instituto Yucateco de Emprendedores',
                 'rfc'           => 'IIC991117V18',
                 'concepto'      => 'Número de contrato: ' . ($credito->clave_contrato ?? '—'),
-                'caja_horario'  => 'Lunes a Viernes, 9:00 a 14:00 hrs.',
-                'correo'        => 'crea@iyemyucatan.com',
+                'caja_horario'  => config('contacto.horario'),
+                'correo'        => config('contacto.correo'),
                 'whatsapp'      => '9992342693',
             ],
         ]);
