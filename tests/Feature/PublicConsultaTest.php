@@ -2,6 +2,7 @@
 
 use App\Models\Acreditado;
 use App\Models\ModalidadCrea;
+use App\Models\SolicitudCredito;
 use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Auth;
@@ -135,18 +136,40 @@ test('la respuesta de la consulta no incluye domicilio ni datos personales', fun
     expect($respuesta->getContent())->not->toContain('Calle 60 Secreta');
 });
 
-// (e) verificarCurp responde igual para una CURP ajena con crédito y una inexistente
-test('verificarCurp responde igual para una CURP ajena con crédito y una inexistente', function () {
-    crearAcreditadoPrueba('PRUB900101MYNDEF02', 'CTR-6-10-B', 'Liquidado');
+// (e) Una CURP con solicitud activa de otro usuario sigue bloqueando
+test('verificarCurp sigue bloqueando una CURP con solicitud activa de otro usuario', function () {
+    $otro = User::factory()->create(['tipo' => 'ciudadano', 'email_verified_at' => now()]);
+    SolicitudCredito::create([
+        'user_id' => $otro->id,
+        'curp' => 'PRUB900101MYNDEF02',
+        'estatus' => 'Aprobada',
+    ]);
     $usuario = User::factory()->create(['tipo' => 'ciudadano', 'email_verified_at' => now()]);
 
-    $ajena = $this->actingAs($usuario)
+    $respuesta = $this->actingAs($usuario)
+        ->postJson(route('portal.solicitar.verificar-curp'), ['curp' => 'PRUB900101MYNDEF02']);
+
+    $respuesta->assertOk();
+    expect($respuesta->json('bloqueado'))->toBeTrue();
+});
+
+// (f) El mensaje es el mismo con una CURP bloqueada que con una inexistente
+test('verificarCurp devuelve el mismo mensaje con una CURP bloqueada que con una inexistente', function () {
+    $otro = User::factory()->create(['tipo' => 'ciudadano', 'email_verified_at' => now()]);
+    SolicitudCredito::create([
+        'user_id' => $otro->id,
+        'curp' => 'PRUB900101MYNDEF02',
+        'estatus' => 'Aprobada',
+    ]);
+    $usuario = User::factory()->create(['tipo' => 'ciudadano', 'email_verified_at' => now()]);
+
+    $bloqueada = $this->actingAs($usuario)
         ->postJson(route('portal.solicitar.verificar-curp'), ['curp' => 'PRUB900101MYNDEF02']);
     $inexistente = $this->actingAs($usuario)
         ->postJson(route('portal.solicitar.verificar-curp'), ['curp' => 'PRUC900101HYNGHI03']);
 
-    $ajena->assertOk();
-    $inexistente->assertOk();
-    expect($ajena->json())->toBe($inexistente->json());
-    expect($ajena->json('mensaje'))->toBe('Verificamos tu CURP');
+    expect($bloqueada->json('bloqueado'))->toBeTrue();
+    expect($inexistente->json('bloqueado'))->toBeFalse();
+    expect($bloqueada->json('mensaje'))->toBe($inexistente->json('mensaje'));
+    expect($bloqueada->getContent())->not->toContain('Aprobada');
 });
