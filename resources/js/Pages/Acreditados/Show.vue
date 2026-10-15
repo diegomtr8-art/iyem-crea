@@ -5,9 +5,11 @@ import { Head, router, useForm } from '@inertiajs/vue3';
 import {
     AlertCircle,
     ArrowLeft,
+    Award,
     Banknote,
     Clock,
     DollarSign,
+    FileCheck,
     FileText,
     FileX,
     FolderOpen,
@@ -16,6 +18,8 @@ import {
     Pencil,
     Printer,
     Receipt,
+    RefreshCw,
+    RotateCcw,
     Scale,
     Timer,
 } from 'lucide-vue-next';
