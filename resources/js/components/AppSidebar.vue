@@ -7,6 +7,7 @@ import { Link, usePage } from '@inertiajs/vue3';
 import { LayoutGrid, ShieldCheck, Users, ClipboardList, BarChart2, FileText, Calculator, Inbox, TrendingDown, ScrollText, ClipboardCheck, Clock, Mail, MessageSquare } from 'lucide-vue-next';
 import AppLogo from './AppLogo.vue';
 import { computed, watch, onMounted, ref } from 'vue';
+import { MailWarning } from 'lucide-vue-next';
 
 // --- NOTIFICACIONES ---
 import { Toaster, toast } from 'vue-sonner';
@@ -131,6 +132,7 @@ const mainNavItems = computed(() => {
 
     if (page.props.auth?.user?.roles?.includes('Administrador')) {
         items.push({ title: 'Tareas programadas', url: route('bitacora-tareas.index'), icon: Clock, group: 'Sistema' });
+        items.push({ title: 'Correos fallidos', url: route('correos-fallidos.index'), icon: MailWarning, group: 'Sistema' });
         items.push({ title: 'Recordatorios de pago', url: route('recordatorios.index'), icon: Mail, group: 'Sistema' });
         items.push({
             title: 'Mensajes de ciudadanos',

@@ -34,6 +34,7 @@ use App\Http\Controllers\Portal\MensajeContactoController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Admin\MensajesCiudadanoController;
 use App\Http\Controllers\BitacoraTareasController;
+use App\Http\Controllers\CorreosFallidosController;
 use App\Http\Controllers\RespaldoExcelController;
 use App\Http\Controllers\RecordatoriosAdminController;
 
@@ -186,6 +187,10 @@ Route::middleware(['auth', 'verified', 'operativo'])->group(function () {
     // AUDITORÍA
     Route::get('auditoria', [AuditoriaController::class, 'index'])->name('auditoria.index');
     Route::get('admin/tareas-programadas', [BitacoraTareasController::class, 'index'])->middleware('role:Administrador')->name('bitacora-tareas.index');
+    Route::get('admin/correos-fallidos', [CorreosFallidosController::class, 'index'])->middleware('role:Administrador')->name('correos-fallidos.index');
+    Route::post('admin/correos-fallidos/reintentar-todos', [CorreosFallidosController::class, 'reintentarTodos'])->middleware('role:Administrador')->name('correos-fallidos.reintentar-todos');
+    Route::post('admin/correos-fallidos/{fallo}/reintentar', [CorreosFallidosController::class, 'reintentar'])->middleware('role:Administrador')->whereNumber('fallo')->name('correos-fallidos.reintentar');
+    Route::post('admin/correos-fallidos/{fallo}/descartar', [CorreosFallidosController::class, 'descartar'])->middleware('role:Administrador')->whereNumber('fallo')->name('correos-fallidos.descartar');
     Route::get('admin/recordatorios', [RecordatoriosAdminController::class, 'index'])->middleware('role:Administrador')->name('recordatorios.index');
     Route::post('admin/recordatorios', [RecordatoriosAdminController::class, 'enviar'])->middleware('role:Administrador')->name('recordatorios.enviar');
     Route::get('admin/mensajes-ciudadanos', [MensajesCiudadanoController::class, 'index'])->middleware('role:Administrador')->name('mensajes-ciudadanos.index');
