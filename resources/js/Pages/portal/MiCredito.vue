@@ -42,6 +42,7 @@ const props = defineProps<{
         }>;
         proxima_cuota: null | {
             numero: number;
+            cuotas: number;
             fecha_vencimiento: string;
             capital: number;
             interes: number;
@@ -50,6 +51,15 @@ const props = defineProps<{
             dias_mora: number;
             vencida: boolean;
         };
+        cuotas_vencidas: Array<{
+            numero: number;
+            fecha_vencimiento: string;
+            capital: number;
+            interes: number;
+            mora: number;
+            total: number;
+            dias_mora: number;
+        }>;
     };
     datos_pago: {
         cie_bbva: string;
@@ -212,7 +222,11 @@ const enviarComprobacion = () => {
                 <h3 class="font-black text-lg mb-3 flex items-center gap-2 text-slate-900 dark:text-white">
                     <AlertCircle v-if="credito.proxima_cuota.vencida" size="20" class="text-red-600" />
                     <CalendarDays v-else size="20" class="text-emerald-600" />
-                    {{ credito.proxima_cuota.vencida ? 'Cuota vencida' : 'Próxima cuota' }} #{{ credito.proxima_cuota.numero }}
+                    {{ credito.proxima_cuota.vencida
+                        ? ((credito.proxima_cuota.cuotas ?? 1) > 1
+                            ? `Cuotas vencidas (${credito.proxima_cuota.cuotas})`
+                            : 'Cuota vencida')
+                        : 'Próxima cuota' }}<template v-if="(credito.proxima_cuota.cuotas ?? 1) <= 1"> #{{ credito.proxima_cuota.numero }}</template>
                 </h3>
                 <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
                     <div>
@@ -220,11 +234,11 @@ const enviarComprobacion = () => {
                         <p class="font-bold text-slate-900 dark:text-white">{{ credito.proxima_cuota.fecha_vencimiento }}</p>
                     </div>
                     <div>
-                        <p class="text-xs text-slate-500 dark:text-zinc-400">Capital</p>
+                        <p class="text-xs text-slate-500 dark:text-zinc-400">{{ (credito.proxima_cuota.cuotas ?? 1) > 1 ? 'Capital vencido' : 'Capital' }}</p>
                         <p class="font-bold text-slate-900 dark:text-white">${{ fmt(credito.proxima_cuota.capital) }}</p>
                     </div>
                     <div>
-                        <p class="text-xs text-slate-500 dark:text-zinc-400">Interés</p>
+                        <p class="text-xs text-slate-500 dark:text-zinc-400">{{ (credito.proxima_cuota.cuotas ?? 1) > 1 ? 'Interés vencido' : 'Interés' }}</p>
                         <p class="font-bold text-slate-900 dark:text-white">${{ fmt(credito.proxima_cuota.interes) }}</p>
                     </div>
                     <div v-if="credito.proxima_cuota.mora > 0">
@@ -240,6 +254,39 @@ const enviarComprobacion = () => {
                         Total a pagar: ${{ fmt(credito.proxima_cuota.total) }}
                     </span>
                 </div>
+
+                <!-- Desglose por cuota vencida (P-07): se muestra cuando hay más de una -->
+                <div v-if="credito.cuotas_vencidas.length > 1" class="mt-4 pt-3 border-t border-slate-200/60 dark:border-zinc-700/60">
+                    <p class="text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-zinc-500 mb-2">Desglose de cuotas vencidas</p>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left border-collapse text-sm">
+                            <thead>
+                                <tr class="text-slate-400 dark:text-zinc-500 text-[10px] uppercase tracking-widest font-bold">
+                                    <th class="py-2 pr-3">#</th>
+                                    <th class="py-2 pr-3">Vencimiento</th>
+                                    <th class="py-2 pr-3 text-right">Capital</th>
+                                    <th class="py-2 pr-3 text-right">Interés</th>
+                                    <th class="py-2 pr-3 text-right">Mora</th>
+                                    <th class="py-2 text-right">Total</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-100 dark:divide-zinc-800">
+                                <tr v-for="c in credito.cuotas_vencidas" :key="c.numero">
+                                    <td class="py-2 pr-3 font-bold text-slate-500 dark:text-zinc-500">#{{ c.numero }}</td>
+                                    <td class="py-2 pr-3">{{ c.fecha_vencimiento }}</td>
+                                    <td class="py-2 pr-3 text-right">${{ fmt(c.capital) }}</td>
+                                    <td class="py-2 pr-3 text-right">${{ fmt(c.interes) }}</td>
+                                    <td class="py-2 pr-3 text-right">
+                                        <span v-if="c.mora > 0" class="text-red-600">${{ fmt(c.mora) }}</span>
+                                        <span v-else class="text-slate-300 dark:text-zinc-600">—</span>
+                                    </td>
+                                    <td class="py-2 text-right font-bold">${{ fmt(c.total) }}</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
                 <p v-if="credito.proxima_cuota.vencida" class="text-xs text-red-500 mt-2">
                     Contáctanos para regularizar tu crédito<template v-if="$page.props.contacto.telefono">: {{ $page.props.contacto.telefono }}</template>.
                 </p>
