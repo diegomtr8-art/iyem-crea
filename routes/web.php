@@ -193,6 +193,7 @@ Route::middleware(['auth', 'verified', 'operativo'])->group(function () {
     Route::get('admin/mensajes-ciudadanos/{mensaje}', [MensajesCiudadanoController::class, 'show'])->middleware('role:Administrador')->name('mensajes-ciudadanos.show');
     Route::post('admin/mensajes-ciudadanos/{mensaje}/atendido', [MensajesCiudadanoController::class, 'marcarAtendido'])->middleware('role:Administrador')->name('mensajes-ciudadanos.atendido');
     Route::get('admin/importar-acreditados', [ImportarAcreditadosController::class, 'index'])->middleware('role:Administrador')->name('importar-acreditados.index');
+    Route::get('admin/importar-acreditados/plantilla', [ImportarAcreditadosController::class, 'plantilla'])->middleware('role:Administrador')->name('importar-acreditados.plantilla');
     Route::post('admin/importar-acreditados/previsualizar', [ImportarAcreditadosController::class, 'previsualizar'])->middleware('role:Administrador')->name('importar-acreditados.previsualizar');
     Route::post('admin/importar-acreditados/confirmar', [ImportarAcreditadosController::class, 'confirmar'])->middleware('role:Administrador')->name('importar-acreditados.confirmar');
     Route::post('admin/importar-acreditados/cancelar', [ImportarAcreditadosController::class, 'cancelar'])->middleware('role:Administrador')->name('importar-acreditados.cancelar');
