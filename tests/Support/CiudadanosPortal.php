@@ -2,14 +2,14 @@
 
 namespace Tests\Support;
 
-use App\Models\Acreditado;
-use App\Models\ModalidadCrea;
-use App\Models\SolicitudCredito;
+use App\Models\Amortizacion;
+use App\Models\Credito;
 use App\Models\User;
 use Carbon\Carbon;
+use Database\Factories\SolicitudCreditoFactory;
 
 /**
- * Los seis tipos de ciudadano del portal, armados desde cero para las pruebas
+ * Los seis tipos de ciudadano del portal, armados con factories para las pruebas
  * (no dependen de TestDataSeeder ni de los datos de la base manual).
  *
  * Cada método devuelve el User ya verificado; el crédito, si existe, se
@@ -92,11 +92,9 @@ final class CiudadanosPortal
     {
         $user = self::sinSolicitud();
 
-        SolicitudCredito::create(array_merge([
-            'user_id'         => $user->id,
-            'nombre_completo' => 'Ciudadano Prueba',
-            'estatus'         => $estatus,
-        ], $extra));
+        SolicitudCreditoFactory::new()
+            ->estatus($estatus)
+            ->create(array_merge(['user_id' => $user->id], $extra));
 
         return $user;
     }
@@ -106,47 +104,23 @@ final class CiudadanosPortal
      */
     private static function conCredito(string $estatusCredito, array $cuotas): User
     {
-        $modalidad = ModalidadCrea::create([
-            'nombre'         => 'Emprendedores-' . uniqid(),
-            'tasa_interes'   => 7.00,
-            'tasa_moratoria' => 10.00,
-        ]);
-
-        $acreditado = Acreditado::create([
-            'nombre_completo' => 'Ciudadano Prueba',
-            'municipio'       => 'Mérida',
-        ]);
-
-        $credito = $acreditado->creditos()->create([
-            'modalidad_id'           => $modalidad->id,
-            'clave_contrato'         => 'PRB-' . uniqid(),
-            'monto_otorgado'         => 3000,
-            'plazo_meses'            => count($cuotas),
-            'fecha_entrega'          => Carbon::today()->subMonths(3)->toDateString(),
-            'tasa_interes_ordinario' => 7,
-            'tasa_interes_moratorio' => 10,
-            'estatus'                => $estatusCredito,
-        ]);
+        $credito = Credito::factory()
+            ->estatus($estatusCredito)
+            ->create(['plazo_meses' => count($cuotas)]);
 
         foreach ($cuotas as $c) {
-            $pagada = $c['estado'] === 'Pagado';
-
-            $credito->amortizaciones()->create([
-                'numero_cuota'               => $c['numero'],
-                'fecha_vencimiento'          => $c['vence']->toDateString(),
-                'saldo_insoluto'             => 3000 - (($c['numero'] - 1) * 1000),
-                'capital_esperado'           => 1000,
-                'interes_ordinario_esperado' => 50,
-                'cuota_fija'                 => 1050,
-                'capital_pagado'             => $pagada ? 1000 : 0,
-                'interes_ordinario_pagado'   => $pagada ? 50 : 0,
-                'pago_restante'              => $pagada ? 0 : 1050,
-                'estado'                     => $c['estado'],
+            $cuota = Amortizacion::factory()->state([
+                'credito_id'        => $credito->id,
+                'numero_cuota'      => $c['numero'],
+                'fecha_vencimiento' => $c['vence']->toDateString(),
+                'saldo_insoluto'    => 3000 - (($c['numero'] - 1) * 1000),
             ]);
+
+            ($c['estado'] === 'Pagado' ? $cuota->pagada() : $cuota)->create();
         }
 
         return self::conSolicitud('Aprobada', [
-            'acreditado_id' => $acreditado->id,
+            'acreditado_id' => $credito->acreditado_id,
             'credito_id'    => $credito->id,
         ]);
     }

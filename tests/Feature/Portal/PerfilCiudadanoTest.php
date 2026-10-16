@@ -13,7 +13,9 @@ use Tests\Support\CiudadanosPortal;
 test('Mi Perfil responde lo esperado para el ciudadano', function (string $tipo) {
     $user = CiudadanosPortal::crear($tipo);
 
-    $this->actingAs($user)
-        ->get(route('portal.perfil'))
-        ->assertOk();
+    $response = $this->actingAs($user)->get(route('portal.perfil'));
+
+    $tipo === 'sin solicitud'
+        ? $response->assertRedirect(route('portal.solicitud.index'))
+        : $response->assertOk();
 })->with(CiudadanosPortal::TIPOS)->skip('Depende del PR #17 (portal.perfil aún no está en develop)');
