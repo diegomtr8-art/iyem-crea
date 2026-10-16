@@ -36,6 +36,7 @@ use App\Http\Controllers\Admin\MensajesCiudadanoController;
 use App\Http\Controllers\BitacoraTareasController;
 use App\Http\Controllers\RespaldoExcelController;
 use App\Http\Controllers\RecordatoriosAdminController;
+use App\Http\Controllers\ImportarAcreditadosController;
 
 // --- RUTAS PÚBLICAS (LANDING PAGE INFORMATIVA) ---
 Route::get('/', [PublicController::class, 'index'])->name('welcome');
@@ -191,6 +192,10 @@ Route::middleware(['auth', 'verified', 'operativo'])->group(function () {
     Route::get('admin/mensajes-ciudadanos', [MensajesCiudadanoController::class, 'index'])->middleware('role:Administrador')->name('mensajes-ciudadanos.index');
     Route::get('admin/mensajes-ciudadanos/{mensaje}', [MensajesCiudadanoController::class, 'show'])->middleware('role:Administrador')->name('mensajes-ciudadanos.show');
     Route::post('admin/mensajes-ciudadanos/{mensaje}/atendido', [MensajesCiudadanoController::class, 'marcarAtendido'])->middleware('role:Administrador')->name('mensajes-ciudadanos.atendido');
+    Route::get('admin/importar-acreditados', [ImportarAcreditadosController::class, 'index'])->middleware('role:Administrador')->name('importar-acreditados.index');
+    Route::post('admin/importar-acreditados/previsualizar', [ImportarAcreditadosController::class, 'previsualizar'])->middleware('role:Administrador')->name('importar-acreditados.previsualizar');
+    Route::post('admin/importar-acreditados/confirmar', [ImportarAcreditadosController::class, 'confirmar'])->middleware('role:Administrador')->name('importar-acreditados.confirmar');
+    Route::post('admin/importar-acreditados/cancelar', [ImportarAcreditadosController::class, 'cancelar'])->middleware('role:Administrador')->name('importar-acreditados.cancelar');
     // PRESUPUESTO — módulo eliminado
     // Route::get('presupuesto', [PresupuestoController::class, 'index'])->name('presupuesto.index');
     // Route::post('presupuesto', [PresupuestoController::class, 'store'])->name('presupuesto.store');
