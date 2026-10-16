@@ -55,6 +55,34 @@ class EstadoCuentaController extends Controller
         return $pdf->download("EstadoCuenta_{$credito->clave_contrato}.pdf");
     }
 
+    public function constancia(): \Symfony\Component\HttpFoundation\Response
+    {
+        $credito = $this->getCreditoUsuario();
+        abort_if(!$credito, 404, 'No tienes un crédito activo.');
+
+        // Solo se emite si el crédito está Activo y sin cuotas vencidas (misma regla que "vencida" en Mi crédito).
+        $hoy = now()->toDateString();
+        $conAtraso = $credito->amortizaciones
+            ->whereNotIn('estado', ['Pagado', 'Condonado', 'Reestructurada', 'Gracia'])
+            ->contains(fn ($cuota) => $cuota->fecha_vencimiento < $hoy);
+
+        if ($credito->estatus !== 'Activo' || $conAtraso) {
+            return redirect()->route('portal.credito')->with(
+                'warning',
+                'Tu crédito no está al corriente o ya se liquidó. Acércate al IYEM para solicitar tu constancia.'
+            );
+        }
+
+        $pdf = app('dompdf.wrapper');
+        $pdf->loadView('pdf.constancia-credito', [
+            'credito'          => $credito,
+            'fecha_generacion' => now()->format('d/m/Y'),
+        ]);
+        $pdf->setPaper('letter', 'portrait');
+
+        return $pdf->download("Constancia_{$credito->clave_contrato}.pdf");
+    }
+
     public function liquidacionAnticipada(): JsonResponse
     {
         $credito = $this->getCreditoUsuario();
