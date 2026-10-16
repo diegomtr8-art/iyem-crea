@@ -19,6 +19,10 @@ class Add30CreditosSeeder extends Seeder
 
     public function run(): void
     {
+        if (app()->environment('production')) {
+            throw new \RuntimeException('Este seeder carga datos de PRUEBA: no se puede correr en producción.');
+        }
+
         $cajero = User::first();
         if (!$cajero) { $this->command->error('No hay usuarios.'); return; }
 
