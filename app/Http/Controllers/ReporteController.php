@@ -355,4 +355,167 @@ class ReporteController extends Controller
             'pagos_realizados' => $pagosRealizados,
         ]);
     }
+    public function recuperacion(Request $request)
+    {
+        $modalidadId = $request->get('modalidad_id') ? (int) $request->get('modalidad_id') : null;
+        $municipio   = $request->get('municipio');
+
+        $modalidades = \App\Models\ModalidadCrea::orderBy('nombre')->get(['id', 'nombre']);
+        $municipios  = Acreditado::select('municipio')
+            ->whereNotNull('municipio')->where('municipio', '!=', '')
+            ->distinct()->orderBy('municipio')->pluck('municipio');
+
+        $resultados = [];
+
+        // Generar los últimos 12 meses
+        for ($i = 11; $i >= 0; $i--) {
+            $fechaInicio = Carbon::now('America/Merida')->subMonths($i)->startOfMonth();
+            $fechaFin    = Carbon::now('America/Merida')->subMonths($i)->endOfMonth();
+            $mesAnio     = $fechaInicio->translatedFormat('M Y'); // Ej: Ago 2026
+
+            // 1. Esperado: suma de capital_esperado + interes_ordinario_esperado según fecha_vencimiento
+            $queryEsperado = Amortizacion::query()
+                ->join('creditos', 'amortizaciones.credito_id', '=', 'creditos.id')
+                ->whereBetween('amortizaciones.fecha_vencimiento', [$fechaInicio->toDateString(), $fechaFin->toDateString()]);
+
+            if ($modalidadId) {
+                $queryEsperado->where('creditos.modalidad_id', $modalidadId);
+            }
+            if ($municipio) {
+                $queryEsperado->whereHas('credito.acreditado', fn($q) => $q->where('municipio', $municipio));
+            }
+
+            $esperado = (float) $queryEsperado->select(
+                DB::raw('SUM(COALESCE(capital_esperado, 0) + COALESCE(interes_ordinario_esperado, 0)) as total')
+            )->value('total');
+
+            // 2. Cobrado: suma de pagos aplicados según fecha_pago
+            $queryCobrado = Pago::query()
+                ->join('creditos', 'pagos.credito_id', '=', 'creditos.id')
+                ->where('pagos.cancelado', false)
+                ->whereBetween('pagos.fecha_pago', [$fechaInicio->toDateString(), $fechaFin->toDateString()]);
+
+            if ($modalidadId) {
+                $queryCobrado->where('creditos.modalidad_id', $modalidadId);
+            }
+            if ($municipio) {
+                $queryCobrado->whereHas('credito.acreditado', fn($q) => $q->where('municipio', $municipio));
+            }
+
+            $cobrado = (float) $queryCobrado->sum('pagos.monto_recibido');
+
+            // 3. Cálculos derivados
+            $porcentajeRecuperacion = $esperado > 0 ? round(($cobrado / $esperado) * 100, 2) : 0;
+            $diferencia             = round($cobrado - $esperado, 2);
+
+            $resultados[] = [
+                'mes'                     => ucfirst($mesAnio),
+                'esperado'                => round($esperado, 2),
+                'cobrado'                 => round($cobrado, 2),
+                'porcentaje_recuperacion' => $porcentajeRecuperacion,
+                'diferencia'              => $diferencia,
+            ];
+        }
+
+        return Inertia::render('Reportes/Recuperacion', [
+            'reporte'     => $resultados,
+            'modalidades' => $modalidades,
+            'municipios'  => $municipios,
+            'filtros'     => [
+                'modalidad_id' => $modalidadId,
+                'municipio'    => $municipio,
+            ],
+            'regla_fecha' => 'Criterio de fechas: Para lo esperado se utiliza la fecha_vencimiento de la amortización; para lo cobrado, la fecha del pago. Un pago hecho en agosto de una cuota que vencía en junio cuenta como esperado de junio y cobrado de agosto.'
+        ]);
+    }
+    public function exportarRecuperacion(Request $request)
+    {
+        $modalidadId = $request->get('modalidad_id') ? (int) $request->get('modalidad_id') : null;
+        $municipio   = $request->get('municipio');
+
+        $resultados = [];
+
+        // Generar los últimos 12 meses (idéntico al reporte)
+        for ($i = 11; $i >= 0; $i--) {
+            $fechaInicio = Carbon::now('America/Merida')->subMonths($i)->startOfMonth();
+            $fechaFin    = Carbon::now('America/Merida')->subMonths($i)->endOfMonth();
+            $mesAnio     = $fechaInicio->translatedFormat('M Y');
+
+            // 1. Esperado
+            $queryEsperado = Amortizacion::query()
+                ->join('creditos', 'amortizaciones.credito_id', '=', 'creditos.id')
+                ->whereBetween('amortizaciones.fecha_vencimiento', [$fechaInicio->toDateString(), $fechaFin->toDateString()]);
+
+            if ($modalidadId) {
+                $queryEsperado->where('creditos.modalidad_id', $modalidadId);
+            }
+            if ($municipio) {
+                $queryEsperado->whereHas('credito.acreditado', fn($q) => $q->where('municipio', $municipio));
+            }
+
+            $esperado = (float) $queryEsperado->select(
+                DB::raw('SUM(COALESCE(capital_esperado, 0) + COALESCE(interes_ordinario_esperado, 0)) as total')
+            )->value('total');
+
+            // 2. Cobrado
+            $queryCobrado = Pago::query()
+                ->join('creditos', 'pagos.credito_id', '=', 'creditos.id')
+                ->where('pagos.cancelado', false)
+                ->whereBetween('pagos.fecha_pago', [$fechaInicio->toDateString(), $fechaFin->toDateString()]);
+
+            if ($modalidadId) {
+                $queryCobrado->where('creditos.modalidad_id', $modalidadId);
+            }
+            if ($municipio) {
+                $queryCobrado->whereHas('credito.acreditado', fn($q) => $q->where('municipio', $municipio));
+            }
+
+            $cobrado = (float) $queryCobrado->sum('pagos.monto_recibido');
+
+            $porcentajeRecuperacion = $esperado > 0 ? round(($cobrado / $esperado) * 100, 2) : 0;
+            $diferencia             = round($cobrado - $esperado, 2);
+
+            $resultados[] = [
+                'mes'                     => ucfirst($mesAnio),
+                'esperado'                => round($esperado, 2),
+                'cobrado'                 => round($cobrado, 2),
+                'porcentaje_recuperacion' => $porcentajeRecuperacion . '%',
+                'diferencia'              => round($diferencia, 2),
+            ];
+        }
+
+        $fileName = 'reporte_recuperacion_' . date('Y-m-d') . '.csv';
+
+        $headers = [
+            "Content-type"        => "text/csv; charset=UTF-8",
+            "Content-Disposition" => "attachment; filename=$fileName",
+            "Pragma"              => "no-cache",
+            "Cache-Control"       => "must-revalidate, post-check=0, pre-check=0",
+            "Expires"             => "0"
+        ];
+
+        $callback = function() use ($resultados) {
+            $file = fopen('php://output', 'w');
+            // BOM para que Excel reconozca acentos y caracteres especiales UTF-8
+            fprintf($file, chr(0xEF).chr(0xBB).chr(0xBF));
+            
+            // Encabezados del CSV
+            fputcsv($file, ['Mes', 'Esperado', 'Cobrado', '% Recuperación', 'Diferencia']);
+
+            // Filas
+            foreach ($resultados as $row) {
+                fputcsv($file, [
+                    $row['mes'],
+                    $row['esperado'],
+                    $row['cobrado'],
+                    $row['porcentaje_recuperacion'],
+                    $row['diferencia']
+                ]);
+            }
+
+            fclose($file);
+        };
+
+        return response()->stream($callback, 200, $headers);
+    }
 }
