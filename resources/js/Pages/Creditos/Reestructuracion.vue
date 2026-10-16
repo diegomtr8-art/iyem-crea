@@ -18,6 +18,8 @@ const props = defineProps<{
         acreditado_id: number;
         saldo_pendiente: number;
         mora_acumulada: number;
+        capital_pendiente: number;
+        devengos: Array<{ fecha: string; interes: number }>;
     };
     reestructuraciones_previas: Array<{
         fecha: string;
@@ -32,8 +34,6 @@ const props = defineProps<{
 const form = useForm({
     fecha_reestructura:       new Date().toISOString().split('T')[0],
     motivo:                   'Dificultad_Economica',
-    mora_condonada:           props.credito.mora_acumulada ?? 0,
-    interes_condonado:        0,
     nuevo_plazo_meses:        12,
     nueva_tasa_interes:       props.credito.tasa_ordinaria ?? '',
     nueva_fecha_inicio_pagos: '',
@@ -45,11 +45,15 @@ const fmt = (val: number | string) =>
     new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN', minimumFractionDigits: 2 })
         .format(parseFloat(String(val)) || 0);
 
+// Vista previa: capital pendiente + interés devengado a la fecha elegida, igual que
+// store(). Si el operador cambia la fecha, el monto se recalcula en pantalla.
 const nuevoCapital = computed(() => {
-    const saldo       = props.credito.saldo_pendiente || 0;
-    const moraCondon  = parseFloat(String(form.mora_condonada)) || 0;
-    const intCondon   = parseFloat(String(form.interes_condonado)) || 0;
-    return Math.max(0, saldo - moraCondon - intCondon);
+    const capital = Number(props.credito.capital_pendiente) || 0;
+    const fecha   = form.fecha_reestructura;
+    const interes = (props.credito.devengos || [])
+        .filter((d) => d.fecha <= fecha)
+        .reduce((suma, d) => suma + (Number(d.interes) || 0), 0);
+    return Math.max(0, capital + interes);
 });
 
 const cuotaEstimada = computed(() => {
@@ -171,19 +175,10 @@ const labelCls = 'block text-xs font-bold uppercase tracking-wider text-slate-40
                         <h2 class="font-black text-slate-900 dark:text-white">Condonaciones Aplicadas en esta Reestructuración</h2>
                         <span class="text-xs text-slate-400 ml-auto">Opcional</span>
                     </div>
-                    <div class="p-5 grid grid-cols-1 sm:grid-cols-2 gap-5">
-                        <div>
-                            <label :class="labelCls">Mora Condonada ($)</label>
-                            <input v-model="form.mora_condonada" type="number" step="0.01" min="0"
-                                :max="credito.mora_acumulada" :class="inputCls" />
-                            <p class="text-xs text-slate-400 mt-1">Máx: {{ fmt(credito.mora_acumulada) }}</p>
-                            <p v-if="form.errors.mora_condonada" class="text-red-600 text-xs mt-1">{{ form.errors.mora_condonada }}</p>
-                        </div>
-                        <div>
-                            <label :class="labelCls">Interés Condonado ($)</label>
-                            <input v-model="form.interes_condonado" type="number" step="0.01" min="0" :class="inputCls" />
-                            <p v-if="form.errors.interes_condonado" class="text-red-600 text-xs mt-1">{{ form.errors.interes_condonado }}</p>
-                        </div>
+                    <div class="p-5">
+                        <label :class="labelCls">Mora Condonada (automática)</label>
+                        <p class="text-lg font-black text-slate-900 dark:text-white">{{ fmt(credito.mora_acumulada) }}</p>
+                        <p class="text-xs text-slate-400 mt-1">La mora se condona automáticamente al reestructurar; se calcula en el servidor.</p>
                     </div>
                 </div>
 
@@ -269,6 +264,14 @@ const labelCls = 'block text-xs font-bold uppercase tracking-wider text-slate-40
                             </tbody>
                         </table>
                     </div>
+                </div>
+
+                <!-- Errores de validación -->
+                <div v-if="Object.keys(form.errors).length" class="space-y-2">
+                    <p v-for="(msg, campo) in form.errors" :key="campo"
+                        class="text-xs font-bold text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl px-3 py-2">
+                        {{ msg }}
+                    </p>
                 </div>
 
                 <!-- Acciones -->
