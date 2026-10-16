@@ -23,6 +23,9 @@ use Inertia\Response;
 
 class WizardSolicitudController extends Controller
 {
+    /** Monto mínimo para ofrecer garantía hipotecaria (Sustentable, Art. 25). */
+    public const MONTO_MIN_HIPOTECARIA = 200000;
+
     public const MUNICIPIOS_YUCATAN = [
         'Abalá','Acanceh','Akil','Baca','Bokobá','Buctzotz','Cacalchén','Calotmul',
         'Cansahcab','Cantamayec','Celestún','Cenotillo','Chacsinkín','Chankom',
@@ -165,10 +168,16 @@ class WizardSolicitudController extends Controller
 
         switch ($paso) {
             case 1: // Tipo crédito, persona, garantía
+                $garantiasPermitidas = self::garantiasPermitidas(
+                    ModalidadCrea::find($request->input('datos.modalidad_id'))?->nombre
+                );
+
                 $request->validate([
                     'datos.modalidad_id'  => 'required|exists:modalidad_creas,id',
                     'datos.tipo_persona'  => 'required|in:fisica,moral',
-                    'datos.tipo_garantia' => 'required|in:aval,prendaria,hipotecaria',
+                    'datos.tipo_garantia' => ['required', Rule::in($garantiasPermitidas)],
+                ], [
+                    'datos.tipo_garantia.in' => 'Esa garantía no está permitida para esta modalidad. Opciones: ' . implode(', ', $garantiasPermitidas) . '.',
                 ]);
                 $solicitud->update([
                     'modalidad_id' => $datos['modalidad_id'],
@@ -296,6 +305,7 @@ class WizardSolicitudController extends Controller
                     'recursos_humanos'      => $datos['recursos_humanos'] ?? '',
                     'es_emprendimiento'     => (bool)($datos['es_emprendimiento'] ?? false),
                     'antiguedad_sat_anios'  => $datos['antiguedad_sat_anios'] ?? null,
+                    'mismo_domicilio'       => (bool)($datos['mismo_domicilio'] ?? false),
                 ];
                 break;
 
@@ -312,6 +322,15 @@ class WizardSolicitudController extends Controller
                     'datos.monto_solicitado.min' => 'El monto mínimo para ' . ($modalidad?->nombre ?? 'esta modalidad') . ' es ' . number_format($montoMin, 0, '.', ',') . ' MXN.',
                     'datos.monto_solicitado.max' => 'El monto máximo para ' . ($modalidad?->nombre ?? 'esta modalidad') . ' es ' . number_format($montoMax, 0, '.', ',') . ' MXN.',
                 ]);
+
+                // Arts. 9, 17 y 25: la garantía hipotecaria solo con monto de $200,000 o más.
+                if ($solicitud->tipo_garantia === 'hipotecaria'
+                    && is_numeric($datos['monto_solicitado'] ?? null)
+                    && (float) $datos['monto_solicitado'] < self::MONTO_MIN_HIPOTECARIA) {
+                    throw ValidationException::withMessages([
+                        'datos.monto_solicitado' => 'La garantía hipotecaria solo aplica para montos de $' . number_format(self::MONTO_MIN_HIPOTECARIA, 0, '.', ',') . ' MXN o más. Cambia el monto o el tipo de garantía.',
+                    ]);
+                }
 
                 $solicitud->update([
                     'monto_solicitado' => $datos['monto_solicitado'] !== '' && $datos['monto_solicitado'] !== null ? $datos['monto_solicitado'] : null,
@@ -631,6 +650,22 @@ class WizardSolicitudController extends Controller
         }
 
         return $reglas;
+    }
+
+    /**
+     * Garantías que admite cada modalidad (Arts. 9, 17 y 25 de las Reglas de
+     * Operación). Con un nombre desconocido se admiten todas; la validación
+     * `exists` de la modalidad se encarga del resto.
+     */
+    public static function garantiasPermitidas(?string $modalidad): array
+    {
+        $nombre = strtolower($modalidad ?? '');
+
+        return match (true) {
+            str_contains($nombre, 'artesanal')     => ['aval'],
+            str_contains($nombre, 'emprendedores') => ['aval', 'prendaria'],
+            default                                => ['aval', 'prendaria', 'hipotecaria'],
+        };
     }
 
     private function tiposRequeridosSolicitud(SolicitudCredito $solicitud): array

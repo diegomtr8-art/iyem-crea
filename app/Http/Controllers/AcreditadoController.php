@@ -420,7 +420,7 @@ class AcreditadoController extends Controller
                 ? $solicitud->documentos->map(fn($d) => [
                     'id'              => $d->id,
                     'tipo_documento'  => $d->tipo_documento,
-                    'label'           => DocumentoSolicitud::tiposRequeridos()[$d->tipo_documento] ?? $d->tipo_documento,
+                    'label'           => DocumentoSolicitud::etiquetas()[$d->tipo_documento] ?? $d->tipo_documento,
                     'nombre_original' => $d->nombre_original,
                     'estatus'         => $d->estatus,
                     'observacion'     => $d->observacion,

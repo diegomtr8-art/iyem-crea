@@ -37,7 +37,8 @@ class DocumentoSolicitud extends Model
         ?string $tipoGarantia = null,
         ?string $estadoCivil = null,
         ?string $estadoCivilAval = null,
-        ?float $montoSolicitado = null
+        ?float $montoSolicitado = null,
+        bool $mismoDomicilioNegocio = false
     ): array
     {
         $esArtesanal = $esEmprendedores = $esSustentable = false;
@@ -53,7 +54,8 @@ class DocumentoSolicitud extends Model
 
         return self::armarTipos(
             $esArtesanal, $esEmprendedores, $esSustentable,
-            $tipoPersona, $tipoGarantia, $estadoCivil, $estadoCivilAval, $montoSolicitado
+            $tipoPersona, $tipoGarantia, $estadoCivil, $estadoCivilAval, $montoSolicitado,
+            $mismoDomicilioNegocio
         );
     }
 
@@ -75,7 +77,8 @@ class DocumentoSolicitud extends Model
             $solicitud->tipo_garantia ?? ($igualarWizard ? 'aval' : null),
             $wizard['datos_personales_ext']['estado_civil'] ?? null,
             $solicitud->aval?->estado_civil,
-            $solicitud->monto_solicitado ? (float) $solicitud->monto_solicitado : null
+            $solicitud->monto_solicitado ? (float) $solicitud->monto_solicitado : null,
+            (bool) ($wizard['datos_negocio_ext']['mismo_domicilio'] ?? false)
         );
     }
 
@@ -89,15 +92,25 @@ class DocumentoSolicitud extends Model
     {
         $todas = [];
 
+        // Persona moral ya no pide INE, CURP ni actas del solicitante: hay que
+        // recorrer también la física para no perder esos nombres.
         foreach ([[false, true, false], [false, false, true], [true, false, false]] as [$art, $emp, $sus]) {
-            foreach (['aval', 'prendaria', 'hipotecaria'] as $garantia) {
-                $todas += self::armarTipos($art, $emp, $sus, 'moral', $garantia, 'Casado(a)', 'Casado(a)', 200000.0);
+            foreach (['fisica', 'moral'] as $persona) {
+                foreach (['aval', 'prendaria', 'hipotecaria'] as $garantia) {
+                    $todas += self::armarTipos($art, $emp, $sus, $persona, $garantia, 'Casado(a)', 'Casado(a)', 200000.0, false);
+                }
             }
         }
 
         return $todas + self::tiposPostAprobacion();
     }
 
+    /**
+     * Documentos por modalidad, tipo de persona y garantía, según las Reglas de
+     * Operación (Arts. 10, 18 y 26; D.14). La lista está duplicada en
+     * tiposDocRequeridos de resources/js/Pages/portal/WizardCredito.vue: cualquier
+     * cambio debe hacerse en los dos.
+     */
     private static function armarTipos(
         bool $esArtesanal,
         bool $esEmprendedores,
@@ -106,21 +119,40 @@ class DocumentoSolicitud extends Model
         ?string $tipoGarantia,
         ?string $estadoCivil,
         ?string $estadoCivilAval,
-        ?float $montoSolicitado
+        ?float $montoSolicitado,
+        bool $mismoDomicilioNegocio = false
     ): array
     {
-        $base = [
-            'ine_frente'           => 'INE / Credencial (Frente)',
-            'ine_reverso'          => 'INE / Credencial (Reverso)',
-            'curp'                 => 'Documento CURP oficial',
-            'comprobante_domicilio'=> 'Comprobante de Domicilio',
-            'foto_negocio'         => 'Fotografía del Negocio o Proyecto',
-            'acta_nacimiento'      => 'Acta de nacimiento',
-            'propiedad_negocio'    => 'Documento de propiedad/posesión del negocio',
-            'carta_no_servidor'    => 'Carta de no ser servidor público',
-        ];
+        $esMoral = $tipoPersona === 'moral';
+        $base = [];
 
-        if ($estadoCivil === 'Casado(a)') {
+        // Persona moral: no se piden INE, CURP ni actas del solicitante; se pide
+        // la identificación del representante legal (más abajo).
+        if (!$esMoral) {
+            $base['ine_frente']      = 'INE / Credencial (Frente)';
+            $base['ine_reverso']     = 'INE / Credencial (Reverso)';
+            $base['curp']            = 'Documento CURP oficial';
+        }
+
+        $base['comprobante_domicilio'] = 'Comprobante de Domicilio';
+
+        // Arts. 10-c, 18 y 26: domicilio del solicitante Y del negocio; basta uno
+        // si el negocio opera en el mismo domicilio.
+        if (!$mismoDomicilioNegocio) {
+            $base['comprobante_domicilio_negocio'] = 'Comprobante de domicilio del negocio';
+        }
+
+        $base['foto_negocio'] = 'Fotografía del Negocio o Proyecto';
+
+        if (!$esMoral) {
+            $base['acta_nacimiento'] = 'Acta de nacimiento';
+        }
+
+        $base['propiedad_negocio'] = 'Documento de propiedad/posesión del negocio';
+        $base['carta_no_servidor'] = 'Carta de no ser servidor público';
+
+        // El Art. 10-I (Artesanal) no pide el acta de matrimonio del solicitante.
+        if ($estadoCivil === 'Casado(a)' && !$esMoral && !$esArtesanal) {
             $base['acta_matrimonio'] = 'Acta de matrimonio';
         }
 
@@ -133,23 +165,16 @@ class DocumentoSolicitud extends Model
             if ($esEmprendedores || $esSustentable) {
                 $base['cotizaciones_proveedor'] = '3 cotizaciones de proveedores';
                 $base['buro_credito'] = 'Reporte buró de crédito vigente (≤180 días)';
-            }
-
-            if ($esEmprendedores) {
                 $base['constancia_situacion'] = 'Constancia de Situación Fiscal';
             }
 
             if ($esSustentable) {
                 $base['opinion_cumplimiento']      = 'Opinión de Cumplimiento SAT';
                 $base['plan_trabajo_sostenible']   = 'Plan de trabajo sostenible con impacto ambiental';
-
-                if ($montoSolicitado !== null && $montoSolicitado >= 200000) {
-                    $base['escritura_hipotecaria'] = 'Escritura de garantía hipotecaria';
-                }
             }
         }
 
-        if ($tipoPersona === 'moral') {
+        if ($esMoral) {
             $base['acta_constitutiva'] = 'Acta Constitutiva';
             $base['poder_rep_legal']   = 'Poder del Representante Legal';
             $base['id_rep_legal']      = 'Identificación del Representante Legal';
@@ -166,6 +191,11 @@ class DocumentoSolicitud extends Model
 
             if ($estadoCivilAval === 'Casado(a)') {
                 $base['acta_matrimonio_aval'] = 'Acta de matrimonio del aval';
+            }
+
+            // Arts. 18-II-f y 26-II-f: el aval acredita un bien (no aplica a Artesanal).
+            if ($esEmprendedores || $esSustentable) {
+                $base['doc_bien_aval'] = 'Escritura, título, certificado o factura del bien del aval';
             }
         }
         if ($tipoGarantia === 'prendaria')   $base['factura_bien_mueble']     = 'Factura del Bien Mueble en Garantía';
