@@ -4,7 +4,11 @@ import { Head, useForm } from '@inertiajs/vue3';
 import {
     AlertCircle,
     Building2,
+    Calendar,
     CheckCircle2,
+    CreditCard,
+    DollarSign,
+    FileSignature,
     IdCard,
     Mail,
     MapPin,
@@ -217,11 +221,25 @@ const lbl = 'block text-xs font-black text-slate-500 dark:text-zinc-400 uppercas
                     </div>
                 </div>
 
-                <!-- Resumen + envío -->
+                                <!-- Resumen + envío -->
                 <div class="p-5 sm:p-2 bg-slate-900 dark:bg-red-950 rounded-3xl sm:rounded-[2.5rem] shadow-2xl border-4 border-white dark:border-slate-900 space-y-4 sm:space-y-0">
                     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                         <div class="flex items-center gap-6 sm:pl-6">
                             <div>
+                                <p class="text-[9px] font-black text-slate-400 uppercase tracking-widest">Tasa Ordinaria</p>
+                                <p class="text-xl sm:text-2xl font-black text-white leading-none mt-1">
+                                    {{ infoModalidad ? infoModalidad.tasa : '--' }}<span class="text-red-500 text-sm">%</span>
+                                </p>
+                            </div>
+                            <div class="h-8 w-px bg-slate-700"></div>
+                            <div>
+                                <p class="text-[9px] font-black text-slate-400 uppercase tracking-widest">Tasa Moratoria</p>
+                                <p class="text-xl sm:text-2xl font-black text-white leading-none mt-1">
+                                    {{ infoModalidad ? infoModalidad.moratoria : '--' }}<span class="text-red-500 text-sm">%</span>
+                                </p>
+                            </div>
+                            <div class="h-8 w-px bg-slate-700 hidden sm:block"></div>
+                            <div class="hidden sm:block">
                                 <p class="text-[9px] font-black text-slate-400 uppercase tracking-widest">Estado</p>
                                 <p class="text-xs font-bold text-emerald-400 flex items-center gap-1 uppercase mt-1">
                                     <CheckCircle2 :size="12" /> Expediente Activo
