@@ -207,12 +207,32 @@ const desglosePago = computed(() => {
                                     <FolderOpen :size="15" class="text-indigo-600" /> Expediente Digital
                                 </button>
                             </DropdownMenuItem>
+                            <DropdownMenuItem as-child>
+                                <button @click="() => router.visit(route('operaciones.index', acreditado.id))" class="w-full">
+                                    <RefreshCw :size="15" class="text-slate-500" /> Ver Movimientos
+                                </button>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem v-if="credito?.estatus !== 'Liquidado'" as-child>
+                                <button @click="() => router.visit(route('reportes.adeudo', credito.id))" class="w-full">
+                                    <AlertCircle :size="15" class="text-amber-600" /> Reporte de Adeudo
+                                </button>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem v-if="credito?.estatus === 'Liquidado'" as-child>
+                                <button @click="() => router.visit(route('creditos.dictamen', credito.id))" class="w-full">
+                                    <Award :size="15" class="text-green-600" /> Dictamen
+                                </button>
+                            </DropdownMenuItem>
 
                             <DropdownMenuSeparator />
 
                             <DropdownMenuItem as-child>
                                 <a :href="route('creditos.estado-cuenta.pdf', credito.id)" target="_blank" class="w-full">
                                     <Receipt :size="15" class="text-slate-500" /> Estado de Cuenta PDF
+                                </a>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem v-if="credito?.estatus === 'Liquidado'" as-child>
+                                <a :href="route('creditos.constancia.pdf', credito.id)" target="_blank" class="w-full">
+                                    <FileCheck :size="15" class="text-emerald-600" /> Constancia de No Adeudo
                                 </a>
                             </DropdownMenuItem>
                             <DropdownMenuItem as-child>
@@ -223,6 +243,11 @@ const desglosePago = computed(() => {
 
                             <template v-if="credito?.estatus !== 'Liquidado' && credito?.estatus !== 'Cancelado'">
                                 <DropdownMenuSeparator />
+                                <DropdownMenuItem as-child>
+                                    <button @click="() => router.visit(route('creditos.reestructurar.create', credito.id))" class="w-full">
+                                        <RotateCcw :size="15" class="text-blue-600" /> Reestructurar Crédito
+                                    </button>
+                                </DropdownMenuItem>
                                 <DropdownMenuItem as-child>
                                     <button @click="() => router.visit(route('creditos.condonacion-formal.create', credito.id))" class="w-full">
                                         <FileX :size="15" class="text-purple-600" /> Condonación Formal
