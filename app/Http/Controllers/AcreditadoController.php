@@ -78,8 +78,9 @@ class AcreditadoController extends Controller
 
     /**
      * Catálogo oficial del SAT (c_RegimenFiscal, CFDI 4.0) para personas físicas y morales.
+     * Público porque también lo usa la plantilla del importador de acreditados.
      */
-    private function regimenesFiscalesSat(): array
+    public static function regimenesFiscalesSat(): array
     {
         return [
             ['id' => '601', 'nombre' => 'General de Ley Personas Morales'],

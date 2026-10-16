@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Acreditado;
+use App\Services\PlantillaImportarAcreditados;
 use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
@@ -10,22 +11,44 @@ use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
 use PhpOffice\PhpSpreadsheet\IOFactory;
+use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class ImportarAcreditadosController extends Controller
 {
     // Misma expresión que usa el portal ciudadano (Portal\WizardSolicitudController)
     private const CURP_REGEX = '/^[A-Z]{4}\d{6}[HM](AS|BC|BS|CC|CS|CH|DF|DG|GT|GR|HG|JC|MC|MN|MS|NT|NL|OC|PL|QT|QR|SP|SL|SR|TC|TS|TL|VZ|YN|ZS|NE)[B-DF-HJ-NP-TV-Z]{3}[A-Z\d]\d$/';
 
-    private const COLUMNAS = [
+    // Públicas para que la plantilla (PlantillaImportarAcreditados) salga de aquí y no las repita
+    public const COLUMNAS = [
         'nombre_completo', 'curp', 'rfc', 'municipio', 'sexo',
         'correo', 'direccion_fiscal', 'regimen', 'clave_personalizada',
     ];
+
+    // Hoja de la plantilla donde van los datos
+    public const HOJA = 'Acreditados';
+
+    // Guía para el administrador; el repositorio es público, así que se puede abrir sin cuenta de GitHub
+    public const GUIA = 'https://github.com/diegomtr8-art/iyem-crea/blob/develop/docs/IMPORTADOR_ACREDITADOS.md';
 
     public function index()
     {
         return Inertia::render('Admin/ImportarAcreditados', [
             'columnas'     => self::COLUMNAS,
             'vista_previa' => session('importacion_acreditados'),
+            'guia'         => self::GUIA,
+        ]);
+    }
+
+    public function plantilla(PlantillaImportarAcreditados $plantilla): StreamedResponse
+    {
+        $libro = $plantilla->generar();
+
+        return response()->streamDownload(function () use ($libro) {
+            (new Xlsx($libro))->save('php://output');
+        }, 'plantilla_importar_acreditados.xlsx', [
+            'Content-Type'  => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            'Cache-Control' => 'no-cache',
         ]);
     }
 
@@ -40,8 +63,11 @@ class ImportarAcreditadosController extends Controller
         ]);
 
         try {
-            $filas = IOFactory::load($request->file('archivo')->getRealPath())
-                ->getActiveSheet()
+            $libro = IOFactory::load($request->file('archivo')->getRealPath());
+
+            // La plantilla también trae Instrucciones y Catálogos: si se guardó con otra hoja abierta,
+            // los datos se siguen leyendo de la hoja Acreditados. Cualquier otro Excel: la hoja activa.
+            $filas = ($libro->getSheetByName(self::HOJA) ?? $libro->getActiveSheet())
                 ->toArray(null, true, false, false);
         } catch (\Exception) {
             return back()->with('error', 'No se pudo leer el archivo. Verifica que sea un Excel válido.');
@@ -78,7 +104,7 @@ class ImportarAcreditadosController extends Controller
                 }
             }
 
-            $errores = Validator::make($datos, $this->reglas(), $this->mensajes(), $this->atributos())
+            $errores = Validator::make($datos, self::reglas(), self::mensajes(), self::atributos())
                 ->errors()->all();
 
             // La tabla no acepta CURP ni RFC repetidos, tampoco dentro del mismo archivo
@@ -160,7 +186,8 @@ class ImportarAcreditadosController extends Controller
 
     // Mismas reglas que AcreditadoController::store() para los datos del acreditado,
     // más el formato de CURP del portal y la revisión de duplicados (la tabla los tiene como unique).
-    private function reglas(): array
+    // Públicas para que la hoja Instrucciones de la plantilla muestre lo mismo que valida el importador.
+    public static function reglas(): array
     {
         return [
             'nombre_completo'     => 'required|string|max:255',
@@ -175,7 +202,7 @@ class ImportarAcreditadosController extends Controller
         ];
     }
 
-    private function mensajes(): array
+    public static function mensajes(): array
     {
         return [
             'required'     => 'Falta :attribute.',
@@ -188,7 +215,7 @@ class ImportarAcreditadosController extends Controller
         ];
     }
 
-    private function atributos(): array
+    public static function atributos(): array
     {
         return [
             'nombre_completo'  => 'el nombre completo',

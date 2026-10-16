@@ -5,6 +5,7 @@ import { Head, useForm } from '@inertiajs/vue3';
 const props = defineProps({
     columnas: Array,
     vista_previa: Object,
+    guia: String,
 });
 
 const subida = useForm({ archivo: null });
@@ -35,6 +36,17 @@ const cancelar = () => cancelacion.post(route('importar-acreditados.cancelar'));
                 <span class="font-mono">{{ columnas.join(', ') }}</span>.
                 Nada se guarda hasta que confirmes la vista previa.
             </p>
+
+            <!-- Enlaces normales y no de Inertia: uno descarga un archivo y el otro abre la guía en GitHub -->
+            <div class="flex flex-wrap items-center gap-4">
+                <a :href="route('importar-acreditados.plantilla')"
+                    class="border border-red-700 text-red-700 font-black py-3 px-6 rounded-xl uppercase text-xs tracking-widest hover:bg-red-50">
+                    Descargar plantilla
+                </a>
+                <a :href="guia" target="_blank" rel="noopener" class="text-sm font-bold text-slate-600 dark:text-slate-300 underline">
+                    Guía paso a paso para llenarla
+                </a>
+            </div>
 
             <form @submit.prevent="previsualizar"
                 class="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-6 space-y-4">
