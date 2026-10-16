@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\BitacoraTareaProgramada;
+use App\Services\CorreosFallidosService;
 use Inertia\Inertia;
 
 class BitacoraTareasController extends Controller
@@ -41,6 +42,8 @@ class BitacoraTareasController extends Controller
         return Inertia::render('Admin/TareasProgramadas', [
             'tareas'      => $tareas,
             'horas_alerta' => self::HORAS_ALERTA,
+            // Solo el número; el detalle y las acciones están en Correos fallidos
+            'correos_fallidos' => app(CorreosFallidosService::class)->contar(),
         ]);
     }
 }
