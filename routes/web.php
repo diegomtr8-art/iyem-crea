@@ -30,6 +30,7 @@ use App\Http\Controllers\Portal\ComprobacionPortalController;
 use App\Http\Controllers\Portal\WizardSolicitudController;
 use App\Http\Controllers\Portal\MiCreditoController;
 use App\Http\Controllers\Portal\ExpedienteController;
+use App\Http\Controllers\Portal\AyudaController;
 use App\Http\Controllers\Portal\MensajeContactoController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Admin\MensajesCiudadanoController;
@@ -85,6 +86,9 @@ Route::middleware(['auth', 'verified', 'ciudadano'])->prefix('mi-portal')->name(
     // Comprobación de uso del crédito
     Route::post('comprobacion/{comprobacion}/enviar', [ComprobacionPortalController::class, 'enviar'])->name('comprobacion.enviar');
     Route::get('documentos-comprobacion/{documento}/descargar', [ComprobacionPortalController::class, 'descargarDocumento'])->name('documentos-comprobacion.descargar');
+
+    // Ayuda / Preguntas frecuentes
+    Route::get('ayuda', [AyudaController::class, 'index'])->name('ayuda');
 });
 
 // --- RUTAS OPERATIVAS (requiere auth + tipo operativo) ---
