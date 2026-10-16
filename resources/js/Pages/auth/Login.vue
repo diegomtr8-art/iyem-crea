@@ -8,6 +8,7 @@ import { ref } from 'vue';
 defineProps<{
     status?: string;
     canResetPassword?: boolean;
+    portalAbierto?: boolean;
 }>();
 
 const form = useForm({
@@ -114,7 +115,7 @@ const submit = () => {
             </button>
 
             <!-- Separador -->
-            <div class="relative">
+            <div v-if="portalAbierto" class="relative">
                 <div class="absolute inset-0 flex items-center">
                     <div class="w-full border-t border-slate-100 dark:border-zinc-800"></div>
                 </div>
@@ -126,10 +127,10 @@ const submit = () => {
             </div>
 
             <!-- Google -->
-            <GoogleLoginButton />
+            <GoogleLoginButton v-if="portalAbierto" />
 
             <!-- Footer -->
-            <p class="text-center text-sm text-slate-500 dark:text-zinc-400 pt-2">
+            <p v-if="portalAbierto" class="text-center text-sm text-slate-500 dark:text-zinc-400 pt-2">
                 ¿No tienes cuenta?
                 <Link :href="route('ciudadano.register')"
                     class="font-bold text-[#6B1938] dark:text-[#f4a8c4] hover:underline ml-1">
