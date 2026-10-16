@@ -76,9 +76,44 @@ composer --version
 mysql --version
 ```
 
-- **`php -v`** debe decir 8.2, 8.3, 8.4 u 8.5, y la misma versión que elegiste en hPanel. Si no coinciden, el `php` de la terminal no es el del sitio. Pregunta en el soporte de Hostinger la ruta del PHP correcto y úsala en los comandos.
+- **`php -v`** debe decir 8.2, 8.3, 8.4 u 8.5, y la misma versión que elegiste en hPanel. Si no coinciden, sigue «Si la terminal usa otra versión de PHP», abajo.
 - **El ciclo `for`** no debe imprimir nada. Si imprime `FALTA: ...`, activa esa extensión en la Configuración de PHP. La lista sale de lo que piden las librerías en `composer.lock`, más `pdo_mysql` para la base.
 - **`proc_open`** lo necesita el respaldo diario (`crea:respaldo-base`).
+
+### Si la terminal usa otra versión de PHP
+
+En Hostinger hay varias versiones de PHP instaladas una junto a otra en `/opt/alt/`. La que eliges en hPanel es la del sitio web, pero la terminal puede seguir usando otra. Si `composer` o `php artisan` corren con una versión vieja, fallan o instalan dependencias equivocadas.
+
+1. Mira qué versiones hay y prueba la que elegiste en hPanel. En los ejemplos es la 8.3: cambia `php83` por `php82`, `php84` o `php85` según tu caso.
+
+   ```bash
+   ls /opt/alt/ | grep php
+   /opt/alt/php83/usr/bin/php -v
+   ```
+
+2. Haz que la terminal use esa versión. Abre `~/.bashrc` con `nano ~/.bashrc` y escribe esto **en la primera línea** (si va más abajo, puede no aplicarse). Guarda con `Ctrl+O`, `Enter` y `Ctrl+X`.
+
+   ```bash
+   export PATH=/opt/alt/php83/usr/bin:$PATH
+   ```
+
+3. Sal (`exit`), vuelve a entrar por SSH y repite `php -v`: ya debe decir la versión correcta.
+
+4. Comprueba que también la usen los comandos que se mandan por SSH sin entrar al servidor, como los de `deploy.sh`. Desde tu computadora:
+
+   ```bash
+   ssh -i ~/.ssh/id_deploy -p 65002 USUARIO@IP_DEL_SERVIDOR "php -v"
+   ```
+
+5. Si este último sigue mostrando la versión vieja, en `deploy.sh` busca `cd $REMOTE_DIR &&` en los pasos 4 y 5 y cambia cada uno por esto (la diagonal antes de `$PATH` sí va):
+
+   ```bash
+   cd $REMOTE_DIR && export PATH=/opt/alt/php83/usr/bin:\$PATH &&
+   ```
+
+   Pon lo mismo después del `cd` en los demás comandos `ssh ... "cd ... && php artisan ..."` de esta guía.
+
+6. Anota la ruta (`/opt/alt/php83/usr/bin/php`): el cron no lee `~/.bashrc`, así que en el paso 12 va completa.
 
 ### Si el servidor nuevo es un VPS con Ubuntu 24.04
 
@@ -123,11 +158,17 @@ gunzip -c ~/crea-respaldo-2026-10-05_030000.sql.gz | mysql -u USUARIO_BD -p --de
 
 Pide la contraseña de la base y no muestra nada si salió bien.
 
-Revisa qué tan reciente es el respaldo y anota quiénes son administradores; lo vas a necesitar en el paso 6:
+Revisa qué tan reciente es el respaldo:
 
 ```bash
 mysql -u USUARIO_BD -p NOMBRE_BD -e "SELECT COUNT(*) AS creditos FROM creditos; SELECT MAX(created_at) AS ultimo_pago FROM pagos;"
+```
+
+**Guarda también quiénes son administradores y cómo están las modalidades.** El deploy del paso 6 puede cambiar las dos cosas (ver el aviso de ese paso), y con estas listas vas a notar si pasó. Cópialas a un archivo de texto en tu computadora:
+
+```bash
 mysql -u USUARIO_BD -p NOMBRE_BD -e "SELECT u.id, u.name, u.email FROM users u JOIN model_has_roles m ON m.model_id = u.id JOIN roles r ON r.id = m.role_id WHERE r.name = 'Administrador' ORDER BY u.id;"
+mysql -u USUARIO_BD -p NOMBRE_BD -e "SELECT nombre, tasa_interes, tasa_moratoria, monto_minimo, monto_maximo, plazo_min_meses, plazo_max_meses FROM modalidad_creas;"
 ```
 
 Las fechas de la base están en **hora UTC**: resta 6 horas para tener la hora de Mérida. Todo lo que se registró después del último pago se perdió y hay que capturarlo de nuevo (sección 17).
@@ -136,7 +177,27 @@ Las fechas de la base están en **hora UTC**: resta 6 horas para tener la hora d
 
 ## 5. El `.env`
 
-El `.env` no está en el repositorio ni en el respaldo de la base. Créalo en tu computadora con los valores que te dé Diego, súbelo a `public_html/.env` y protégelo.
+El `.env` es el archivo de configuración del sitio: ahí van las contraseñas. No está en el repositorio ni en el respaldo de la base. Lo armas en tu computadora, lo subes a `public_html/.env` y lo proteges.
+
+### De dónde sale
+
+- **Si Diego tiene guardada una copia del `.env` de producción**, usa esa. Cambia solo lo que dice la columna «Qué cambia en un servidor nuevo» de la tabla de abajo.
+- **Si no hay copia**, ármalo desde la plantilla del repositorio, `.env.example`. Ahí están todos los nombres, pero con valores de desarrollo. Descárgala en Git Bash:
+
+  ```bash
+  curl -o .env.produccion https://raw.githubusercontent.com/diegomtr8-art/iyem-crea/develop/.env.example
+  ```
+
+  Ábrela con un editor de texto y cambia:
+  - `APP_ENV=local` por `APP_ENV=production`, y `APP_DEBUG=true` por `APP_DEBUG=false`.
+  - `APP_URL=http://localhost` por `APP_URL=https://crea.iyemyucatan.com`.
+  - `APP_KEY=` vacío: pon la llave de antes o una nueva (ver abajo).
+  - `DB_CONNECTION=sqlite` por `DB_CONNECTION=mysql`. Quita el `#` del inicio de las líneas `DB_HOST`, `DB_PORT`, `DB_DATABASE`, `DB_USERNAME` y `DB_PASSWORD`, y pon los datos del paso 3. En Hostinger, `DB_HOST` normalmente es `localhost`; hPanel lo muestra junto a la base.
+  - `MAIL_MAILER=log` por los datos del buzón; están explicados en `docs/TAREAS_PROGRAMADAS.md` (J.10), sección 1.
+
+- **Las contraseñas** (correo, Google y la `APP_KEY` anterior) te las da Diego. Pídeselas en persona o por un gestor de contraseñas, nunca por WhatsApp, correo ni el ticket.
+
+### Qué lleva
 
 Estas son las variables que necesita CREA. Aquí van solo los nombres: **nunca escribas los valores en el repositorio, en el ticket ni en un chat**.
 
@@ -202,6 +263,15 @@ SSH_HOST="USUARIO@IP_DEL_SERVIDOR"
 REMOTE_DIR='~/domains/crea.iyemyucatan.com/public_html'
 ```
 
+> **⚠️ Antes de correr `deploy.sh`: puede dejar a alguien como Administrador sin querer.**
+>
+> `deploy.sh` corre dos seeders que cambian la base restaurada (sección 16):
+>
+> - **`RoleAndPermissionSeeder`** le da el rol Administrador al primer usuario operativo de la base. En el simulacro, ese usuario era un Cajero y quedó como Administrador.
+> - **`ActualizarModalidadesSeeder`** reescribe tasas, montos y plazos de las modalidades con los valores que trae el código.
+>
+> Antes de seguir, ten a la mano las dos listas que guardaste en el paso 4. Justo después del deploy las vas a comparar («Revisa administradores y modalidades», abajo).
+
 Córrelo:
 
 ```bash
@@ -226,9 +296,12 @@ ssh -i ~/.ssh/id_deploy -p 65002 USUARIO@IP_DEL_SERVIDOR "cd ~/domains/crea.iyem
 
 El aviso `tar: PENDIENTES_AUTH.md: Cannot stat` del paso 3 de `deploy.sh` no detiene nada: ese archivo ya no existe en el repositorio.
 
-### Revisa a los administradores
+### Revisa administradores y modalidades
 
-Vuelve a correr la consulta de administradores del paso 4. **Si aparece alguien que antes no era administrador**, fue el seeder (sección 16). En el panel ve a Sistema → Usuarios, edita a esa persona, déjale su rol original y guarda.
+Vuelve a correr las dos consultas del paso 4 y compáralas con lo que guardaste:
+
+- **Si aparece un administrador nuevo**, fue el seeder. En el panel ve a Sistema → Usuarios, edita a esa persona, déjale su rol original y guarda. Hazlo antes de abrir el sistema a los usuarios.
+- **Si cambió algún valor de las modalidades**, avísale a Diego con los valores de antes y los de ahora. Él decide cuáles son los correctos.
 
 ---
 
@@ -346,6 +419,8 @@ En hPanel → Avanzado → Cron Jobs, crea uno que corra cada minuto (`* * * * *
 ```
 cd /home/USUARIO/domains/crea.iyemyucatan.com/public_html && php artisan schedule:run >> /dev/null 2>&1
 ```
+
+Si en el paso 2 la terminal usaba otra versión de PHP, cambia `php artisan` por la ruta completa, por ejemplo `/opt/alt/php83/usr/bin/php artisan`.
 
 Ese único cron corre las tareas diarias y también envía los correos de la cola. El detalle de qué corre y cómo comprobarlo está en `docs/TAREAS_PROGRAMADAS.md` (J.10). Por ahora, `php artisan schedule:list` debe mostrar las tareas con su próxima hora.
 
