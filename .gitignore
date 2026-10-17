@@ -23,3 +23,6 @@ yarn-error.log
 /.vscode
 /.zed
 /_documentos
+
+# Respaldos de la base: tienen datos personales
+*.sql.gz
