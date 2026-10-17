@@ -4,6 +4,7 @@ import { SidebarTrigger } from '@/components/ui/sidebar';
 import type { BreadcrumbItemType } from '@/types';
 import { ref, onMounted, computed } from 'vue';
 import { Bell, X, CheckCheck, AlertCircle } from 'lucide-vue-next';
+import AlertasTareasProgramadas from '@/components/AlertasTareasProgramadas.vue';
 
 defineProps<{
     breadcrumbs?: BreadcrumbItemType[];
@@ -81,6 +82,11 @@ const money = (v: number) => new Intl.NumberFormat('es-MX', { style: 'currency',
                 </Breadcrumb>
             </template>
         </div>
+
+        <div class="flex items-center gap-1">
+        <!-- Fallos de tareas programadas (solo administradores) -->
+        <AlertasTareasProgramadas />
+
 
         <!-- Campana de notificaciones -->
         <div class="relative">
@@ -175,6 +181,7 @@ const money = (v: number) => new Intl.NumberFormat('es-MX', { style: 'currency',
 
             <!-- Overlay para cerrar al click fuera -->
             <div v-if="panelAbierto" class="fixed inset-0 z-40" @click="panelAbierto = false"></div>
+        </div>
         </div>
     </header>
 </template>
