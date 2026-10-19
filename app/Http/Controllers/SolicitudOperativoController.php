@@ -179,7 +179,9 @@ class SolicitudOperativoController extends Controller
             'motivo_rechazo'=> 'required_if:estatus,Rechazada|nullable|string|max:500',
         ]);
 
+        // Guarda el estado anterior y comprueba si realmente cambió
         $estatusAnterior = $solicitud->estatus;
+        $cambioEstatus = $estatusAnterior !== $request->estatus;
 
         $solicitud->update([
             'estatus'       => $request->estatus,
@@ -187,51 +189,53 @@ class SolicitudOperativoController extends Controller
             'motivo_rechazo'=> $request->estatus === 'Rechazada' ? $request->motivo_rechazo : null,
         ]);
 
-        // Registrar en historial
-        SolicitudEstatusHistorial::create([
-            'solicitud_id'    => $solicitud->id,
-            'estatus_anterior'=> $estatusAnterior,
-            'estatus_nuevo'   => $request->estatus,
-            'observaciones'   => $request->observaciones,
-            'motivo_rechazo'  => $request->motivo_rechazo,
-            'usuario_id'      => auth()->id(),
-            'usuario_nombre'  => auth()->user()?->name,
-            'ip_address'      => request()->ip(),
-        ]);
-
-        AuditoriaLog::registrar(
-            'SolicitudCredito',
-            $solicitud->id,
-            'updated',
-            'estatus',
-            $estatusAnterior,
-            $request->estatus,
-            "Cambio de estatus por " . auth()->user()?->name
-        );
-
-        $mensajes = [
-            'En_Revision'              => ['titulo' => 'Tu solicitud está en revisión', 'tipo' => 'info'],
-            'Documentacion_Incompleta' => ['titulo' => 'Documentación incompleta', 'tipo' => 'alerta'],
-            'Aprobada'                 => ['titulo' => '¡Tu solicitud fue aprobada!', 'tipo' => 'exito'],
-            'Rechazada'                => ['titulo' => 'Tu solicitud no fue aprobada', 'tipo' => 'error'],
-        ];
-
-        $cfg = $mensajes[$request->estatus] ?? null;
-        if ($cfg) {
-            AnuncioCiudadano::create([
-                'user_id' => $solicitud->user_id,
-                'titulo'  => $cfg['titulo'],
-                'mensaje' => $request->observaciones
-                    ?? match ($request->estatus) {
-                        'En_Revision'              => 'Un asesor CREA está revisando tu solicitud y documentos.',
-                        'Documentacion_Incompleta' => 'Algunos documentos requieren corrección. Revisa tu solicitud.',
-                        'Aprobada'                 => '¡Felicidades! Tu solicitud fue aprobada. Ya puedes descargar tus formatos.',
-                        'Rechazada'                => 'Lamentablemente tu solicitud no fue aprobada. Contáctanos para más información.',
-                        default                    => '',
-                    },
-                'tipo'       => $cfg['tipo'],
-                'url_accion' => route('portal.solicitud.index'),
+        // Registrar en historial, auditoría y aviso únicamente si cambió el estado.
+        if ($cambioEstatus) {
+            SolicitudEstatusHistorial::create([
+                'solicitud_id'    => $solicitud->id,
+                'estatus_anterior'=> $estatusAnterior,
+                'estatus_nuevo'   => $request->estatus,
+                'observaciones'   => $request->observaciones,
+                'motivo_rechazo'  => $request->motivo_rechazo,
+                'usuario_id'      => auth()->id(),
+                'usuario_nombre'  => auth()->user()?->name,
+                'ip_address'      => request()->ip(),
             ]);
+
+            AuditoriaLog::registrar(
+                'SolicitudCredito',
+                $solicitud->id,
+                'updated',
+                'estatus',
+                $estatusAnterior,
+                $request->estatus,
+                "Cambio de estatus por " . auth()->user()?->name
+            );
+
+            $mensajes = [
+                'En_Revision'              => ['titulo' => 'Tu solicitud está en revisión', 'tipo' => 'info'],
+                'Documentacion_Incompleta' => ['titulo' => 'Documentación incompleta', 'tipo' => 'alerta'],
+                'Aprobada'                 => ['titulo' => '¡Tu solicitud fue aprobada!', 'tipo' => 'exito'],
+                'Rechazada'                => ['titulo' => 'Tu solicitud no fue aprobada', 'tipo' => 'error'],
+            ];
+
+            $cfg = $mensajes[$request->estatus] ?? null;
+            if ($cfg) {
+                AnuncioCiudadano::create([
+                    'user_id' => $solicitud->user_id,
+                    'titulo'  => $cfg['titulo'],
+                    'mensaje' => $request->observaciones
+                        ?? match ($request->estatus) {
+                            'En_Revision'              => 'Un asesor CREA está revisando tu solicitud y documentos.',
+                            'Documentacion_Incompleta' => 'Algunos documentos requieren corrección. Revisa tu solicitud.',
+                            'Aprobada'                 => '¡Felicidades! Tu solicitud fue aprobada. Ya puedes descargar tus formatos.',
+                            'Rechazada'                => 'Lamentablemente tu solicitud no fue aprobada. Contáctanos para más información.',
+                            default                    => '',
+                        },
+                    'tipo'       => $cfg['tipo'],
+                    'url_accion' => route('portal.solicitud.index'),
+                ]);
+            }
         }
 
         // Al aprobar, generar ZIP con los formatos oficiales o reinteta si no está disponible

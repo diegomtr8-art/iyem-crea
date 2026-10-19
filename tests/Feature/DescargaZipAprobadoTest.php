@@ -177,3 +177,65 @@ test('falla de ZIP no impide aprobar solicitud', function () {
             )
         );
 });
+
+/**
+ * Caso 5: Utiliza una solicitud que ya está aprobada y que tiene un zip existente
+ */
+test('guardar nuevamente aprobada no duplica aviso ni historial', function () {
+    Storage::fake('local');
+
+    $operativo = User::factory()->create([
+        'tipo' => 'operativo',
+        'email_verified_at' => now(),
+    ]);
+
+    $ciudadano = User::factory()->create([
+        'tipo' => 'ciudadano',
+        'email_verified_at' => now(),
+    ]);
+
+    $rutaZip = 'formatos/prueba.zip';
+    Storage::disk('local')->put($rutaZip, 'Contenido de prueba');
+
+    $solicitud = crearSolicitudFormatos(
+        $ciudadano,
+        'Aprobada',
+        $rutaZip
+    );
+
+    $avisosAntes = \App\Models\AnuncioCiudadano::where(
+        'user_id',
+        $ciudadano->id
+    )->count();
+
+    $historialAntes = \App\Models\SolicitudEstatusHistorial::where(
+        'solicitud_id',
+        $solicitud->id
+    )->count();
+
+    $this->actingAs($operativo);
+
+    $this->post(route(
+        'solicitudes.cambiar-estatus',
+        $solicitud->id
+    ), [
+        'estatus' => 'Aprobada',
+        'observaciones' => 'Sin cambios',
+    ])->assertRedirect();
+
+    expect(
+        \App\Models\AnuncioCiudadano::where(
+            'user_id',
+            $ciudadano->id
+        )->count()
+    )->toBe($avisosAntes);
+
+    expect(
+        \App\Models\SolicitudEstatusHistorial::where(
+            'solicitud_id',
+            $solicitud->id
+        )->count()
+    )->toBe($historialAntes);
+
+    expect($solicitud->fresh()->estatus)->toBe('Aprobada');
+});

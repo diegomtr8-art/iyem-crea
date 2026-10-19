@@ -573,6 +573,7 @@ const sIcon= 'w-9 h-9 rounded-xl flex items-center justify-center shrink-0 bg-[#
         </p>
         <p class="text-slate-500 dark:text-zinc-400 leading-relaxed max-w-md mx-auto">
             El equipo de CREA está revisando tu información y documentos. Te notificaremos cuando haya una actualización.
+            Los formatos estarán disponibles para su descarga una vez que tu solicitud sea aprobada.
             Puedes consultar el estado de tu solicitud en cualquier momento desde este portal.
         </p>
 
