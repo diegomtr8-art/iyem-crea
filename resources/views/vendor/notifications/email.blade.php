@@ -165,7 +165,7 @@
             </tr>
         </table>
         <p>
-            <a href="mailto:crea@iyemyucatan.com">crea@iyemyucatan.com</a>
+            <a href="mailto:{{ config('contacto.correo') }}">{{ config('contacto.correo') }}</a>
             &nbsp;&nbsp;·&nbsp;&nbsp;
             <a href="https://crea.iyemyucatan.com">crea.iyemyucatan.com</a>
         </p>

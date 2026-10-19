@@ -30,16 +30,20 @@ use App\Http\Controllers\Portal\ComprobacionPortalController;
 use App\Http\Controllers\Portal\WizardSolicitudController;
 use App\Http\Controllers\Portal\MiCreditoController;
 use App\Http\Controllers\Portal\ExpedienteController;
+use App\Http\Controllers\Portal\AyudaController;
 use App\Http\Controllers\Portal\MensajeContactoController;
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\Admin\MensajesCiudadanoController;
 use App\Http\Controllers\BitacoraTareasController;
+use App\Http\Controllers\CorreosFallidosController;
 use App\Http\Controllers\RespaldoExcelController;
 use App\Http\Controllers\RecordatoriosAdminController;
+use App\Http\Controllers\ImportarAcreditadosController;
 
 // --- RUTAS PÚBLICAS (LANDING PAGE INFORMATIVA) ---
 Route::get('/', [PublicController::class, 'index'])->name('welcome');
 Route::get('/consultar-credito', fn() => redirect('/'))->name('public.consultar.redirect');
-Route::post('/consultar-credito', [PublicController::class, 'consultar'])->name('public.consultar');
+Route::post('/consultar-credito', [PublicController::class, 'consultar'])->middleware('throttle:5,1')->name('public.consultar');
 Route::post('/contacto', [ContactoController::class, 'enviar'])->middleware('throttle:5,1')->name('contacto.enviar');
 Route::get('/aviso-privacidad', [PublicController::class, 'avisoPrivacidad'])->name('aviso-privacidad');
 
@@ -61,7 +65,7 @@ Route::middleware(['auth', 'verified', 'ciudadano'])->prefix('mi-portal')->name(
 
     // Wizard de solicitud (flujo principal en /solicitud)
     Route::get('solicitud', [WizardSolicitudController::class, 'index'])->name('solicitud.index');
-    Route::post('solicitud/verificar-curp', [WizardSolicitudController::class, 'verificarCurp'])->name('solicitar.verificar-curp');
+    Route::post('solicitud/verificar-curp', [WizardSolicitudController::class, 'verificarCurp'])->middleware('throttle:5,1')->name('solicitar.verificar-curp');
     Route::post('solicitud/paso', [WizardSolicitudController::class, 'guardarPaso'])->name('solicitar.paso');
     Route::post('solicitud/documento', [WizardSolicitudController::class, 'subirDocumento'])->name('solicitar.documento');
     Route::post('solicitud/documento-post-aprobacion', [WizardSolicitudController::class, 'subirDocumentoPostAprobacion'])->name('solicitar.documento-post-aprobacion');
@@ -78,10 +82,14 @@ Route::middleware(['auth', 'verified', 'ciudadano'])->prefix('mi-portal')->name(
     Route::get('mi-credito', [MiCreditoController::class, 'index'])->name('credito');
     Route::get('mi-credito/estado-cuenta/pdf', [EstadoCuentaController::class, 'pdf'])->name('credito.estado-cuenta.pdf');
     Route::get('mi-credito/liquidacion-anticipada', [EstadoCuentaController::class, 'liquidacionAnticipada'])->name('credito.liquidacion');
+    Route::get('mi-credito/constancia', [EstadoCuentaController::class, 'constancia'])->name('credito.constancia');
 
     // Comprobación de uso del crédito
     Route::post('comprobacion/{comprobacion}/enviar', [ComprobacionPortalController::class, 'enviar'])->name('comprobacion.enviar');
     Route::get('documentos-comprobacion/{documento}/descargar', [ComprobacionPortalController::class, 'descargarDocumento'])->name('documentos-comprobacion.descargar');
+
+    // Ayuda / Preguntas frecuentes
+    Route::get('ayuda', [AyudaController::class, 'index'])->name('ayuda');
 });
 
 // --- RUTAS OPERATIVAS (requiere auth + tipo operativo) ---
@@ -124,6 +132,7 @@ Route::middleware(['auth', 'verified', 'operativo'])->group(function () {
     // DESEMBOLSO
     Route::get('creditos/{credito}/desembolso', [DesembolsoController::class, 'create'])->name('creditos.desembolso.create');
     Route::post('creditos/{credito}/desembolso', [DesembolsoController::class, 'store'])->name('creditos.desembolso.store');
+    Route::get('desembolso/{desembolso}/comprobante', [DesembolsoController::class, 'descargarComprobante'])->name('desembolso.comprobante'); //ruta para descargar comprobante de desembolso
 
     // COMPROBACIÓN DE USO DEL CRÉDITO
     Route::get('comprobaciones', [ComprobacionController::class, 'index'])->name('comprobaciones.index');
@@ -184,8 +193,20 @@ Route::middleware(['auth', 'verified', 'operativo'])->group(function () {
     // AUDITORÍA
     Route::get('auditoria', [AuditoriaController::class, 'index'])->name('auditoria.index');
     Route::get('admin/tareas-programadas', [BitacoraTareasController::class, 'index'])->middleware('role:Administrador')->name('bitacora-tareas.index');
+    Route::get('admin/correos-fallidos', [CorreosFallidosController::class, 'index'])->middleware('role:Administrador')->name('correos-fallidos.index');
+    Route::post('admin/correos-fallidos/reintentar-todos', [CorreosFallidosController::class, 'reintentarTodos'])->middleware('role:Administrador')->name('correos-fallidos.reintentar-todos');
+    Route::post('admin/correos-fallidos/{fallo}/reintentar', [CorreosFallidosController::class, 'reintentar'])->middleware('role:Administrador')->whereNumber('fallo')->name('correos-fallidos.reintentar');
+    Route::post('admin/correos-fallidos/{fallo}/descartar', [CorreosFallidosController::class, 'descartar'])->middleware('role:Administrador')->whereNumber('fallo')->name('correos-fallidos.descartar');
     Route::get('admin/recordatorios', [RecordatoriosAdminController::class, 'index'])->middleware('role:Administrador')->name('recordatorios.index');
     Route::post('admin/recordatorios', [RecordatoriosAdminController::class, 'enviar'])->middleware('role:Administrador')->name('recordatorios.enviar');
+    Route::get('admin/mensajes-ciudadanos', [MensajesCiudadanoController::class, 'index'])->middleware('role:Administrador')->name('mensajes-ciudadanos.index');
+    Route::get('admin/mensajes-ciudadanos/{mensaje}', [MensajesCiudadanoController::class, 'show'])->middleware('role:Administrador')->name('mensajes-ciudadanos.show');
+    Route::post('admin/mensajes-ciudadanos/{mensaje}/atendido', [MensajesCiudadanoController::class, 'marcarAtendido'])->middleware('role:Administrador')->name('mensajes-ciudadanos.atendido');
+    Route::get('admin/importar-acreditados', [ImportarAcreditadosController::class, 'index'])->middleware('role:Administrador')->name('importar-acreditados.index');
+    Route::get('admin/importar-acreditados/plantilla', [ImportarAcreditadosController::class, 'plantilla'])->middleware('role:Administrador')->name('importar-acreditados.plantilla');
+    Route::post('admin/importar-acreditados/previsualizar', [ImportarAcreditadosController::class, 'previsualizar'])->middleware('role:Administrador')->name('importar-acreditados.previsualizar');
+    Route::post('admin/importar-acreditados/confirmar', [ImportarAcreditadosController::class, 'confirmar'])->middleware('role:Administrador')->name('importar-acreditados.confirmar');
+    Route::post('admin/importar-acreditados/cancelar', [ImportarAcreditadosController::class, 'cancelar'])->middleware('role:Administrador')->name('importar-acreditados.cancelar');
     // PRESUPUESTO — módulo eliminado
     // Route::get('presupuesto', [PresupuestoController::class, 'index'])->name('presupuesto.index');
     // Route::post('presupuesto', [PresupuestoController::class, 'store'])->name('presupuesto.store');
