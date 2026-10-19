@@ -1,0 +1,7 @@
+id	credito_id	fecha_reestructura	motivo	saldo_al_momento	mora_condonada	interes_condonado	nuevo_plazo_meses	nueva_tasa_interes	nueva_fecha_inicio_pagos	numero_resolutivo
+1	43	2026-09-25	Dificultad_Economica	27177.42	5014.09	0.00	12	7.00	2026-10-25	AUD-A11-R1
+2	2	2026-10-06	Dificultad_Economica	31804.37	2029.79	0.00	18	7.00	2026-11-06	AUD-A11-R2
+3	5	2026-10-06	Dificultad_Economica	31204.41	0.00	0.00	24	7.00	2026-10-21	AUD-A11-R3
+4	22	2026-10-06	Dificultad_Economica	5000.00	0.00	0.00	6	0.00	2026-10-31	AUD-A11-R4
+5	29	2026-10-06	Dificultad_Economica	41371.82	13142.12	0.00	36	6.50	2026-11-15	AUD-A11-R5
+6	30	2026-10-06	Dificultad_Economica	25365.62	1975.18	0.00	12	5.00	2026-11-01	AUD-A11-R6

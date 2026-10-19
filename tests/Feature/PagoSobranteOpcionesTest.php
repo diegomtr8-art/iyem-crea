@@ -170,8 +170,9 @@ test('caso 3: sobrante de 3,000 con reducir cuota deja 23 cuotas de 1,860.24', f
 
 /**
  * Caso 4 — Paga $5,000 con Reducir plazo: 21 cuotas de $2,000 + final $578.88.
+ * El plan restante se recalcula desde el saldo nuevo (interés y plazo).
  */
-test('caso 4: sobrante de 3,000 con reducir plazo acorta el plazo y conserva el calendario', function () {
+test('caso 4: sobrante de 3,000 con reducir plazo recalcula el plan y acorta el plazo', function () {
     $this->actingAs(operativoVerificado());
     $credito = crearCreditoSobrepago();
 
@@ -184,31 +185,80 @@ test('caso 4: sobrante de 3,000 con reducir plazo acorta el plazo y conserva el 
 
     expect(cuotaDe($credito, 1)->estado)->toBe('Pagado');
 
-    // Las cuotas conservadas mantienen su cuota fija original.
+    // 21 cuotas completas a la cuota vigente (cuotas 2..22).
     for ($n = 2; $n <= 22; $n++) {
         expect((float) cuotaDe($credito, $n)->cuota_fija)->toBe(2000.0);
     }
 
-    // El abono paga cuotas desde el final: la última queda pagada.
+    // El interés se recalcula desde el saldo nuevo S = 39,930.78.
+    expect((float) cuotaDe($credito, 2)->interes_ordinario_esperado)->toBe(232.93);
+
+    // Cuota final (23) más chica y cuota 24 fuera del nuevo término.
+    expect((float) cuotaDe($credito, 23)->cuota_fija)->toBe(578.88);
+
     $cuota24 = cuotaDe($credito, 24);
     expect($cuota24->estado)->toBe('Pagado');
-    expect((float) $cuota24->capital_pagado)->toBe((float) $cuota24->capital_esperado);
+    expect((float) $cuota24->capital_esperado)->toBe(0.0);
+    expect((float) $cuota24->interes_ordinario_esperado)->toBe(0.0);
     expect((float) $cuota24->pago_restante)->toBe(0.0);
+    expect($cuota24->observaciones)->toContain('eliminada por reducción de plazo');
 
-    // capital_esperado se conserva (proyección original del contrato)
-    $sumaCapital       = 0.0;
-    $sumaCapitalPagado = 0.0;
+    // El abono queda en capital_pagado y se compensa en capital_esperado: el neto
+    // (capital_esperado − capital_pagado) es el plan recalculado.
+    $netoCapital   = 0.0;
+    $capitalPagado = 0.0;
     for ($n = 2; $n <= 24; $n++) {
-        $sumaCapital       += (float) cuotaDe($credito, $n)->capital_esperado;
-        $sumaCapitalPagado += (float) cuotaDe($credito, $n)->capital_pagado;
+        $cuota = cuotaDe($credito, $n);
+        $netoCapital   += (float) $cuota->capital_esperado - (float) $cuota->capital_pagado;
+        $capitalPagado += (float) $cuota->capital_pagado;
     }
-    expect(round($sumaCapital, 2))->toBe(42930.78);
-    // el abono queda registrado en capital_pagado
-    expect(round($sumaCapitalPagado, 2))->toBe(3000.0);
+    expect(round($netoCapital, 2))->toBe(39930.78);
+    expect(round($capitalPagado, 2))->toBe(3000.0);
 
     $pago = Pago::where('credito_id', $credito->id)->first();
     expect($pago->tipo_abono)->toBe('Reducir Plazo');
     expect((float) $pago->sobrante_aplicado)->toBe(3000.0);
+});
+
+/**
+ * Caso 5 — Pago grande con Reducir plazo: el plan se recalcula y se eliminan
+ * varias cuotas finales.
+ */
+test('caso 5: reducir plazo elimina varias cuotas finales y recalcula el interés', function () {
+    $this->actingAs(operativoVerificado());
+    $credito = crearCreditoSobrepago();
+
+    // $10,000: cuota 1 ($2,000) + $8,000 a capital.
+    $this->post(route('pagos.store', $credito->id), [
+        'monto_recibido' => 10000,
+        'fecha_pago'     => Carbon::today()->toDateString(),
+        'forma_pago'     => 'Efectivo',
+        'tipo_abono'     => 'Reducir Plazo',
+    ])->assertRedirect();
+
+    // Interés recalculado desde S = 34,930.78.
+    expect((float) cuotaDe($credito, 2)->interes_ordinario_esperado)->toBe(203.76);
+
+    // Cuotas 21..24 fuera del nuevo término: se eliminan.
+    for ($n = 21; $n <= 24; $n++) {
+        $cuota = cuotaDe($credito, $n);
+        expect((float) $cuota->capital_esperado)->toBe(0.0);
+        expect((float) $cuota->interes_ordinario_esperado)->toBe(0.0);
+        expect((float) $cuota->pago_restante)->toBe(0.0);
+        expect($cuota->estado)->toBe('Pagado');
+    }
+
+    // El abono queda en capital_pagado y se compensa en capital_esperado: el neto
+    // (capital_esperado − capital_pagado) es el saldo nuevo.
+    $netoCapital   = 0.0;
+    $capitalPagado = 0.0;
+    for ($n = 2; $n <= 24; $n++) {
+        $cuota = cuotaDe($credito, $n);
+        $netoCapital   += (float) $cuota->capital_esperado - (float) $cuota->capital_pagado;
+        $capitalPagado += (float) $cuota->capital_pagado;
+    }
+    expect(round($netoCapital, 2))->toBe(34930.78);
+    expect(round($capitalPagado, 2))->toBe(8000.0);
 });
 
 /**

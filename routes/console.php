@@ -13,3 +13,7 @@ Schedule::command('crea:update-moratorio')->dailyAt('08:00')->timezone('America/
 
 // Enviar recordatorios de cuotas próximas a vencer (3 días antes)
 Schedule::command('crea:recordatorios-pago')->dailyAt('09:00')->timezone('America/Merida');
+
+// Auditoría de integridad (solo reporta, no corrige).
+// Pendiente: que se decida si se activa y a qué hora.
+// Schedule::command('crea:auditar')->dailyAt('07:00')->timezone('America/Merida');
