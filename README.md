@@ -315,3 +315,5 @@ git push origin feature/gestion-solicitudes
 
 **Repositorio:** https://github.com/diegomtr8-art/iyem-crea
 
+## Despliegue
+Para limpiar la caché tras desplegar: php artisan optimize:clear y reiniciar PHP-FPM
