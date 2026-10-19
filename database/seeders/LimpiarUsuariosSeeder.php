@@ -12,6 +12,19 @@ class LimpiarUsuariosSeeder extends Seeder
 {
     public function run(): void
     {
+        $adminPassword  = env('SEED_ADMIN_PASSWORD');
+        $testerPassword = env('SEED_TESTER_PASSWORD');
+
+        if (empty($adminPassword)) {
+            $this->command->error('Define SEED_ADMIN_PASSWORD en tu .env antes de ejecutar este seeder');
+            return;
+        }
+
+        if (empty($testerPassword)) {
+            $this->command->error('Define SEED_TESTER_PASSWORD en tu .env antes de ejecutar este seeder');
+            return;
+        }
+
         // Obtener IDs de los usuarios a conservar
         $emailsConservar = ['diegomtr8@gmail.com', 'tester@crea.com'];
 
@@ -20,7 +33,7 @@ class LimpiarUsuariosSeeder extends Seeder
             ['email' => 'diegomtr8@gmail.com'],
             [
                 'name'              => 'Diego Martinez',
-                'password'          => Hash::make('Admin1234!'),
+                'password'          => Hash::make($adminPassword),
                 'tipo'              => 'operativo',
                 'email_verified_at' => now(),
             ]
@@ -30,7 +43,7 @@ class LimpiarUsuariosSeeder extends Seeder
             ['email' => 'tester@crea.com'],
             [
                 'name'              => 'Tester CREA',
-                'password'          => Hash::make('Tester1234!'),
+                'password'          => Hash::make($testerPassword),
                 'tipo'              => 'operativo',
                 'email_verified_at' => now(),
             ]
