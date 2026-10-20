@@ -6,12 +6,50 @@
 set -e
 set -o pipefail
 
-SSH_KEY="${HOME}/.ssh/id_deploy"
-SSH_HOST="u489236361@195.35.38.222"
-REMOTE_DIR='~/domains/crea.iyemyucatan.com/public_html'
+# Cargar configuración local del despliegue
+if [[ ! -f ".env.deploy" ]]; then
+    echo "ERROR: No se encontró .env.deploy"
+    echo "Crea el archivo a partir de .env.deploy.example"
+    exit 1
+fi
 
-# Array para manejar correctamente rutas con espacios
-SSH_OPTS=(-i "${SSH_KEY}" -p 65002)
+set -a
+source .env.deploy
+set +a
+
+#Comprobar variables obligatorias
+for variable in SSH_HOST SSH_PORT SSH_KEY REMOTE_DIR PUBLIC_DIR SITE_URL; do
+    if [[ -z "${!variable:-}" ]]; then
+        echo "Error: Falta configurar $variable en .env.deploy. "
+        exit 1
+    fi
+done
+
+# Opciones de conexión SSH
+SSH_OPTS=(-i "${SSH_KEY}" -p "${SSH_PORT}")
+
+# Comprobar que / .env esté protegido
+verificar_env_protegido() {
+    local codigo_http
+
+    echo "Verificando protección de /.env..."
+
+    if ! codigo_http=$(curl --silent --show-error \
+        --output /dev/null \
+        --write-out "%{http_code}" \
+        --max-time 15 \
+        "${SITE_URL%/}/.env"); then
+        echo "ERROR: No fue posible verificar la protección de /.env."
+        return 1
+    fi
+
+    if [[ "$codigo_http" != "403" && "$codigo_http" != "404" ]]; then
+        echo "ERROR: /.env respondió HTTP $codigo_http. Deploy cancelado."
+        return 1
+    fi
+
+    echo "Protección de /.env confirmada (HTTP $codigo_http)."
+}
 
 #Validar que git status esté limpio
 
@@ -24,8 +62,8 @@ fi
 
 rama_actual=$(git branch --show-current)
 
-if [[ "$rama_actual" != "develop" && "$rama_actual" != "main" ]]; then 
-    echo "ERROR: La rama actual no es develop ni main"
+if [[ "$rama_actual" != "develop" ]]; then
+    echo "ERROR: El despliegue solo puede ejecutarse desde develop"
     exit 1
 fi
 
@@ -41,14 +79,6 @@ if [[ "$commit_local" != "$commit_remoto" ]]; then
     exit 1
 fi
 
-# El paso 5 corre `php artisan migrate --force` sobre la base real. Se pregunta
-# antes de subir nada para no dejar el servidor con código nuevo sin migrar.
-read -r -p "¿Hiciste respaldo de la base de datos? (escribe SI para continuar) " RESPALDO_OK
-if [ "$RESPALDO_OK" != "SI" ]; then
-    echo "Deploy cancelado: primero respalda la base de datos de producción."
-    exit 1
-fi
-
 echo "=== [1/5] Build del frontend ==="
 npm run build
 
@@ -57,12 +87,25 @@ if [ -f "database/database.sqlite" ]; then
     echo "ADVERTENCIA: database/database.sqlite existe. Asegúrate de que no se incluya en el deploy."
 fi
 
+# Respaldar la base de datos antes de modificar archivos del servidor
+# El comando verifica el respaldo y aplica la retención de 30 días.
+echo "=== Respaldo de base de datos ==="
+
+# Comprobar la protección antes de modificar el servidor
+verificar_env_protegido || exit 1
+
+if ! ssh "${SSH_OPTS[@]}" "$SSH_HOST" \
+    "cd \"$REMOTE_DIR\" && php artisan crea:respaldo-base"; then
+    echo "ERROR: Falló el respaldo de la base de datos. Deploy cancelado."
+    exit 1
+fi
+
 #Se exporta con git archive
 echo "=== [3/5] Empaquetando y subiendo al servidor con git archive (sin node_modules, vendor, .env, .git) ==="
 git archive --format=tar HEAD \
     app bootstrap config database lang public resources routes \
     storage/app/public storage/framework \
-    artisan composer.json composer.lock CHANGELOG_AUDITORIA.md \
+    artisan composer.json composer.lock \
     | ssh "${SSH_OPTS[@]}" "$SSH_HOST" \
     "cd \"$REMOTE_DIR\" && tar xf -"
 
@@ -72,19 +115,8 @@ tar czf - -C public build | \
     "cd \"$REMOTE_DIR/public\" && tar xzf -"
 
 echo "=== [4/5] Instalando dependencias en servidor ==="
-ssh "${SSH_OPTS[@]}" $SSH_HOST "cd $REMOTE_DIR && composer install --optimize-autoloader --no-dev --no-interaction"
-
-#Hace primero un volcado de la base con fecha en el nombre
-#PENDIENTE: Configurar DB_NAME en el entorno remoto y verificar que mysqldump tenga acceso a MySQL mediante credenciales válidas.
-#PENDIENTE Confirmaar una ubicación privada para los respaldos.
-
-echo "=== Respaldo de base de datos ==="
-
 ssh "${SSH_OPTS[@]}" "$SSH_HOST" \
-    "cd \"$REMOTE_DIR\" && \
-    fecha=\$(date +%Y%m%d_%H%M%S) && \
-    mysqldump --single-transaction \
-    --result-file=\"backup_\${fecha}.sql\" \"\$DB_NAME\""
+    "cd \"$REMOTE_DIR\" && composer install --optimize-autoloader --no-dev --no-interaction"
 
 #Pide confirmación de migrate --force
 
@@ -103,14 +135,19 @@ echo "=== [5/5] Migraciones, cachés y build assets ==="
 # Solo en la PRIMERA instalación, a mano en el servidor:
 #   php artisan db:seed --class=ActualizarModalidadesSeeder --force
 #   php artisan db:seed --class=RoleAndPermissionSeeder --force
-ssh "${SSH_OPTS[@]}" $SSH_HOST "cd $REMOTE_DIR && \
+ssh "${SSH_OPTS[@]}" $SSH_HOST \
+    "cd \"$REMOTE_DIR\" && \
     php artisan migrate --force && \
     php artisan config:cache && \
     php artisan route:cache && \
     php artisan view:cache && \
     php artisan event:cache && \
     rm -rf build && cp -r public/build/ build/ && \
-    echo 'Deploy completado exitosamente'"
+    echo 'Operaciones remotas completadas'"
+
+# Comprobar nuevamente la protección después del despliegue
+verificar_env_protegido || exit 1
+echo "=== Deploy completado exitosamente ==="
 
 echo ""
 echo "=== POST-DEPLOY: Pasos manuales requeridos ==="

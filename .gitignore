@@ -23,6 +23,8 @@ yarn-error.log
 /.vscode
 /.zed
 /_documentos
+# Configuración privada del despliegue
+.env.deploy
 
 # Respaldos de la base: tienen datos personales
 *.sql.gz
