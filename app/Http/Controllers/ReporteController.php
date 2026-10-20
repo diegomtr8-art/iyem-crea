@@ -355,16 +355,8 @@ class ReporteController extends Controller
             'pagos_realizados' => $pagosRealizados,
         ]);
     }
-    public function recuperacion(Request $request)
+    private function calcularDatosRecuperacion(?int $modalidadId, ?string $municipio)
     {
-        $modalidadId = $request->get('modalidad_id') ? (int) $request->get('modalidad_id') : null;
-        $municipio   = $request->get('municipio');
-
-        $modalidades = \App\Models\ModalidadCrea::orderBy('nombre')->get(['id', 'nombre']);
-        $municipios  = Acreditado::select('municipio')
-            ->whereNotNull('municipio')->where('municipio', '!=', '')
-            ->distinct()->orderBy('municipio')->pluck('municipio');
-
         $resultados = [];
 
         // Generar los últimos 12 meses
@@ -373,10 +365,11 @@ class ReporteController extends Controller
             $fechaFin    = Carbon::now('America/Merida')->subMonths($i)->endOfMonth();
             $mesAnio     = $fechaInicio->translatedFormat('M Y'); // Ej: Ago 2026
 
-            // 1. Esperado: suma de capital_esperado + interes_ordinario_esperado según fecha_vencimiento
+            // 1. Esperado: excluyendo Pagado, Condonado, Reestructurada y Gracia (Punto 1)
             $queryEsperado = Amortizacion::query()
                 ->join('creditos', 'amortizaciones.credito_id', '=', 'creditos.id')
-                ->whereBetween('amortizaciones.fecha_vencimiento', [$fechaInicio->toDateString(), $fechaFin->toDateString()]);
+                ->whereBetween('amortizaciones.fecha_vencimiento', [$fechaInicio->toDateString(), $fechaFin->toDateString()])
+                ->whereNotIn('amortizaciones.estado', ['Pagado', 'Condonado', 'Reestructurada', 'Gracia']);
 
             if ($modalidadId) {
                 $queryEsperado->where('creditos.modalidad_id', $modalidadId);
@@ -389,7 +382,7 @@ class ReporteController extends Controller
                 DB::raw('SUM(COALESCE(capital_esperado, 0) + COALESCE(interes_ordinario_esperado, 0)) as total')
             )->value('total');
 
-            // 2. Cobrado: suma de pagos aplicados según fecha_pago
+            // 2. Cobrado: usando aplicado_capital + aplicado_ordinario en pagos no cancelados (Punto 2)
             $queryCobrado = Pago::query()
                 ->join('creditos', 'pagos.credito_id', '=', 'creditos.id')
                 ->where('pagos.cancelado', false)
@@ -402,11 +395,13 @@ class ReporteController extends Controller
                 $queryCobrado->whereHas('credito.acreditado', fn($q) => $q->where('municipio', $municipio));
             }
 
-            $cobrado = (float) $queryCobrado->sum('pagos.monto_recibido');
+            $cobrado = (float) $queryCobrado->select(
+                DB::raw('SUM(COALESCE(pagos.aplicado_capital, 0) + COALESCE(pagos.aplicado_ordinario, 0)) as total')
+            )->value('total');
 
             // 3. Cálculos derivados
             $porcentajeRecuperacion = $esperado > 0 ? round(($cobrado / $esperado) * 100, 2) : 0;
-            $diferencia             = round($cobrado - $esperado, 2);
+            $diferencia = round($cobrado - $esperado, 2);
 
             $resultados[] = [
                 'mes'                     => ucfirst($mesAnio),
@@ -417,6 +412,22 @@ class ReporteController extends Controller
             ];
         }
 
+        return $resultados;
+    }
+
+    public function recuperacion(Request $request)
+    {
+        $modalidadId = $request->get('modalidad_id') ? (int) $request->get('modalidad_id') : null;
+        $municipio   = $request->get('municipio');
+
+        $modalidades = \App\Models\ModalidadCrea::orderBy('nombre')->get(['id', 'nombre']);
+        $municipios  = Acreditado::select('municipio')
+            ->whereNotNull('municipio')->where('municipio', '!=', '')
+            ->distinct()->orderBy('municipio')->pluck('municipio');
+
+        // Llamada al método compartido (Punto 6)
+        $resultados = $this->calcularDatosRecuperacion($modalidadId, $municipio);
+
         return Inertia::render('Reportes/Recuperacion', [
             'reporte'     => $resultados,
             'modalidades' => $modalidades,
@@ -425,64 +436,17 @@ class ReporteController extends Controller
                 'modalidad_id' => $modalidadId,
                 'municipio'    => $municipio,
             ],
-            'regla_fecha' => 'Criterio de fechas: Para lo esperado se utiliza la fecha_vencimiento de la amortización; para lo cobrado, la fecha del pago. Un pago hecho en agosto de una cuota que vencía en junio cuenta como esperado de junio y cobrado de agosto.'
+            'regla_fecha' => 'Criterio de fechas: Para lo esperado se utiliza la fecha_vencimiento de la amortización (excluyendo estados Pagado, Condonado, Reestructurada y Gracia); para lo cobrado, la suma de capital e interés ordinario aplicado en los pagos según la fecha real del pago. Un pago hecho en agosto de una cuota que vencía en junio cuenta como esperado de junio y cobrado de agosto.'
         ]);
     }
+
     public function exportarRecuperacion(Request $request)
     {
         $modalidadId = $request->get('modalidad_id') ? (int) $request->get('modalidad_id') : null;
         $municipio   = $request->get('municipio');
 
-        $resultados = [];
-
-        // Generar los últimos 12 meses (idéntico al reporte)
-        for ($i = 11; $i >= 0; $i--) {
-            $fechaInicio = Carbon::now('America/Merida')->subMonths($i)->startOfMonth();
-            $fechaFin    = Carbon::now('America/Merida')->subMonths($i)->endOfMonth();
-            $mesAnio     = $fechaInicio->translatedFormat('M Y');
-
-            // 1. Esperado
-            $queryEsperado = Amortizacion::query()
-                ->join('creditos', 'amortizaciones.credito_id', '=', 'creditos.id')
-                ->whereBetween('amortizaciones.fecha_vencimiento', [$fechaInicio->toDateString(), $fechaFin->toDateString()]);
-
-            if ($modalidadId) {
-                $queryEsperado->where('creditos.modalidad_id', $modalidadId);
-            }
-            if ($municipio) {
-                $queryEsperado->whereHas('credito.acreditado', fn($q) => $q->where('municipio', $municipio));
-            }
-
-            $esperado = (float) $queryEsperado->select(
-                DB::raw('SUM(COALESCE(capital_esperado, 0) + COALESCE(interes_ordinario_esperado, 0)) as total')
-            )->value('total');
-
-            // 2. Cobrado
-            $queryCobrado = Pago::query()
-                ->join('creditos', 'pagos.credito_id', '=', 'creditos.id')
-                ->where('pagos.cancelado', false)
-                ->whereBetween('pagos.fecha_pago', [$fechaInicio->toDateString(), $fechaFin->toDateString()]);
-
-            if ($modalidadId) {
-                $queryCobrado->where('creditos.modalidad_id', $modalidadId);
-            }
-            if ($municipio) {
-                $queryCobrado->whereHas('credito.acreditado', fn($q) => $q->where('municipio', $municipio));
-            }
-
-            $cobrado = (float) $queryCobrado->sum('pagos.monto_recibido');
-
-            $porcentajeRecuperacion = $esperado > 0 ? round(($cobrado / $esperado) * 100, 2) : 0;
-            $diferencia             = round($cobrado - $esperado, 2);
-
-            $resultados[] = [
-                'mes'                     => ucfirst($mesAnio),
-                'esperado'                => round($esperado, 2),
-                'cobrado'                 => round($cobrado, 2),
-                'porcentaje_recuperacion' => $porcentajeRecuperacion . '%',
-                'diferencia'              => round($diferencia, 2),
-            ];
-        }
+        // Llamada al mismo método compartido (Punto 6)
+        $resultados = $this->calcularDatosRecuperacion($modalidadId, $municipio);
 
         $fileName = 'reporte_recuperacion_' . date('Y-m-d') . '.csv';
 
@@ -508,7 +472,7 @@ class ReporteController extends Controller
                     $row['mes'],
                     $row['esperado'],
                     $row['cobrado'],
-                    $row['porcentaje_recuperacion'],
+                    $row['porcentaje_recuperacion'] . '%',
                     $row['diferencia']
                 ]);
             }

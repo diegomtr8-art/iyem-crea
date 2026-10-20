@@ -4,7 +4,7 @@ import NavMain from '@/components/NavMain.vue';
 import NavUser from '@/components/NavUser.vue';
 import { Sidebar, SidebarContent, SidebarFooter, SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem } from '@/components/ui/sidebar';
 import { Link, usePage } from '@inertiajs/vue3';
-import { LayoutGrid, ShieldCheck, Users, ClipboardList, BarChart2, FileText, Calculator, Inbox, TrendingDown, ScrollText, ClipboardCheck, Clock, Mail } from 'lucide-vue-next';
+import { LayoutGrid, ShieldCheck, Users, ClipboardList, BarChart2, FileText, Calculator, Inbox, TrendingDown, TrendingUp, ScrollText, ClipboardCheck, Clock, Mail } from 'lucide-vue-next';
 import AppLogo from './AppLogo.vue';
 import { computed, watch, onMounted, ref } from 'vue';
 
@@ -71,7 +71,9 @@ const mainNavItems = computed(() => {
             group: 'Créditos',
         });
     }
-    if (can('ver.acreditados') && route().has('comprobaciones.index')) {
+    // AHORA (Corregido)
+if (can('ver.acreditados')) {
+    try {
         items.push({
             title: 'Comprobación de Uso',
             url: route('comprobaciones.index'),
@@ -79,7 +81,9 @@ const mainNavItems = computed(() => {
             group: 'Créditos',
             badge: page.props.comprobaciones_pendientes as number | undefined,
         });
+    } catch {
     }
+}
 
     // Sección: Operación
     if (can('ver.acreditados')) {
@@ -92,11 +96,17 @@ const mainNavItems = computed(() => {
     }
 
     // Sección: Reportes
-    if (can('ver.reportes')) {
+if (can('ver.reportes')) {
         items.push({
             title: 'Reporte Cartera',
             url: route('reportes.cartera'),
             icon: BarChart2,
+            group: 'Reportes',
+        });
+        items.push({
+            title: 'Reporte Recuperación',
+            url: route('reportes.recuperacion'),
+            icon: TrendingUp,
             group: 'Reportes',
         });
         items.push({
