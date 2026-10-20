@@ -332,4 +332,7 @@ git push origin feature/gestion-solicitudes
 **Repositorio:** https://github.com/diegomtr8-art/iyem-crea
 
 ## Despliegue
-Para limpiar la caché tras desplegar: php artisan optimize:clear y reiniciar PHP-FPM
+
+Para limpiar la caché tras desplegar, ejecutar `php artisan optimize:clear` y reiniciar PHP-FPM cuando corresponda y se tenga acceso autorizado.
+
+Para conocer los requisitos del servidor, la configuración del entorno, el procedimiento de despliegue y las verificaciones de seguridad, consulta la [guía de despliegue](docs/DESPLIEGUE.md).
