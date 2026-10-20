@@ -5,7 +5,6 @@ namespace App\Http\Controllers\Portal;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -39,24 +38,16 @@ class PerfilController extends Controller
 
         $datos = $request->validate([
             'telefono' => 'required|digits:10',
-            'correo'   => 'required|email:rfc|max:255',
         ], [
             'telefono.required' => 'El teléfono celular es obligatorio.',
             'telefono.digits'   => 'El teléfono celular debe tener 10 dígitos.',
-            'correo.required'   => 'El correo electrónico es obligatorio.',
         ]);
 
-        DB::transaction(function () use ($solicitud, $datos) {
-            $solicitud->update([
-                'telefono' => $datos['telefono'],
-                'correo'   => $datos['correo'],
-            ]);
-
-            // Los recordatorios de pago y cobranza leen el correo del acreditado.
-            $solicitud->acreditado?->update(['correo' => $datos['correo']]);
-        });
+        // El correo no se edita desde el portal: los recordatorios de pago y cobranza
+        // lo leen del acreditado y no debe poder desviarse con una sesión ajena.
+        $solicitud->update(['telefono' => $datos['telefono']]);
 
         return redirect()->route('portal.perfil')
-            ->with('success', 'Tus datos de contacto se guardaron correctamente.');
+            ->with('success', 'Tu teléfono se guardó correctamente.');
     }
 }

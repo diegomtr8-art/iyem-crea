@@ -13,7 +13,6 @@ const props = defineProps<{
 
 const form = useForm({
     telefono: props.perfil.telefono ?? '',
-    correo: props.perfil.correo ?? '',
 });
 
 const guardar = () => form.patch(route('portal.perfil.update'), { preserveScroll: true });
@@ -46,13 +45,13 @@ const guardar = () => form.patch(route('portal.perfil.update'), { preserveScroll
                 </div>
 
                 <div>
-                    <label for="correo" :class="lbl">Correo electrónico *</label>
+                    <label for="correo" :class="lbl">Correo electrónico</label>
                     <div class="relative">
                         <Mail size="16" class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                        <input id="correo" v-model="form.correo" type="email" inputmode="email" autocomplete="email"
-                            :class="[inp, 'pl-10', form.errors.correo ? 'border-red-400' : '']" />
+                        <input id="correo" :value="perfil.correo ?? ''" type="email" readonly
+                            :class="[inp, 'pl-10 cursor-not-allowed opacity-70']" />
                     </div>
-                    <p v-if="form.errors.correo" class="text-xs text-red-500 mt-1">{{ form.errors.correo }}</p>
+                    <p class="text-xs text-slate-500 dark:text-zinc-400 mt-1">Para cambiar tu correo, escríbenos desde Contacto.</p>
                 </div>
 
                 <p class="flex items-start gap-2 text-xs text-slate-500 dark:text-zinc-400">
