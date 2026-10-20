@@ -35,9 +35,8 @@ Verifiqué los siete archivos, uno por uno. La mecánica que describe es correct
 | El registro de pagos | [`PagoController.php:244`](../../app/Http/Controllers/PagoController.php#L244) | Solo `interes_moratorio_generado` |
 | La liquidación y condonación total | [`CreditoController.php:48`](../../app/Http/Controllers/CreditoController.php#L48) | Solo `interes_moratorio_generado`, lo pone en 0 |
 | La reversa de un pago | [`PagoController.php:490-491`](../../app/Http/Controllers/PagoController.php#L490) | Las dos, restaurando un snapshot |
-| El motor de crédito | [`CreditService.php:97`](../../app/Services/CreditService.php#L97) | Solo `interes_moratorio_generado` |
 
-Se señala al motor de crédito como el culpable cuando no lo es: `CreditService::actualizarMoraDeCuota()` solo lo llaman los tests (`tests/Unit/MoraTest.php`). Ningún controlador, comando ni ruta lo usa. Eso sí, calcula la mora sobre `pago_restante` mientras que el cron y los pagos la calculan sobre `saldo_insoluto - capital_pagado`, así que el día que alguien lo conecte va a dar montos distintos de los demás.
+El cálculo real de la mora vive en el cron `crea:update-moratorio` ([`UpdateMoratorio.php`](../../app/Console/Commands/UpdateMoratorio.php)) y en [`PagoController.php`](../../app/Http/Controllers/PagoController.php) al aplicar un pago; ambos usan `saldo_insoluto - capital_pagado` como base. El motor de crédito (`CreditService`) ya no contiene lógica de mora.
 
 El que sí desincroniza, y que no aparecía en la lista, es `PagoController`. Y no lo hace de vez en cuando: pasa en cada pago que entra tarde.
 

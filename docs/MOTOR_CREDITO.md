@@ -291,7 +291,7 @@ gracia.
 ### 3.4 Dónde se calcula
 
 - **El cron diario** — `app/Console/Commands/UpdateMoratorio.php`, programado en
-  `routes/console.php:12`:
+  `routes/console.php:14`:
 
   ```php
   Schedule::command('crea:update-moratorio')->dailyAt('08:00')->timezone('America/Merida');
@@ -333,11 +333,11 @@ importe suficientemente grande.
 ### 4.2 La del portal — `Portal/EstadoCuentaController::liquidacionAnticipada()`
 
 Es una **cotización informativa** que el ciudadano consulta desde el portal
-(`app/Http/Controllers/Portal/EstadoCuentaController.php`, líneas 58-94). Devuelve
+(`app/Http/Controllers/Portal/EstadoCuentaController.php`, líneas 86-122). Devuelve
 un JSON con el monto estimado; **no aplica ningún pago**.
 
 - Para las cuotas que **aún no vencen**, **proyecta el interés** que generarán
-  en los días que faltan hasta su vencimiento (líneas 73-80):
+  en los días que faltan hasta su vencimiento (líneas 101-108):
 
   ```php
   $tasaDiaria  = ((float)$credito->tasa_interes_ordinario / 100) / config('credito.dias_anio_comercial');
@@ -345,7 +345,7 @@ un JSON con el monto estimado; **no aplica ningún pago**.
   ```
 
 - Para las cuotas **ya vencidas**, suma el interés pendiente más la mora
-  generada (líneas 82-83).
+  generada (líneas 109-111).
 - **No valida topes, no bloquea filas** y usa la hora del servidor; no está
   pensada para cobrar, sino para que el ciudadano sepa cuánto costaría.
 
@@ -412,11 +412,11 @@ flowchart LR
 | Abonos a capital | `app/Http/Controllers/PagoController.php` | `aplicarAbonoCapital()` (336-558) |
 | Mora al cobrar | `app/Http/Controllers/PagoController.php` | `moraFilaPara()` (748-758) |
 | Mora por cron | `app/Console/Commands/UpdateMoratorio.php` | comando `crea:update-moratorio` |
-| Programación del cron | `routes/console.php` | línea 12 (08:00, América/Merida) |
+| Programación del cron | `routes/console.php` | línea 14 (08:00, América/Merida) |
 | Parámetros de mora | `config/credito.php` | 360 días, 5 de gracia |
 | Tasa moratoria efectiva | `app/Models/Credito.php` | `tasaMoratoriaEfectiva()` (95-98) |
 | Liquidación (operativa) | `app/Http/Controllers/PagoController.php` | `store()` (línea 91 y 115-123, 201-206) |
-| Liquidación (portal) | `app/Http/Controllers/Portal/EstadoCuentaController.php` | `liquidacionAnticipada()` (58-94) |
+| Liquidación (portal) | `app/Http/Controllers/Portal/EstadoCuentaController.php` | `liquidacionAnticipada()` (86-122) |
 
 > **Nota sobre las líneas.** El ticket original de este documento citaba números
 > de línea de una versión anterior del código (por ejemplo, la cascada de pago
