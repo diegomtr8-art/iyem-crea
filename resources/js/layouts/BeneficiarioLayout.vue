@@ -6,7 +6,7 @@ import axios from 'axios';
 import {
     Home, FolderOpen, FileText, BadgeCheck,
     Bell, LogOut, ChevronDown, Menu, X, Sun, Moon, User,
-    MessageSquare, CheckCircle2, Info, AlertTriangle, XCircle, Check
+    MessageSquare, CheckCircle2, Info, AlertTriangle, XCircle, Check, HelpCircle
 } from 'lucide-vue-next';
 
 const page = usePage<any>();
@@ -39,6 +39,7 @@ const navItems = computed(() => [
     { label: 'Solicitar Crédito', href: route('portal.solicitud.index'), icon: FileText,   always: true },
     { label: 'Mi Crédito',        href: route('portal.credito'),         icon: BadgeCheck, always: false, show: tieneCredito.value },
     { label: 'Contacto',          href: route('portal.contacto'),        icon: MessageSquare, always: true },
+    { label: 'Ayuda',             href: route('portal.ayuda'),           icon: HelpCircle, always: true },
 ]);
 
 const isActive = (href: string) => page.url.startsWith(new URL(href).pathname);

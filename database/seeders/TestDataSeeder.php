@@ -23,6 +23,10 @@ class TestDataSeeder extends Seeder
 {
     public function run(): void
     {
+        if (app()->environment('production')) {
+            throw new \RuntimeException('Este seeder carga datos de PRUEBA: no se puede correr en producción.');
+        }
+
         // PDF de ejemplo en la ruta que guardan los documentos de prueba
         // (disco local = storage/app/private), para que el ícono ↗ del expediente abra.
         Storage::disk('local')->put(

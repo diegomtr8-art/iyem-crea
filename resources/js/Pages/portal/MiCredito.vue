@@ -5,7 +5,7 @@ import { ref, computed } from 'vue';
 import {
     BadgeCheck, CalendarDays, CreditCard, DollarSign, TrendingUp,
     FileText, Clock, CheckCircle2, AlertCircle, Minus,
-    Download, Calculator, X, ClipboardCheck, Plus, Trash2, ExternalLink
+    Download, Calculator, X, ClipboardCheck, Plus, Trash2, ExternalLink, FileCheck2
 } from 'lucide-vue-next';
 import { router, useForm } from '@inertiajs/vue3';
 import { parseDate } from '@/utils/dateUtils';
@@ -42,6 +42,7 @@ const props = defineProps<{
         }>;
         proxima_cuota: null | {
             numero: number;
+            cuotas: number;
             fecha_vencimiento: string;
             capital: number;
             interes: number;
@@ -50,6 +51,15 @@ const props = defineProps<{
             dias_mora: number;
             vencida: boolean;
         };
+        cuotas_vencidas: Array<{
+            numero: number;
+            fecha_vencimiento: string;
+            capital: number;
+            interes: number;
+            mora: number;
+            total: number;
+            dias_mora: number;
+        }>;
     };
     datos_pago: {
         cie_bbva: string;
@@ -212,7 +222,11 @@ const enviarComprobacion = () => {
                 <h3 class="font-black text-lg mb-3 flex items-center gap-2 text-slate-900 dark:text-white">
                     <AlertCircle v-if="credito.proxima_cuota.vencida" size="20" class="text-red-600" />
                     <CalendarDays v-else size="20" class="text-emerald-600" />
-                    {{ credito.proxima_cuota.vencida ? 'Cuota vencida' : 'Próxima cuota' }} #{{ credito.proxima_cuota.numero }}
+                    {{ credito.proxima_cuota.vencida
+                        ? ((credito.proxima_cuota.cuotas ?? 1) > 1
+                            ? `Cuotas vencidas (${credito.proxima_cuota.cuotas})`
+                            : 'Cuota vencida')
+                        : 'Próxima cuota' }}<template v-if="(credito.proxima_cuota.cuotas ?? 1) <= 1"> #{{ credito.proxima_cuota.numero }}</template>
                 </h3>
                 <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
                     <div>
@@ -220,11 +234,11 @@ const enviarComprobacion = () => {
                         <p class="font-bold text-slate-900 dark:text-white">{{ credito.proxima_cuota.fecha_vencimiento }}</p>
                     </div>
                     <div>
-                        <p class="text-xs text-slate-500 dark:text-zinc-400">Capital</p>
+                        <p class="text-xs text-slate-500 dark:text-zinc-400">{{ (credito.proxima_cuota.cuotas ?? 1) > 1 ? 'Capital vencido' : 'Capital' }}</p>
                         <p class="font-bold text-slate-900 dark:text-white">${{ fmt(credito.proxima_cuota.capital) }}</p>
                     </div>
                     <div>
-                        <p class="text-xs text-slate-500 dark:text-zinc-400">Interés</p>
+                        <p class="text-xs text-slate-500 dark:text-zinc-400">{{ (credito.proxima_cuota.cuotas ?? 1) > 1 ? 'Interés vencido' : 'Interés' }}</p>
                         <p class="font-bold text-slate-900 dark:text-white">${{ fmt(credito.proxima_cuota.interes) }}</p>
                     </div>
                     <div v-if="credito.proxima_cuota.mora > 0">
@@ -240,6 +254,39 @@ const enviarComprobacion = () => {
                         Total a pagar: ${{ fmt(credito.proxima_cuota.total) }}
                     </span>
                 </div>
+
+                <!-- Desglose por cuota vencida (P-07): se muestra cuando hay más de una -->
+                <div v-if="credito.cuotas_vencidas.length > 1" class="mt-4 pt-3 border-t border-slate-200/60 dark:border-zinc-700/60">
+                    <p class="text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-zinc-500 mb-2">Desglose de cuotas vencidas</p>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left border-collapse text-sm">
+                            <thead>
+                                <tr class="text-slate-400 dark:text-zinc-500 text-[10px] uppercase tracking-widest font-bold">
+                                    <th class="py-2 pr-3">#</th>
+                                    <th class="py-2 pr-3">Vencimiento</th>
+                                    <th class="py-2 pr-3 text-right">Capital</th>
+                                    <th class="py-2 pr-3 text-right">Interés</th>
+                                    <th class="py-2 pr-3 text-right">Mora</th>
+                                    <th class="py-2 text-right">Total</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-100 dark:divide-zinc-800">
+                                <tr v-for="c in credito.cuotas_vencidas" :key="c.numero">
+                                    <td class="py-2 pr-3 font-bold text-slate-500 dark:text-zinc-500">#{{ c.numero }}</td>
+                                    <td class="py-2 pr-3">{{ c.fecha_vencimiento }}</td>
+                                    <td class="py-2 pr-3 text-right">${{ fmt(c.capital) }}</td>
+                                    <td class="py-2 pr-3 text-right">${{ fmt(c.interes) }}</td>
+                                    <td class="py-2 pr-3 text-right">
+                                        <span v-if="c.mora > 0" class="text-red-600">${{ fmt(c.mora) }}</span>
+                                        <span v-else class="text-slate-300 dark:text-zinc-600">—</span>
+                                    </td>
+                                    <td class="py-2 text-right font-bold">${{ fmt(c.total) }}</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
                 <p v-if="credito.proxima_cuota.vencida" class="text-xs text-red-500 mt-2">
                     Contáctanos para regularizar tu crédito<template v-if="$page.props.contacto.telefono">: {{ $page.props.contacto.telefono }}</template>.
                 </p>
@@ -424,7 +471,7 @@ const enviarComprobacion = () => {
             </div>
 
             <!-- Acciones del Portal -->
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <a :href="route('portal.credito.estado-cuenta.pdf')" target="_blank"
                     class="flex items-center gap-3 bg-white dark:bg-zinc-900 border border-slate-100 dark:border-zinc-800 rounded-2xl p-5 shadow-sm hover:border-red-300 dark:hover:border-red-800 transition-all group">
                     <div class="w-10 h-10 rounded-xl bg-red-50 dark:bg-red-900/30 flex items-center justify-center group-hover:bg-red-100 transition-colors">
@@ -433,6 +480,17 @@ const enviarComprobacion = () => {
                     <div>
                         <p class="font-bold text-slate-900 dark:text-white text-sm">Estado de Cuenta</p>
                         <p class="text-xs text-slate-500 dark:text-zinc-400">Descargar PDF con historial</p>
+                    </div>
+                </a>
+
+                <a :href="route('portal.credito.constancia')" target="_blank"
+                    class="flex items-center gap-3 bg-white dark:bg-zinc-900 border border-slate-100 dark:border-zinc-800 rounded-2xl p-5 shadow-sm hover:border-emerald-300 dark:hover:border-emerald-800 transition-all group">
+                    <div class="w-10 h-10 rounded-xl bg-emerald-50 dark:bg-emerald-900/30 flex items-center justify-center group-hover:bg-emerald-100 transition-colors">
+                        <FileCheck2 size="20" class="text-emerald-700" />
+                    </div>
+                    <div>
+                        <p class="font-bold text-slate-900 dark:text-white text-sm">Constancia de Crédito</p>
+                        <p class="text-xs text-slate-500 dark:text-zinc-400">Descargar carta de crédito activo</p>
                     </div>
                 </a>
 
