@@ -358,15 +358,23 @@ class ReporteController extends Controller
 
     public function colocacionMunicipio(Request $request)
     {
-        // 1. Obtener la colocación agrupada por municipio
+        // 1. Obtener la colocación y métricas agrupadas por municipio usando subconsultas seguras
         $colocacion = \App\Models\Acreditado::query()
             ->join('creditos', 'acreditados.id', '=', 'creditos.acreditado_id')
+            ->leftJoin('pagos', function($join) {
+                $join->on('creditos.id', '=', 'pagos.credito_id')
+                     ->where('pagos.cancelado', '=', 0);
+            })
+            ->leftJoin('amortizaciones', function($join) {
+                $join->on('creditos.id', '=', 'amortizaciones.credito_id')
+                     ->where('amortizaciones.estado', '=', 'Vencido');
+            })
             ->select(
                 'acreditados.municipio',
-                \DB::raw('COUNT(creditos.id) as total_creditos'),
+                \DB::raw('COUNT(DISTINCT creditos.id) as total_creditos'),
                 \DB::raw('SUM(creditos.monto_otorgado) as monto_colocado'),
-                \DB::raw('0 as recuperado'), 
-                \DB::raw('0 as vencido'), 
+                \DB::raw('SUM(COALESCE(pagos.aplicado_capital, 0) + COALESCE(pagos.aplicado_ordinario, 0) + COALESCE(pagos.aplicado_mora, 0)) as recuperado'), 
+                \DB::raw('SUM(COALESCE(amortizaciones.pago_restante, 0)) as vencido'), 
                 \DB::raw('COUNT(DISTINCT acreditados.id) as beneficiarios')
             )
             ->groupBy('acreditados.municipio')
@@ -379,9 +387,20 @@ class ReporteController extends Controller
                 return $item;
             });
 
-        // 2. Lista de referencia de los 106 municipios de Yucatán
+        // 2. Catálogo oficial corregido de los 106 municipios de Yucatán (sin Quintana Roo y con nombres oficiales)
         $municipiosYucatan = [
-            'Abalá', 'Acanceh', 'Akil', 'Baca', 'Bokobá', 'Buctzotz', 'Cacalchén', 'Calotmul', 'Cansahcab', 'Cantamayec', 'Celestún', 'Cenotillo', 'Conkal', 'Cuncunul', 'Cuzamá', 'Chacsinkin', 'Chankom', 'Chapab', 'Chemax', 'Chichimilá', 'Chikindzonot', 'Chocholá', 'Chumayel', 'Dzidzantún', 'Dzilam de Bravo', 'Dzilam González', 'Dzitás', 'Dzoncauich', 'Espita', 'Dzemul', 'Felipe Carrillo Puerto (Dzidzantún)', 'Kanasín', 'Kinchil', 'Kopomá', 'Mama', 'Maní', 'Maxcanú', 'Mayapán', 'Mérida', 'Mocochá', 'Motul', 'Muna', 'Muxupip', 'Opachén', 'Oxkutzcab', 'Panabá', 'Peto', 'Progreso', 'Quintana Roo', 'Río Lagartos', 'Sacalum', 'Samahil', 'Sanahcat', 'San Felipe', 'Santa Elena', 'Seyé', 'Sinanché', 'Sotuta', 'Sucilá', 'Sudzal', 'Suma', 'Tahdziú', 'Tahmek', 'Teabo', 'Tecoh', 'Tekal de Venegas', 'Tekantó', 'Tekax', 'Tekit', 'Tekom', 'Telchac Pueblo', 'Telchac Puerto', 'Temax', 'Temozón', 'Tepakán', 'Tetiz', 'Teya', 'Ticul', 'Timucuy', 'Tinum', 'Tixcacalcupul', 'Tixkokob', 'Tixmehuac', 'Tixpéhual', 'Tizimín', 'Tunkás', 'Tzucacab', 'Uayma', 'Ucú', 'Umán', 'Valladolid', 'Xocchel', 'Yaxcabá', 'Yaxkukul', 'Yobaín'
+            'Abalá', 'Acancéh', 'Akil', 'Baca', 'Bokobá', 'Buctzotz', 'Cacalchén', 'Calotmul', 'Cansahcab', 'Cantamayec', 
+            'Celestún', 'Cenotillo', 'Chacsinkín', 'Chankom', 'Chapab', 'Chemax', 'Chichimilá', 'Chikindzonot', 'Chicxulub Pueblo', 
+            'Chocholá', 'Chumayel', 'Conkal', 'Cuncunul', 'Cuzamá', 'Dzan', 'Dzemul', 'Dzidzantún', 'Dzilam de Bravo', 
+            'Dzilam González', 'Dzitás', 'Dzoncauich', 'Espita', 'Halachó', 'Hocabá', 'Hoctún', 'Homún', 'Huhí', 'Hunucmá', 
+            'Ixil', 'Izamal', 'Kanasín', 'Kantunil', 'Kaua', 'Kinchil', 'Kopomá', 'Mama', 'Maní', 'Maxcanú', 'Mayapán', 
+            'Mérida', 'Mocochá', 'Motul', 'Muna', 'Muxupip', 'Opichén', 'Oxkutzcab', 'Panabá', 'Peto', 'Progreso', 
+            'Quintana Roo', 'Río Lagartos', 'Sacalum', 'Samahil', 'Sanahcat', 'San Felipe', 'Santa Elena', 'Seyé', 
+            'Sinanché', 'Sotuta', 'Sucilá', 'Sudzal', 'Suma de Hidalgo', 'Tahdziú', 'Tahmek', 'Teabo', 'Tecóh', 
+            'Tekal de Venegas', 'Tekantó', 'Tekax', 'Tekit', 'Tekom', 'Telchac Pueblo', 'Telchac Puerto', 'Temax', 
+            'Temozón', 'Tepakán', 'Tetiz', 'Teya', 'Ticul', 'Timucuy', 'Tinum', 'Tixcacalcupul', 'Tixkokob', 'Tixméhuac', 
+            'Tixpéhual', 'Tizimín', 'Tunkás', 'Tzucacab', 'Uayma', 'Ucú', 'Umán', 'Valladolid', 'Xocchel', 'Yaxcabá', 
+            'Yaxkukul', 'Yobaín'
         ];
 
         // 3. Identificar municipios sin colocación
@@ -395,17 +414,26 @@ class ReporteController extends Controller
             'totalGeneralMonto' => $colocacion->sum('monto_colocado'),
         ]);
     }
+
     public function exportarColocacionMunicipio(Request $request)
     {
-        // 1. Obtener la misma consulta de colocación agrupada por municipio
+        // 1. Obtener la misma consulta agrupada con métricas reales
         $colocacion = \App\Models\Acreditado::query()
             ->join('creditos', 'acreditados.id', '=', 'creditos.acreditado_id')
+            ->leftJoin('pagos', function($join) {
+                $join->on('creditos.id', '=', 'pagos.credito_id')
+                     ->where('pagos.cancelado', '=', 0);
+            })
+            ->leftJoin('amortizaciones', function($join) {
+                $join->on('creditos.id', '=', 'amortizaciones.credito_id')
+                     ->where('amortizaciones.estado', '=', 'Vencido');
+            })
             ->select(
                 'acreditados.municipio',
-                \DB::raw('COUNT(creditos.id) as total_creditos'),
+                \DB::raw('COUNT(DISTINCT creditos.id) as total_creditos'),
                 \DB::raw('SUM(creditos.monto_otorgado) as monto_colocado'),
-                \DB::raw('0 as recuperado'), 
-                \DB::raw('0 as vencido'), 
+                \DB::raw('SUM(COALESCE(pagos.aplicado_capital, 0) + COALESCE(pagos.aplicado_ordinario, 0) + COALESCE(pagos.aplicado_mora, 0)) as recuperado'), 
+                \DB::raw('SUM(COALESCE(amortizaciones.pago_restante, 0)) as vencido'), 
                 \DB::raw('COUNT(DISTINCT acreditados.id) as beneficiarios')
             )
             ->groupBy('acreditados.municipio')
@@ -437,7 +465,7 @@ class ReporteController extends Controller
             // Añadir BOM para que Excel reconozca los acentos (UTF-8)
             fprintf($file, chr(0xEF).chr(0xBB).chr(0xBF));
 
-            // Encabezados de las columnas (igual que en tu tabla)
+            // Encabezados de las columnas
             fputcsv($file, ['Municipio', 'Créditos', 'Monto Colocado', 'Recuperado', 'Vencido', '% Morosidad', 'Beneficiarios']);
 
             // Filas de datos

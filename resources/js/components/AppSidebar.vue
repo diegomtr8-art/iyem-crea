@@ -4,7 +4,7 @@ import NavMain from '@/components/NavMain.vue';
 import NavUser from '@/components/NavUser.vue';
 import { Sidebar, SidebarContent, SidebarFooter, SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem } from '@/components/ui/sidebar';
 import { Link, usePage } from '@inertiajs/vue3';
-import { LayoutGrid, ShieldCheck, Users, ClipboardList, BarChart2, FileText, Calculator, Inbox, TrendingDown, ScrollText, ClipboardCheck } from 'lucide-vue-next';
+import { LayoutGrid, ShieldCheck, Users, ClipboardList, BarChart2, FileText, Calculator, TrendingDown, ScrollText, ClipboardCheck, MapPin } from 'lucide-vue-next';
 import AppLogo from './AppLogo.vue';
 import { computed, watch, onMounted, ref } from 'vue';
 
@@ -52,17 +52,7 @@ const mainNavItems = computed(() => {
         { title: 'Dashboard', url: '/dashboard', icon: LayoutGrid, group: 'Inicio' },
     ];
 
-    // Sección: Solicitudes ciudadanas
-    if (can('ver.acreditados')) {
-        items.push({
-            title: 'Solicitudes CREA',
-            url: route('solicitudes.index'),
-            icon: Inbox,
-            group: 'Solicitudes',
-        });
-    }
-
-    // Sección: Créditos
+        // Sección: Créditos
     if (can('ver.acreditados')) {
         items.push({
             title: 'Cartera de Créditos',
@@ -71,13 +61,27 @@ const mainNavItems = computed(() => {
             group: 'Créditos',
         });
     }
-    if (can('ver.acreditados') && route().has('comprobaciones.index')) {
+    // AHORA (Corregido)
+if (can('ver.acreditados')) {
+    try {
         items.push({
             title: 'Comprobación de Uso',
             url: route('comprobaciones.index'),
             icon: ClipboardCheck,
             group: 'Créditos',
             badge: page.props.comprobaciones_pendientes as number | undefined,
+        });
+    } catch {
+    }
+}
+
+    // Sección: Operación
+    if (can('ver.acreditados')) {
+        items.push({
+            title: 'Cobranza',
+            url: route('cobranza.index'),
+            icon: TrendingDown,
+            group: 'Operación',
         });
     }
 
@@ -97,6 +101,12 @@ const mainNavItems = computed(() => {
             title: 'Reporte Cartera',
             url: route('reportes.cartera'),
             icon: BarChart2,
+            group: 'Reportes',
+        });
+        items.push({
+            title: 'Colocación por Municipio',
+            url: route('reportes.colocacion-municipio'), // <-- Usar guion medio '-' en lugar de '_'
+            icon: MapPin,
             group: 'Reportes',
         });
         items.push({
