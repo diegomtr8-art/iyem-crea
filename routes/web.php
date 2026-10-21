@@ -192,7 +192,8 @@ Route::middleware(['auth', 'verified', 'operativo'])->group(function () {
     Route::get('admin/respaldo-excel', [RespaldoExcelController::class, 'descargar'])->middleware('role:Administrador')->name('respaldo-excel.descargar');
 
     // AUDITORÍA
-    Route::get('auditoria', [AuditoriaController::class, 'index'])->name('auditoria.index');
+    // La bitácora tiene valores antes y después de créditos y pagos: solo Administrador (auditoria.ver en RoleAndPermissionSeeder)
+    Route::get('auditoria', [AuditoriaController::class, 'index'])->middleware('role:Administrador')->name('auditoria.index');
     Route::get('admin/tareas-programadas', [BitacoraTareasController::class, 'index'])->middleware('role:Administrador')->name('bitacora-tareas.index');
     Route::get('admin/correos-fallidos', [CorreosFallidosController::class, 'index'])->middleware('role:Administrador')->name('correos-fallidos.index');
     Route::post('admin/correos-fallidos/reintentar-todos', [CorreosFallidosController::class, 'reintentarTodos'])->middleware('role:Administrador')->name('correos-fallidos.reintentar-todos');
