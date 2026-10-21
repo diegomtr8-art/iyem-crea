@@ -1,68 +1,57 @@
 <script setup lang="ts">
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import AppLayout from '@/layouts/app/AppSidebarLayout.vue';
-import { Head, router, useForm } from '@inertiajs/vue3';
+import { Head, router } from '@inertiajs/vue3';
+import { ref, computed } from 'vue';
 import {
-    AlertCircle,
-    ArrowLeft,
-    Award,
-    Banknote,
-    Clock,
-    DollarSign,
-    FileCheck,
-    FileText,
-    FileX,
-    FolderOpen,
-    MapPin,
-    MoreVertical,
-    Pencil,
-    Printer,
-    Receipt,
-    RefreshCw,
-    RotateCcw,
-    Scale,
-    Timer,
+    MapPin, CreditCard, FileText, Printer,
+    ArrowLeft, DollarSign, Scale,
+    AlertCircle, Timer, Clock,
+    XOctagon, Award, FolderOpen, RefreshCw, FileCheck,
+    Banknote, Receipt, RotateCcw, FileX, MoreVertical, Pencil
 } from 'lucide-vue-next';
-import { computed, ref } from 'vue';
+import { useForm } from '@inertiajs/vue3';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger, DropdownMenuItem, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 
-const props = defineProps<{
-    acreditado?: any;
-    credito?: any;
-    amortizaciones?: any[];
-}>();
+const props = defineProps({
+    acreditado: Object,
+    credito: Object,
+    amortizaciones: Array
+});
 
 // --- ESTADO LOCAL ---
-const filaSeleccionada = ref<any>(null);
+const filaSeleccionada = ref(null);
 
 // --- LÓGICA DE SELECCIÓN ---
 // Solo se pueden seleccionar cuotas no pagadas
-const seleccionarFila = (fila: any) => {
+const seleccionarFila = (fila) => {
     if (fila.estado === 'Pagado' || fila.estado === 'Condonado') return;
     filaSeleccionada.value = filaSeleccionada.value?.id === fila.id ? null : fila;
 };
 
 // --- FORMATEADORES ---
-const formatCurrency = (value: any) => {
+const formatCurrency = (value) => {
     const num = parseFloat(value) || 0;
     return new Intl.NumberFormat('es-MX', {
         style: 'currency',
         currency: 'MXN',
-        minimumFractionDigits: 2,
+        minimumFractionDigits: 2
     }).format(num);
 };
-
-const irAPagar = (id: any) => {
+const irAPagar = (id) => {
     router.get(route('pagos.create', id));
 };
 
-const formatDate = (dateStr: any) => {
+const formatDate = (dateStr) => {
     if (!dateStr) return '—';
-    return dateStr;
+    //debido a que desde el modelo se define el formato d/m/Y, no hace falta reformatearlo
+    /*const [y, m, d] = dateStr.split('-');
+    return `${d}/${m}/${y}`;*/
+    return dateStr; 
 };
 
-const imprimirExpediente = () => typeof window !== 'undefined' && window.print();
+const imprimirExpediente = () => window.print();
 
-// --- AVATAR CON INICIALES ---
+// --- AVATAR CON INICIALES (mismo estilo que Acreditados/Index) ---
 const avatarPalette = [
     { bg: 'bg-red-100 dark:bg-red-900/30', text: 'text-red-700 dark:text-red-400' },
     { bg: 'bg-amber-100 dark:bg-amber-900/30', text: 'text-amber-700 dark:text-amber-400' },
@@ -71,18 +60,15 @@ const avatarPalette = [
     { bg: 'bg-purple-100 dark:bg-purple-900/30', text: 'text-purple-700 dark:text-purple-400' },
     { bg: 'bg-teal-100 dark:bg-teal-900/30', text: 'text-teal-700 dark:text-teal-400' },
 ];
-
-const iniciales = (nombre?: string) => (nombre ?? '')
+const iniciales = (nombre) => (nombre ?? '')
     .trim().split(/\s+/).slice(0, 2).map(p => p[0]?.toUpperCase() ?? '').join('') || '—';
-
-const avatarColor = (nombre?: string) => {
+const avatarColor = (nombre) => {
     const idx = (nombre ?? '').split('').reduce((s, c) => s + c.charCodeAt(0), 0) % avatarPalette.length;
     return avatarPalette[idx];
 };
-
-const estatusBadgeCls = (e?: string) => {
-    if (e === 'Activo') return 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400';
-    if (e === 'Moroso') return 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400';
+const estatusBadgeCls = (e) => {
+    if (e === 'Activo')    return 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400';
+    if (e === 'Moroso')    return 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400';
     if (e === 'Liquidado') return 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400';
     return 'bg-zinc-100 text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400';
 };
@@ -93,7 +79,6 @@ const formCondonar = useForm({
     motivo: '',
     tipo_causa: 'Fallecimiento',
 });
-
 const confirmarCondonar = () => {
     formCondonar.post(route('creditos.condonar', props.credito?.id), {
         onSuccess: () => { modalCondonar.value = false; },
@@ -101,40 +86,46 @@ const confirmarCondonar = () => {
 };
 
 // --- CLASE DE FILA según estado ---
-const clasesFila = (fila: any) => {
-    if (fila.estado === 'Condonado') return 'opacity-40 cursor-not-allowed bg-purple-50/30 dark:bg-purple-900/10';
-    if (fila.estado === 'Pagado') return 'opacity-50 cursor-not-allowed bg-green-50/30 dark:bg-green-900/10';
-    if (fila.mora_al_dia > 0) return 'bg-red-50/60 dark:bg-red-900/20 cursor-pointer hover:bg-red-50';
-    if (fila.en_periodo_gracia) return 'bg-yellow-50/60 dark:bg-yellow-900/10 cursor-pointer hover:bg-yellow-50';
+// Pagado: opaco verde
+// En mora real (>5 días): fondo rojo suave
+// En periodo de gracia (1-5 días): fondo amarillo suave
+// Pendiente futuro: normal
+const clasesFila = (fila) => {
+    if (fila.estado === 'Condonado')   return 'opacity-40 cursor-not-allowed bg-purple-50/30 dark:bg-purple-900/10';
+    if (fila.estado === 'Pagado')      return 'opacity-50 cursor-not-allowed bg-green-50/30 dark:bg-green-900/10';
+    if (fila.mora_al_dia > 0)         return 'bg-red-50/60 dark:bg-red-900/20 cursor-pointer hover:bg-red-50';
+    if (fila.en_periodo_gracia)       return 'bg-yellow-50/60 dark:bg-yellow-900/10 cursor-pointer hover:bg-yellow-50';
     return 'cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/40';
 };
 
 // --- TOTALES GLOBALES ---
+// Calculados directamente sobre los campos que vienen del backend
 const totalesCalculados = computed(() => {
     if (!props.amortizaciones?.length) {
         return { capital: 0, interes: 0, moratorio: 0, pagado: 0, restante: 0 };
     }
 
     return props.amortizaciones.reduce((acc, f) => {
-        const capitalEsperado = parseFloat(f.capital_esperado) || 0;
-        const interesEsperado = parseFloat(f.interes_ordinario_esperado) || 0;
-        const moraAlDia = parseFloat(f.mora_al_dia) || 0;
-        const capitalPagado = parseFloat(f.capital_pagado) || 0;
-        const interesPagado = parseFloat(f.interes_ordinario_pagado) || 0;
-        const moratorioPagado = parseFloat(f.interes_moratorio_pagado) || 0;
-        const pagoRestante = parseFloat(f.pago_restante) || 0;
+        const capitalEsperado  = parseFloat(f.capital_esperado)           || 0;
+        const interesEsperado  = parseFloat(f.interes_ordinario_esperado)  || 0;
+        const moraAlDia        = parseFloat(f.mora_al_dia)                 || 0;
+        const capitalPagado    = parseFloat(f.capital_pagado)              || 0;
+        const interesPagado    = parseFloat(f.interes_ordinario_pagado)    || 0;
+        const moratorioPagado  = parseFloat(f.interes_moratorio_pagado)    || 0;
+        const pagoRestante     = parseFloat(f.pago_restante)               || 0;
 
         return {
-            capital: acc.capital + capitalEsperado,
-            interes: acc.interes + interesEsperado,
+            capital:   acc.capital   + capitalEsperado,
+            interes:   acc.interes   + interesEsperado,
             moratorio: acc.moratorio + moraAlDia,
-            pagado: acc.pagado + capitalPagado + interesPagado + moratorioPagado,
-            restante: acc.restante + pagoRestante + moraAlDia,
+            pagado:    acc.pagado    + capitalPagado + interesPagado + moratorioPagado,
+            restante:  acc.restante  + pagoRestante  + moraAlDia,
         };
     }, { capital: 0, interes: 0, moratorio: 0, pagado: 0, restante: 0 });
 });
 
 // --- PAGO SUGERIDO PARA LA BARRA FLOTANTE ---
+// total_a_pagar viene precalculado del backend: pago_restante + mora_al_dia
 const pagoSugerido = computed(() => {
     if (!filaSeleccionada.value) return 0;
     return parseFloat(filaSeleccionada.value.total_a_pagar) || 0;
@@ -146,8 +137,8 @@ const desglosePago = computed(() => {
     const f = filaSeleccionada.value;
     return {
         cuotaBase: parseFloat(f.pago_restante) || 0,
-        mora: parseFloat(f.mora_al_dia) || 0,
-        diasAtraso: f.dias_atraso || 0,
+        mora:      parseFloat(f.mora_al_dia)   || 0,
+        diasAtraso: f.dias_atraso              || 0,
     };
 });
 </script>
@@ -173,7 +164,7 @@ const desglosePago = computed(() => {
                     </div>
                 </div>
 
-                <!-- Acciones -->
+                <!-- Acciones: primarias visibles + menú "Más acciones" -->
                 <div class="flex flex-wrap items-center gap-2">
                     <button
                         v-if="credito?.estatus !== 'Liquidado' && credito?.estatus !== 'Cancelado'"
@@ -197,6 +188,7 @@ const desglosePago = computed(() => {
                             </button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end" class="w-64">
+                            <!--Boton de editar datos personales-->
                             <DropdownMenuItem as-child>
                                 <button @click="() => router.visit(route('acreditados.edit', acreditado.id))" class="w-full">
                                     <Pencil :size="15" class="text-yellow-600" /> Editar Acreditado
@@ -255,7 +247,7 @@ const desglosePago = computed(() => {
                                 </DropdownMenuItem>
                                 <DropdownMenuItem as-child>
                                     <button @click="modalCondonar = true" class="w-full text-red-600 dark:text-red-400">
-                                        <FileX :size="15" /> Condonar
+                                        <XOctagon :size="15" /> Condonar
                                     </button>
                                 </DropdownMenuItem>
                             </template>
@@ -266,6 +258,7 @@ const desglosePago = computed(() => {
 
             <!-- TARJETAS SUPERIORES -->
             <div class="grid grid-cols-1 lg:grid-cols-4 gap-6 mb-8">
+
                 <!-- Info del acreditado -->
                 <div class="lg:col-span-3 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 p-6 shadow-sm flex flex-col md:flex-row gap-6">
                     <div class="w-20 h-20 rounded-2xl flex items-center justify-center text-2xl font-black shrink-0"
@@ -332,6 +325,8 @@ const desglosePago = computed(() => {
 
             <!-- TABLA DE AMORTIZACIÓN -->
             <div class="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden mb-24">
+
+                <!-- Encabezado tabla -->
                 <div class="p-5 border-b border-slate-100 dark:border-slate-800 flex flex-wrap items-center justify-between gap-3 bg-slate-50/50 dark:bg-slate-800/50">
                     <h2 class="font-black text-slate-800 dark:text-white flex items-center gap-2 uppercase text-xs tracking-widest">
                         <Scale class="text-red-700" :size="18" /> Tabla de Amortización
@@ -346,6 +341,7 @@ const desglosePago = computed(() => {
                         <span class="flex items-center gap-1 text-orange-500">
                             <Timer :size="12"/> Año: 360 días
                         </span>
+                        <!-- Leyenda de colores -->
                         <span class="flex items-center gap-1 text-red-500">
                             <span class="w-2 h-2 rounded-full bg-red-400 inline-block"></span> Con mora
                         </span>
@@ -392,24 +388,37 @@ const desglosePago = computed(() => {
                                 ]"
                                 class="transition-all duration-150"
                             >
+                                <!-- # cuota -->
                                 <td class="px-4 py-4 font-black text-slate-900 dark:text-white">
                                     {{ fila.numero_cuota }}
                                 </td>
+
+                                <!-- Vencimiento -->
                                 <td class="px-4 py-4 text-slate-600 dark:text-slate-400 text-xs">
                                     {{ formatDate(fila.fecha_vencimiento) }}
                                 </td>
+
+                                <!-- Último pago -->
                                 <td class="px-4 py-4 text-slate-500 dark:text-slate-500 text-xs">
                                     {{ formatDate(fila.fecha_ultimo_pago) }}
                                 </td>
+
+                                <!-- Saldo insoluto -->
                                 <td class="px-4 py-4 text-right font-mono text-slate-600 dark:text-slate-400 text-xs">
                                     {{ formatCurrency(fila.saldo_insoluto) }}
                                 </td>
+
+                                <!-- Capital esperado -->
                                 <td class="px-4 py-4 text-right font-semibold text-slate-700 dark:text-slate-200 text-xs">
                                     {{ formatCurrency(fila.capital_esperado) }}
                                 </td>
+
+                                <!-- Interés ordinario -->
                                 <td class="px-4 py-4 text-right text-red-500 font-medium text-xs">
                                     {{ formatCurrency(fila.interes_ordinario_esperado) }}
                                 </td>
+
+                                <!-- Mora al día de hoy con días de atraso / Mora cobrada si ya pagó -->
                                 <td class="px-4 py-4 text-right text-xs">
                                     <template v-if="fila.estado === 'Pagado'">
                                         <span v-if="(fila.mora_al_dia || 0) > 0" class="text-orange-500 font-bold">
@@ -438,14 +447,20 @@ const desglosePago = computed(() => {
                                         <span class="text-slate-300 text-[10px]">—</span>
                                     </template>
                                 </td>
+
+                                <!-- Cuota base pendiente (pago_restante, ya descontados pagos parciales) -->
                                 <td class="px-4 py-4 text-right font-bold text-xs"
                                     :class="fila.pago_restante > 0 ? 'text-slate-700 dark:text-slate-200' : 'text-green-500'">
                                     {{ formatCurrency(fila.pago_restante) }}
                                 </td>
+
+                                <!-- Total a pagar hoy (cuota + mora) — viene precalculado del backend -->
                                 <td class="px-4 py-4 text-right font-black text-xs"
                                     :class="fila.estado === 'Pagado' ? 'text-green-500' : (fila.total_a_pagar > 0 ? 'text-red-600' : 'text-slate-400')">
                                     {{ fila.estado === 'Pagado' ? '✓' : formatCurrency(fila.total_a_pagar) }}
                                 </td>
+
+                                <!-- Pagado acumulado -->
                                 <td class="px-4 py-4 text-right text-green-600 font-bold text-xs">
                                     {{ formatCurrency(
                                         (parseFloat(fila.capital_pagado) || 0)
@@ -453,6 +468,8 @@ const desglosePago = computed(() => {
                                         + (parseFloat(fila.interes_moratorio_pagado) || 0)
                                     ) }}
                                 </td>
+
+                                <!-- Estado badge -->
                                 <td class="px-4 py-4 text-center">
                                     <span :class="[
                                         fila.estado === 'Condonado'
@@ -472,6 +489,7 @@ const desglosePago = computed(() => {
                             </tr>
                         </tbody>
 
+                        <!-- TOTALES -->
                         <tfoot class="bg-slate-900 dark:bg-black text-white font-bold">
                             <tr>
                                 <td colspan="3" class="px-4 py-4 text-xs uppercase tracking-widest text-slate-400 text-center">
@@ -512,10 +530,13 @@ const desglosePago = computed(() => {
             >
                 <div v-if="filaSeleccionada" class="fixed bottom-10 left-1/2 -translate-x-1/2 z-50 print:hidden w-full max-w-2xl px-4">
                     <div class="bg-white dark:bg-slate-800 p-2 rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-700 flex items-center gap-4 pr-4">
+                        
+                        <!-- Ícono -->
                         <div class="bg-red-600 text-white p-4 rounded-2xl shadow-lg shadow-red-500/30 shrink-0">
-                            <DollarSign :size="28" />
+                            <CreditCard :size="28" />
                         </div>
 
+                        <!-- Desglose -->
                         <div class="flex-1">
                             <span class="text-[10px] text-slate-400 uppercase font-black tracking-widest">
                                 Mes {{ filaSeleccionada.numero_cuota }} — Pago a realizar hoy
@@ -524,6 +545,7 @@ const desglosePago = computed(() => {
                                 <span class="text-xl font-black text-slate-900 dark:text-white">
                                     {{ formatCurrency(pagoSugerido) }}
                                 </span>
+                                <!-- Desglose cuota + mora -->
                                 <div class="text-[10px] text-slate-400 leading-tight" v-if="desglosePago">
                                     <span>Cuota: {{ formatCurrency(desglosePago.cuotaBase) }}</span>
                                     <span v-if="desglosePago.mora > 0" class="text-orange-500 ml-2">
@@ -536,12 +558,13 @@ const desglosePago = computed(() => {
                             </div>
                         </div>
 
-                        <button
-                            @click="irAPagar(credito.id)"
-                            class="bg-slate-900 dark:bg-red-700 hover:bg-black dark:hover:bg-red-600 text-white px-8 py-4 rounded-2xl font-black uppercase text-[10px] tracking-widest transition-all active:scale-95 shadow-lg shrink-0"
-                        >
-                            Registrar Pago
-                        </button>
+                        <!-- Botón -->
+                       <button
+        @click="irAPagar(credito.id)"
+        class="bg-slate-900 dark:bg-red-700 hover:bg-black dark:hover:bg-red-600 text-white px-8 py-4 rounded-2xl font-black uppercase text-[10px] tracking-widest transition-all active:scale-95 shadow-lg shrink-0"
+    >
+        Registrar Pago
+    </button>
                     </div>
                 </div>
             </Transition>
@@ -555,7 +578,7 @@ const desglosePago = computed(() => {
                 <div class="bg-white dark:bg-slate-900 rounded-3xl p-6 w-full max-w-md shadow-2xl border border-slate-200 dark:border-slate-700">
                     <div class="flex items-center gap-3 mb-5">
                         <div class="w-10 h-10 rounded-xl bg-red-100 dark:bg-red-900/30 flex items-center justify-center">
-                            <FileX :size="20" class="text-red-600" />
+                            <XOctagon :size="20" class="text-red-600" />
                         </div>
                         <div>
                             <h3 class="font-black text-slate-900 dark:text-white">Condonación de Crédito</h3>

@@ -1,30 +1,18 @@
 <script setup lang="ts">
 import AppLayout from '@/layouts/app/AppSidebarLayout.vue';
-import { Head, useForm } from '@inertiajs/vue3';
+import { useForm, Head } from '@inertiajs/vue3';
 import {
-    AlertCircle,
-    Building2,
-    CheckCircle2,
-    IdCard,
-    Mail,
-    MapPin,
-    Phone,
     User,
-    UserPlus,
-    Wallet,
+    CheckCircle2, AlertCircle, Building2, Wallet,
+    Mail, Phone, IdCard, MapPin, UserPlus
 } from 'lucide-vue-next';
 
-const props = defineProps<{
-    acreditado?: any;
-    regimenes_sat?: any[];
-    solicitud?: any;
-    credito?: any;
-    nombre?: string;
-}>();
-
-// --- LÓGICA PARA CAPTURAR EL ID DE LA URL ---
-const params = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
-const idUrl = params ? params.get('interesado_id') : null;
+const props = defineProps({
+    acreditado: Object,
+    regimenes_sat: Array,
+    solicitud: Object,
+    credito: Object,
+});
 
 const municipiosYucatan = [
     "Abalá", "Acanceh", "Akil", "Baca", "Bokobá", "Buctzotz", "Cacalchén", "Calotmul", "Cansahcab", "Cantamayec",
@@ -41,31 +29,26 @@ const municipiosYucatan = [
 ];
 
 const form = useForm({
-    interesado_id: idUrl || props.acreditado?.interesado_id || null,
-    nombre_completo: props.acreditado?.nombre_completo || '',
-    curp: props.acreditado?.curp || '',
-    rfc: props.acreditado?.rfc || '',
-    correo: props.acreditado?.correo || '',
-    municipio: props.acreditado?.municipio || '',
-    sexo: props.acreditado?.sexo || '',
-    domicilio_fiscal: props.acreditado?.direccion_fiscal || '',
-    regimen_fiscal: props.acreditado?.regimen || '',
-    clave_pago: props.acreditado?.clave_personalizada || '',
-    telefono: props.solicitud?.telefono || '',
+    // Aquí está el cambio clave: Priorizamos el ID de la URL
+    interesado_id: props.acreditado.interesado_id,
+    nombre_completo: props.acreditado.nombre_completo,
+    curp: props.acreditado.curp,
+    rfc: props.acreditado.rfc,
+    correo: props.acreditado.correo,
+    municipio: props.acreditado.municipio,
+    sexo: props.acreditado.sexo,
+    domicilio_fiscal: props.acreditado.direccion_fiscal,
+    regimen_fiscal: props.acreditado.regimen,
+    clave_pago: props.acreditado.clave_personalizada,
+    telefono: props.solicitud.telefono,
 });
 
-const submit = () => {
-    if (props.acreditado?.id) {
-        form.put(route('acreditados.update', props.acreditado.id), {
-            preserveScroll: true,
-        });
-    }
-};
+    // Se quita la seleccion de modalidad, debido a que ese campo no se utiliza en el formulario
 
-const goBack = () => {
-    if (typeof window !== 'undefined') {
-        window.history.back();
-    }
+const submit = () => {
+    form.put(route('acreditados.update', props.acreditado.id), {
+        preserveScroll: true,
+    });
 };
 
 // Clases reutilizables para consistencia visual
@@ -217,7 +200,9 @@ const lbl = 'block text-xs font-black text-slate-500 dark:text-zinc-400 uppercas
                     </div>
                 </div>
 
-                                <!-- Resumen + envío -->
+                <!-- Se quita el paso 3 "Detalles de financiamiento" ya que no debería ser editable-->
+
+                <!-- Resumen + envío -->
                 <div class="p-5 sm:p-2 bg-slate-900 dark:bg-red-950 rounded-3xl sm:rounded-[2.5rem] shadow-2xl border-4 border-white dark:border-slate-900 space-y-4 sm:space-y-0">
                     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                         <div class="flex items-center gap-6 sm:pl-6">
@@ -244,7 +229,7 @@ const lbl = 'block text-xs font-black text-slate-500 dark:text-zinc-400 uppercas
                         </div>
 
                         <div class="flex gap-2">
-                            <button type="button" @click="goBack"
+                            <button type="button" @click="$window.history.back()"
                                     class="flex-1 sm:flex-none px-6 py-3.5 text-xs font-black text-slate-400 hover:text-white uppercase transition-colors">
                                 Atrás
                             </button>
