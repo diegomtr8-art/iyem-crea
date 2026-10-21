@@ -4,7 +4,7 @@ import { Head, Link, router } from '@inertiajs/vue3';
 import { ref, watch } from 'vue';
 import {
     Search, Eye, Filter, Gavel, Scale, Clock, CheckCircle2,
-    AlertTriangle, RefreshCw, DollarSign, TrendingDown, Users, ArrowLeft
+    AlertTriangle, RefreshCw, DollarSign, ArrowLeft
 } from 'lucide-vue-next';
 
 interface Expediente {

@@ -1,7 +1,7 @@
-<script setup>
+<script setup lang="ts">
 import { ref, computed } from 'vue';
 import { Head, Link, router } from '@inertiajs/vue3';
-import { Search, UserPlus, FileText, MapPin, Users, Filter, ChevronRight, Wallet, CheckCircle2, AlertTriangle, Award, X, FolderX } from 'lucide-vue-next';
+import { Search, UserPlus, FileText, MapPin, Users, Filter, ChevronRight, CheckCircle2, AlertTriangle, Award, X, FolderX } from 'lucide-vue-next';
 import AppLayout from '@/layouts/app/AppSidebarLayout.vue';
 import debounce from 'lodash/debounce';
 
@@ -27,7 +27,7 @@ const applyFilters = () => {
 const limpiarFiltros = () => { search.value = ''; estatus.value = ''; municipio.value = ''; applyFilters(); };
 const hayFiltros = computed(() => !!(search.value || estatus.value || municipio.value));
 
-let debounced = debounce(applyFilters, 300);
+const debounced = debounce(applyFilters, 300);
 const onSearchInput = () => debounced();
 
 const modalidadEstilo = (nombre) => {
@@ -259,12 +259,13 @@ const kpiCards = computed(() => [
                 <div class="flex flex-wrap justify-center gap-1.5">
                     <Link v-for="link in acreditados.links" :key="link.label"
                         :href="link.url || '#'"
-                        v-html="link.label"
                         class="px-3 py-2 rounded-xl text-sm font-bold transition-all"
                         :class="[
                             link.active ? 'bg-red-600 text-white shadow' : 'bg-white dark:bg-slate-900 text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800 border border-slate-100 dark:border-slate-800',
                             !link.url ? 'opacity-40 pointer-events-none' : ''
-                        ]" />
+                        ]">
+                        <span v-html="link.label" />
+                    </Link>
                 </div>
             </div>
 

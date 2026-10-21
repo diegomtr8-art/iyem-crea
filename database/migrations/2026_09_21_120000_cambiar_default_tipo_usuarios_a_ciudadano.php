@@ -20,19 +20,24 @@ use Illuminate\Support\Facades\DB;
  * NO modifica ningún usuario existente: un DEFAULT solo aplica a
  * inserciones nuevas.
  */
+
 return new class extends Migration
 {
     public function up(): void
     {
-        DB::statement(
-            "ALTER TABLE `users` MODIFY COLUMN `tipo` ENUM('operativo','ciudadano') NOT NULL DEFAULT 'ciudadano'"
-        );
+        if (DB::getDriverName() === 'mysql') {
+            DB::statement(
+                "ALTER TABLE `users` MODIFY COLUMN `tipo` ENUM('operativo','ciudadano') NOT NULL DEFAULT 'ciudadano'"
+            );
+        }
     }
 
     public function down(): void
     {
-        DB::statement(
-            "ALTER TABLE `users` MODIFY COLUMN `tipo` ENUM('operativo','ciudadano') NOT NULL DEFAULT 'operativo'"
-        );
+        if (DB::getDriverName() === 'mysql') {
+            DB::statement(
+                "ALTER TABLE `users` MODIFY COLUMN `tipo` ENUM('operativo','ciudadano') NOT NULL DEFAULT 'operativo'"
+            );
+        }
     }
 };

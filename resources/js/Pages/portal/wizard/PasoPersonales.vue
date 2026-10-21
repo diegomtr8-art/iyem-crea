@@ -4,13 +4,13 @@ import { card, lbl, sHead, sIcon, inp } from './wizardStyles';
 import { municipios, estadosCiviles, regMatrimonial } from './wizardCatalogos';
 
 const props = defineProps<{
-    datos: Record<string, any>;
     camposError: Record<string, string>;
     curpInput: string;
     rfcCurpWarning: boolean;
     fechaMax18: string;
     isOpen: boolean;
 }>();
+const datos = defineModel<Record<string, any>>('datos', { required: true });
 defineEmits<{ toggle: [] }>();
 
 function errClass(campo: string) {

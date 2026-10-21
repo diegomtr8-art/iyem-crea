@@ -3,9 +3,9 @@ import AppLayout from '@/layouts/AppLayout.vue';
 import { Head, Link } from '@inertiajs/vue3';
 import {
     ArrowLeft, User, Briefcase, FileText, CreditCard, DollarSign,
-    CheckCircle2, XCircle, Clock, ExternalLink, AlertTriangle,
-    MapPin, Mail, IdCard, Building2, Leaf, BadgeCheck, TrendingDown,
-    CalendarDays, Receipt, Scale, Eye, Download, Printer
+    CheckCircle2, XCircle, Clock, AlertTriangle,
+    MapPin, IdCard, BadgeCheck, TrendingDown,
+    Receipt, Scale, Eye
 } from 'lucide-vue-next';
 
 const props = defineProps<{

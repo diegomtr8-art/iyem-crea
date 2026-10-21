@@ -1,13 +1,11 @@
-<script setup>
+<script setup lang="ts">
 import AppLayout from '@/layouts/app/AppSidebarLayout.vue';
 import { useForm, Head } from '@inertiajs/vue3';
-import { computed } from 'vue';
 import {
-    User, CreditCard, Calendar, DollarSign,
+    User,
     CheckCircle2, AlertCircle, Building2, Wallet,
-    Mail, Phone, IdCard, MapPin, FileSignature, UserPlus
+    Mail, Phone, IdCard, MapPin, UserPlus
 } from 'lucide-vue-next';
-import { regimenesFiscales } from '../portal/wizard/wizardCatalogos';
 
 const props = defineProps({
     acreditado: Object,
@@ -15,10 +13,6 @@ const props = defineProps({
     solicitud: Object,
     credito: Object,
 });
-
-// --- LÓGICA PARA CAPTURAR EL ID DE LA URL ---
-const params = new URLSearchParams(window.location.search);
-const idUrl = params.get('interesado_id');
 
 const municipiosYucatan = [
     "Abalá", "Acanceh", "Akil", "Baca", "Bokobá", "Buctzotz", "Cacalchén", "Calotmul", "Cansahcab", "Cantamayec",

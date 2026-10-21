@@ -3,8 +3,8 @@ import AppLayout from '@/layouts/AppLayout.vue';
 import { Head, Link, useForm } from '@inertiajs/vue3';
 import {
     ArrowLeft, Gavel, Scale, User, DollarSign, Clock,
-    MapPin, Mail, CheckCircle2, AlertTriangle, Building2,
-    FileText, Calendar, PhoneCall, Save
+    MapPin, Mail, CheckCircle2, AlertTriangle,
+    FileText, PhoneCall, Save
 } from 'lucide-vue-next';
 
 const props = defineProps<{

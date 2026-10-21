@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 import AppLayout from '@/layouts/app/AppSidebarLayout.vue';
 // Asegúrate de incluir 'useForm' dentro de las llaves
 import { Head, useForm, Link } from '@inertiajs/vue3';
@@ -10,7 +10,6 @@ import {
     Briefcase, 
     Save, 
     ArrowLeft,
-    CheckCircle2,
     Info
 } from 'lucide-vue-next';
 

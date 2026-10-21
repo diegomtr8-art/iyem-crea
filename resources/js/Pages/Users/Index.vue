@@ -3,9 +3,9 @@ import { ref } from 'vue';
 import { useForm, Head } from '@inertiajs/vue3';
 import AppLayout from '@/layouts/app/AppSidebarLayout.vue';
 import type { BreadcrumbItemType } from '@/types';
-import { Pencil, Trash2, UsersIcon, UserPlus, KeyRound, AtSign, Loader2, X, Shield } from 'lucide-vue-next';
+import { Pencil, Trash2, UsersIcon, UserPlus, Loader2, X, Shield } from 'lucide-vue-next';
 
-const props = defineProps<{
+defineProps<{
     users: any[];
     roles: any[];
 }>();

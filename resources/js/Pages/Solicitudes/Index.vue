@@ -4,7 +4,7 @@ import { Head, Link, router } from '@inertiajs/vue3';
 import { ref, watch } from 'vue';
 import {
     Search, Eye, Filter, FileText, Clock, CheckCircle2, XCircle,
-    AlertTriangle, RefreshCw, Users, TrendingUp, CalendarDays, Inbox, CreditCard
+    AlertTriangle, RefreshCw, TrendingUp, CalendarDays, Inbox, CreditCard
 } from 'lucide-vue-next';
 
 const props = defineProps<{
@@ -245,8 +245,9 @@ const kpiCards = [
                         :href="link.url ?? '#'"
                         :class="['px-3 py-1.5 rounded-lg text-xs font-bold transition-colors',
                             link.active ? 'bg-red-700 text-white' : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-zinc-800',
-                            !link.url ? 'opacity-40 pointer-events-none' : '']"
-                        v-html="link.label" />
+                            !link.url ? 'opacity-40 pointer-events-none' : '']">
+                        <span v-html="link.label" />
+                    </Link>
                 </div>
             </div>
         </div>

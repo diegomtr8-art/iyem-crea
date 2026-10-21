@@ -1,11 +1,11 @@
-<script setup>
+<script setup lang="ts">
 import AppLayout from '@/layouts/app/AppSidebarLayout.vue';
 import { Head, router } from '@inertiajs/vue3';
 import { ref, computed } from 'vue';
 import {
-    User, MapPin, CreditCard, FileText, Printer,
-    ArrowLeft, DollarSign, Scale, CheckCircle2,
-    Calendar, AlertCircle, Timer, TrendingUp, Clock,
+    MapPin, CreditCard, FileText, Printer,
+    ArrowLeft, DollarSign, Scale,
+    AlertCircle, Timer, Clock,
     XOctagon, Award, FolderOpen, RefreshCw, FileCheck,
     Banknote, Receipt, RotateCcw, FileX, MoreVertical, Pencil
 } from 'lucide-vue-next';

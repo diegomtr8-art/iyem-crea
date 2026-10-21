@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 import AppLayout from '@/layouts/app/AppSidebarLayout.vue';
 import { ref, computed, watch } from 'vue';
 import { useForm, Head } from '@inertiajs/vue3';
@@ -31,7 +31,7 @@ const money = (val) => new Intl.NumberFormat('es-MX', {
 }).format(val || 0);
 
 const formatInput = (e) => {
-    let val = e.target.value.replace(/[^0-9.]/g, '');
+    const val = e.target.value.replace(/[^0-9.]/g, '');
     displayMonto.value = val;
     form.monto_recibido = parseFloat(val) || 0;
     cuotaSeleccionada.value = null; // deselect on manual input
@@ -54,7 +54,7 @@ const simulacion = computed(() => {
     const tasaAnual = props.tasa_mora || props.credito?.tasa_interes_moratorio || 0;
     const tasaDiaria = (tasaAnual / 100) / 360;
     
-    let resumen = { 
+    const resumen = { 
         moraTotal: 0, 
         ordinarioTotal: 0, 
         capitalTotal: 0, 
@@ -120,13 +120,13 @@ const simulacion = computed(() => {
         }
 
         // 3. Aplicación en Cascada (Consumiendo el "fondo")
-        let pMora = Math.min(fondo, moraFila);
+        const pMora = Math.min(fondo, moraFila);
         fondo = Math.max(0, fondo - pMora);
 
-        let pOrd = Math.min(fondo, interesFila);
+        const pOrd = Math.min(fondo, interesFila);
         fondo = Math.max(0, fondo - pOrd);
 
-        let pCap = Math.min(fondo, parseFloat(c.capital_pendiente) || 0);
+        const pCap = Math.min(fondo, parseFloat(c.capital_pendiente) || 0);
         fondo = Math.max(0, fondo - pCap);
 
         // Registrar solo si hubo movimiento o si la cuota fue alterada por la liquidación
