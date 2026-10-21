@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Portal;
 
 use App\Http\Controllers\Controller;
+use App\Models\Amortizacion;
 use App\Models\ComprobacionUso;
 use App\Models\Credito;
 use Illuminate\Http\RedirectResponse;
@@ -38,6 +39,11 @@ class MiCreditoController extends Controller
         // + mora. Misma zona horaria y misma base de mora que caja.
         $hoy = Carbon::now('America/Merida')->startOfDay();
         $tasaDiaria = ($credito->tasaMoratoriaEfectiva() / 100) / config('credito.dias_anio_comercial');
+
+        // C-04: criterio único de etiquetas. Del día 1 al 5 de atraso la cuota está
+        // "en gracia"; a partir del día 6 está "vencida". No cambia el cálculo de
+        // mora (moraDeCuota), solo cómo se nombra la cuota en la pantalla.
+        $diasGracia = (int) config('credito.dias_gracia_mora');
 
         $pendientes = $credito->amortizaciones
             ->whereNotIn('estado', ['Pagado', 'Condonado', 'Reestructurada', 'Gracia'])
@@ -83,6 +89,14 @@ class MiCreditoController extends Controller
 
         if ($cuotasVencidas->isNotEmpty()) {
             // Varias cuotas vencidas: el total y la mora agregan todas, igual que caja.
+            // La etiqueta depende del atraso máximo (C-04): 1..5 días = en gracia,
+            // 6+ días = vencida. Vence hoy (0 días) sigue siendo la próxima cuota.
+            $diasMoraMax = (int) $cuotasVencidas->max('dias_mora');
+            $estadoCuota = match (true) {
+                $diasMoraMax > $diasGracia => 'vencida',
+                $diasMoraMax > 0           => 'gracia',
+                default                    => 'proxima',
+            };
             $proximaCuota = [
                 'numero'            => $cuotasVencidas->first()['numero'],
                 'cuotas'            => $cuotasVencidas->count(),
@@ -91,8 +105,9 @@ class MiCreditoController extends Controller
                 'interes'           => round($cuotasVencidas->sum('interes'), 2),
                 'mora'              => round($cuotasVencidas->sum('mora'), 2),
                 'total'             => round($cuotasVencidas->sum('total'), 2),
-                'dias_mora'         => (int) $cuotasVencidas->max('dias_mora'),
-                'vencida'           => true,
+                'dias_mora'         => $diasMoraMax,
+                'vencida'           => $estadoCuota === 'vencida',
+                'estado'            => $estadoCuota,
             ];
         } else {
             // Al corriente: se conserva la vista de la próxima cuota (mora 0) igual que antes.
@@ -116,6 +131,7 @@ class MiCreditoController extends Controller
                     ),
                     'dias_mora'         => $diasMora,
                     'vencida'           => false,
+                    'estado'            => 'proxima',
                 ];
             } else {
                 $proximaCuota = null;
@@ -146,6 +162,7 @@ class MiCreditoController extends Controller
                 ]),
                 'observaciones_operativo'  => $comprobacion->observaciones_operativo,
             ] : null,
+            'dias_gracia' => $diasGracia,
             'credito' => [
                 'id'                    => $credito->id,
                 'clave_contrato'        => $credito->clave_contrato,
@@ -170,6 +187,7 @@ class MiCreditoController extends Controller
                     'ordinario_pagado'=> $a->interes_ordinario_pagado,
                     'total_pagado'   => ($a->capital_pagado ?? 0) + ($a->interes_ordinario_pagado ?? 0),
                     'estado'         => $a->estado,
+                    'estado_visual'  => $this->estadoVisualCuota($a, $hoy, $diasGracia),
                 ]),
                 'pagos' => $credito->pagos->map(fn($p) => [
                     'id'            => $p->id,
@@ -194,5 +212,42 @@ class MiCreditoController extends Controller
                 'whatsapp'      => '9992342693',
             ],
         ]);
+    }
+
+    /**
+     * Etiqueta visual de una cuota para la tabla de amortización.
+     *
+     * C-04: mismo criterio que la tarjeta de próxima cuota y que Avisos.
+     * 1..dias_gracia días de atraso = "en gracia"; más de dias_gracia = "vencida".
+     * Solo etiqueta: no calcula mora, intereses ni saldos.
+     */
+    private function estadoVisualCuota(Amortizacion $cuota, Carbon $hoy, int $diasGracia): string
+    {
+        if ($cuota->estado === 'Gracia') {
+            return 'gracia_periodo';
+        }
+
+        if ($cuota->estado === 'Condonado') {
+            return 'condonado';
+        }
+
+        $total  = (float) $cuota->capital_esperado + (float) $cuota->interes_ordinario_esperado;
+        $pagado = (float) $cuota->capital_pagado + (float) $cuota->interes_ordinario_pagado;
+
+        if ($cuota->estado === 'Pagado' || $pagado >= $total) {
+            return 'pagado';
+        }
+
+        // El cast 'date' deja la fecha a las 00:00 en la zona de la app (UTC);
+        // se reconstruye en Mérida para no perder un día al comparar con $hoy.
+        $vencimiento = Carbon::parse($cuota->fecha_vencimiento->toDateString(), 'America/Merida')->startOfDay();
+
+        if ($vencimiento->gte($hoy)) {
+            return 'pendiente';
+        }
+
+        $dias = (int) $vencimiento->diffInDays($hoy);
+
+        return $dias > $diasGracia ? 'vencido' : 'en_gracia';
     }
 }

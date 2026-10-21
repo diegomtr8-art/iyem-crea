@@ -8,9 +8,9 @@ import {
     Download, Calculator, X, ClipboardCheck, Plus, Trash2, ExternalLink, FileCheck2
 } from 'lucide-vue-next';
 import { router, useForm } from '@inertiajs/vue3';
-import { parseDate } from '@/utils/dateUtils';
 
 const props = defineProps<{
+    dias_gracia: number;
     credito: {
         id: number;
         clave_contrato?: string;
@@ -32,6 +32,7 @@ const props = defineProps<{
             ordinario_pagado: number;
             total_pagado: number;
             estado: string;
+            estado_visual: 'gracia_periodo' | 'condonado' | 'pagado' | 'vencido' | 'en_gracia' | 'pendiente';
         }>;
         pagos: Array<{
             id: number;
@@ -50,6 +51,7 @@ const props = defineProps<{
             total: number;
             dias_mora: number;
             vencida: boolean;
+            estado: 'proxima' | 'gracia' | 'vencida';
         };
         cuotas_vencidas: Array<{
             numero: number;
@@ -87,23 +89,19 @@ const props = defineProps<{
 
 const activeTab = ref<'tabla' | 'pagos'>('tabla');
 
-const estadoCuota = (item: typeof props.credito.tabla[0]) => {
-    if (item.estado === 'Gracia')   return { texto: 'GRACIA',    clase: 'bg-slate-100 text-slate-400 dark:bg-zinc-800 dark:text-zinc-500' };
-    if (item.estado === 'Condonado') return { texto: 'CONDONADO', clase: 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400' };
-
-    const hoy = new Date();
-    //se utiliza la nueva función
-    const venc = parseDate(item.fecha_vencimiento);
-    const diff = Math.floor((hoy.getTime() - venc.getTime()) / 86400000);
-    const total = (item.capital ?? 0) + (item.ordinario ?? 0);
-    const pagado = item.total_pagado ?? 0;
-
-    if (item.estado === 'Pagado' || pagado >= total)
-                           return { texto: 'PAGADO',    clase: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' };
-    if (diff > 5)          return { texto: 'VENCIDO',   clase: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' };
-    if (diff > 0)          return { texto: 'GRACIA',    clase: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400' };
-    return                        { texto: 'PENDIENTE', clase: 'bg-slate-100 text-slate-600 dark:bg-zinc-800 dark:text-zinc-400' };
+// C-04: las etiquetas vienen del servidor (estado_visual) para que la tabla use
+// el mismo criterio y la misma fecha que la tarjeta de próxima cuota.
+const etiquetasCuota: Record<string, { texto: string; clase: string }> = {
+    gracia_periodo: { texto: 'GRACIA',    clase: 'bg-slate-100 text-slate-400 dark:bg-zinc-800 dark:text-zinc-500' },
+    condonado:      { texto: 'CONDONADO', clase: 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400' },
+    pagado:         { texto: 'PAGADO',    clase: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' },
+    vencido:        { texto: 'VENCIDO',   clase: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' },
+    en_gracia:      { texto: 'EN GRACIA', clase: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400' },
+    pendiente:      { texto: 'PENDIENTE', clase: 'bg-slate-100 text-slate-600 dark:bg-zinc-800 dark:text-zinc-400' },
 };
+
+const estadoCuota = (item: typeof props.credito.tabla[0]) =>
+    etiquetasCuota[item.estado_visual] ?? etiquetasCuota.pendiente;
 
 const fmt = (n: number) => Number(n ?? 0).toLocaleString('es-MX', { minimumFractionDigits: 2 });
 
@@ -115,6 +113,8 @@ const estadoCredito: Record<string, { color: string; bg: string }> = {
 };
 
 const cfg = computed(() => estadoCredito[props.credito.estatus] ?? estadoCredito.Activo);
+
+const estadoProxima = computed(() => props.credito.proxima_cuota?.estado ?? 'proxima');
 
 const totalPagado = computed(() =>
     props.credito.pagos.reduce((s, p) => s + Number(p.monto_recibido ?? 0), 0)
@@ -215,18 +215,25 @@ const enviarComprobacion = () => {
             <!-- Próxima cuota -->
             <div v-if="credito.proxima_cuota" :class="[
                 'rounded-2xl p-5 border-l-4',
-                credito.proxima_cuota.vencida
+                estadoProxima === 'vencida'
                     ? 'bg-red-50 border-red-500 dark:bg-red-950/30'
-                    : 'bg-emerald-50 border-emerald-500 dark:bg-emerald-950/30'
+                    : estadoProxima === 'gracia'
+                        ? 'bg-amber-50 border-amber-500 dark:bg-amber-950/30'
+                        : 'bg-emerald-50 border-emerald-500 dark:bg-emerald-950/30'
             ]">
                 <h3 class="font-black text-lg mb-3 flex items-center gap-2 text-slate-900 dark:text-white">
-                    <AlertCircle v-if="credito.proxima_cuota.vencida" size="20" class="text-red-600" />
+                    <AlertCircle v-if="estadoProxima === 'vencida'" size="20" class="text-red-600" />
+                    <Clock v-else-if="estadoProxima === 'gracia'" size="20" class="text-amber-600" />
                     <CalendarDays v-else size="20" class="text-emerald-600" />
-                    {{ credito.proxima_cuota.vencida
+                    {{ estadoProxima === 'vencida'
                         ? ((credito.proxima_cuota.cuotas ?? 1) > 1
                             ? `Cuotas vencidas (${credito.proxima_cuota.cuotas})`
                             : 'Cuota vencida')
-                        : 'Próxima cuota' }}<template v-if="(credito.proxima_cuota.cuotas ?? 1) <= 1"> #{{ credito.proxima_cuota.numero }}</template>
+                        : estadoProxima === 'gracia'
+                            ? ((credito.proxima_cuota.cuotas ?? 1) > 1
+                                ? `Cuotas en gracia (${credito.proxima_cuota.cuotas})`
+                                : 'Cuota en gracia')
+                            : 'Próxima cuota' }}<template v-if="(credito.proxima_cuota.cuotas ?? 1) <= 1"> #{{ credito.proxima_cuota.numero }}</template>
                 </h3>
                 <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
                     <div>
@@ -234,11 +241,11 @@ const enviarComprobacion = () => {
                         <p class="font-bold text-slate-900 dark:text-white">{{ credito.proxima_cuota.fecha_vencimiento }}</p>
                     </div>
                     <div>
-                        <p class="text-xs text-slate-500 dark:text-zinc-400">{{ (credito.proxima_cuota.cuotas ?? 1) > 1 ? 'Capital vencido' : 'Capital' }}</p>
+                        <p class="text-xs text-slate-500 dark:text-zinc-400">{{ estadoProxima === 'vencida' && (credito.proxima_cuota.cuotas ?? 1) > 1 ? 'Capital vencido' : 'Capital' }}</p>
                         <p class="font-bold text-slate-900 dark:text-white">${{ fmt(credito.proxima_cuota.capital) }}</p>
                     </div>
                     <div>
-                        <p class="text-xs text-slate-500 dark:text-zinc-400">{{ (credito.proxima_cuota.cuotas ?? 1) > 1 ? 'Interés vencido' : 'Interés' }}</p>
+                        <p class="text-xs text-slate-500 dark:text-zinc-400">{{ estadoProxima === 'vencida' && (credito.proxima_cuota.cuotas ?? 1) > 1 ? 'Interés vencido' : 'Interés' }}</p>
                         <p class="font-bold text-slate-900 dark:text-white">${{ fmt(credito.proxima_cuota.interes) }}</p>
                     </div>
                     <div v-if="credito.proxima_cuota.mora > 0">
@@ -287,7 +294,10 @@ const enviarComprobacion = () => {
                     </div>
                 </div>
 
-                <p v-if="credito.proxima_cuota.vencida" class="text-xs text-red-500 mt-2">
+                <p v-if="estadoProxima === 'gracia'" class="text-xs text-amber-600 mt-2">
+                    Estás dentro de los {{ dias_gracia }} días de gracia para ponerte al corriente.
+                </p>
+                <p v-else-if="estadoProxima === 'vencida'" class="text-xs text-red-500 mt-2">
                     Contáctanos para regularizar tu crédito<template v-if="$page.props.contacto.telefono">: {{ $page.props.contacto.telefono }}</template>.
                 </p>
             </div>
