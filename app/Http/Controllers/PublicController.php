@@ -2,10 +2,10 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Acreditado;
+use App\Models\Credito;
 use Illuminate\Http\Request;
-use Inertia\Inertia;
 use Illuminate\Support\Facades\Redirect;
+use Inertia\Inertia;
 
 class PublicController extends Controller
 {
@@ -28,76 +28,75 @@ class PublicController extends Controller
     }
 
     /**
-     * Procesa la consulta del acreditado mediante CURP y RFC.
+     * Procesa la consulta del acreditado mediante CURP y número de contrato.
      */
     public function consultar(Request $request)
     {
         // 1. Validamos la entrada del ciudadano
         $request->validate([
             'curp' => 'required|string|size:18',
-            'rfc' => 'required|string'
+            'clave_contrato' => 'required|string|max:50',
         ], [
             'curp.required' => 'La CURP es obligatoria para la consulta.',
             'curp.size' => 'La CURP debe tener exactamente 18 caracteres.',
-            'rfc.required' => 'El RFC es necesario para validar su identidad.'
+            'clave_contrato.required' => 'El número de contrato es obligatorio para la consulta.',
+            'clave_contrato.max' => 'El número de contrato es demasiado largo.',
         ]);
 
-        // 2. Buscamos al acreditado por identidad
-        $acreditado = Acreditado::where('curp', strtoupper($request->curp))
-            ->where('rfc', strtoupper($request->rfc)) 
+        // 2. Buscamos el crédito por número de contrato y CURP del acreditado
+        $credito = Credito::where('clave_contrato', trim($request->clave_contrato))
+            ->whereHas('acreditado', fn ($q) => $q->where('curp', strtoupper(trim($request->curp))))
             ->first();
 
-        // 3. Si no existe, regresamos con error
-        if (!$acreditado) {
-            return Redirect::back()->with('error', 'Los datos ingresados no coinciden con nuestros registros. Verifique su CURP y RFC.');
+        // 3. Mensaje único: no revela si la persona existe ni si tiene crédito
+        if (! $credito) {
+            return Redirect::back()->with('error', 'No encontramos un crédito con esos datos. Verifica tu CURP y tu número de contrato.');
         }
-
-        // 4. Obtenemos el crédito relacionado
-        $credito = $acreditado->creditos()->first();
 
         /**
          * 5. Obtenemos la Tabla de Amortización (Proyección)
-         * Se asume que en el modelo Credito existe la relación 'amortizaciones' 
+         * Se asume que en el modelo Credito existe la relación 'amortizaciones'
          * o 'tablaAmortizacion'. Cámbialo según el nombre de tu método en el modelo.
          */
-     
-                   // En PublicController.php
-                $tablaAmortizacion = $credito->amortizaciones()
-                    ->orderBy('numero_cuota', 'asc')
-                    ->get()
-                    ->map(function($item) {
-                        return [
-                            'numero_cuota'      => $item->numero_cuota,
-                            'fecha_vencimiento' => $item->fecha_vencimiento,
-                            // Renombramos para el Frontend:
-                            'capital'           => $item->capital_esperado ?? 0,
-                            'ordinario'         => $item->interes_ordinario_esperado ?? 0,
-                            'moratorio'         => $item->interes_moratorio_generado ?? 0,
-                            'total_pagado'      => ($item->capital_pagado ?? 0) + ($item->interes_ordinario_pagado ?? 0),
-                        ];
-                    });
 
-        // 6. Retornamos la vista con la data estructurada
+        // En PublicController.php
+        $tablaAmortizacion = $credito->amortizaciones()
+            ->orderBy('numero_cuota', 'asc')
+            ->get()
+            ->map(function ($item) {
+                return [
+                    'numero_cuota' => $item->numero_cuota,
+                    'fecha_vencimiento' => $item->fecha_vencimiento,
+                    // Renombramos para el Frontend:
+                    'capital' => $item->capital_esperado ?? 0,
+                    'ordinario' => $item->interes_ordinario_esperado ?? 0,
+                    'moratorio' => $item->interes_moratorio_generado ?? 0,
+                    'total_pagado' => ($item->capital_pagado ?? 0) + ($item->interes_ordinario_pagado ?? 0),
+                ];
+            });
+
+        // 6. Cuotas pendientes (misma regla de estados que "Mi crédito" del portal)
+        $pendientes = $credito->amortizaciones()
+            ->whereNotIn('estado', ['Pagado', 'Condonado', 'Reestructurada', 'Gracia'])
+            ->orderBy('fecha_vencimiento')
+            ->get();
+
+        $proxima = $pendientes->first();
+        $saldoPendiente = round((float) $pendientes->sum('pago_restante'), 2);
+
+        // 7. Solo se devuelve lo necesario: sin domicilio ni datos de contacto
         return Inertia::render('Welcome', [
             'acreditado' => [
-                'id'              => $acreditado->id,
-                'nombre'          => $acreditado->nombre_completo,
-                'curp'            => $acreditado->curp,
-                'rfc'             => $acreditado->rfc,
-                'municipio'       => $acreditado->municipio,
-                'domicilio'       => $acreditado->domicilio_fiscal,
-                
-                // Datos del crédito
-                'monto_otorgado'  => $credito ? $credito->monto_otorgado : 0,
-                'estatus'         => $credito ? $credito->estatus : 'No disponible',
-                
-                // TABLA DE AMORTIZACIÓN (Lo que quieres mostrar)
-                'tabla'           => $tablaAmortizacion, 
-                
-                // PAGOS REALIZADOS (Vacío por ahora para evitar errores)
-                'pagos'           => [], 
+                'clave_contrato' => $credito->clave_contrato,
+                'estatus' => $credito->estatus,
+                'saldo_pendiente' => $saldoPendiente,
+                'proxima_cuota' => $proxima ? [
+                    'fecha_vencimiento' => $proxima->fecha_vencimiento?->format('d/m/Y'),
+                    'monto' => round((float) $proxima->pago_restante, 2),
+                ] : null,
+                'tabla' => $tablaAmortizacion,
             ],
-            'filters' => $request->only(['curp'])
+            'filters' => $request->only(['curp']),
         ])->with('success', 'Información recuperada correctamente.');
     }
 }

@@ -388,7 +388,9 @@ async function guardarBorrador(modo: 'borrador' | 'envio' = 'borrador') {
         setTimeout(() => { successMsg.value = ''; }, 4000);
     } catch (e: any) {
         const errs = e.response?.data?.errors;
-        errorMsg.value = errs ? Object.values(errs).flat().join(' ') : (e.response?.data?.message ?? 'Error al guardar.');
+        errorMsg.value = e.response?.status === 419
+            ? 'Tu sesión expiró y los últimos cambios no se guardaron. Vuelve a iniciar sesión; lo que ya habías guardado sigue en tu solicitud.'
+            : errs ? Object.values(errs).flat().join(' ') : (e.response?.data?.message ?? 'Error al guardar.');
         if (errs) {
             const mapeado: Record<string, string> = {};
             for (const [campo, mensajes] of Object.entries(errs)) {
@@ -412,7 +414,7 @@ async function enviarSolicitud() {
         router.reload({ only: ['solicitud'] });
     } catch (e: any) {
         const d = e.response?.data;
-        if (d?.faltantes?.length) errorMsg.value = 'Faltan documentos: ' + d.faltantes.join(', ');
+        if (d?.faltantes?.length) errorMsg.value = 'Faltan documentos: ' + d.faltantes.map((k: string) => tiposDocRequeridos.value[k] ?? k).join(', ');
         else errorMsg.value = d?.error ?? 'Error al enviar.';
     } finally { enviando.value = false; }
 }

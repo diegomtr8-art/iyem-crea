@@ -4,11 +4,7 @@ import { Head, useForm } from '@inertiajs/vue3';
 import {
     AlertCircle,
     Building2,
-    Calendar,
     CheckCircle2,
-    CreditCard,
-    DollarSign,
-    FileSignature,
     IdCard,
     Mail,
     MapPin,

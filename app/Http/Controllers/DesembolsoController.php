@@ -14,6 +14,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Inertia\Inertia;
 use Inertia\Response;
+use Illuminate\Support\Facades\Storage; //se agrega para el método descargarComprobante
 
 class DesembolsoController extends Controller
 {
@@ -57,7 +58,7 @@ class DesembolsoController extends Controller
 
         $ruta = null;
         if ($request->hasFile('comprobante')) {
-            $ruta = $request->file('comprobante')->store('desembolsos', 'public');
+            $ruta = $request->file('comprobante')->store('desembolsos', 'local'); //se cambia a local
         }
 
         $desembolso = Desembolso::create([
@@ -147,5 +148,20 @@ class DesembolsoController extends Controller
         if (round($disponible - $monto, 2) <= 0.01) {
             Log::warning("Presupuesto de la modalidad {$credito->modalidad_id} quedó en $0 tras el desembolso del crédito {$credito->clave_contrato} (ID {$credito->id}).");
         }
+    }
+
+    //Función para descargar el comprobante siguiendo el patrón de ComprobaciónPortalController
+    public function descargarComprobante(Desembolso $desembolso): \Symfony\Component\HttpFoundation\StreamedResponse //se especifica el tipo correcto de response sino piensa que es el de Inertia
+    {
+        $user = auth()->user();
+        abort_if(!$user->esOperativo(), 403);
+        abort_if(
+            blank($desembolso->comprobante_ruta) ||
+            !Storage::disk('local')->exists($desembolso->comprobante_ruta), 
+            404,
+            'El desembolso no tiene un comprobante disponible.'
+        );
+
+        return Storage::disk('local')->response($desembolso->comprobante_ruta);
     }
 }

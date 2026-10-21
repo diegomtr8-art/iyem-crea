@@ -1,0 +1,159 @@
+credito_id,modalidad,plazo,numero_cuota,campo,guardado,recalculado,diferencia,rango,estado,capital_pagado,explicacion
+1,Emprendedores,12,1,saldo_insoluto,18386.14,20000.00,-1613.86,explicada por pago,Pagado,1613.86,saldo descontado por capital pagado
+1,Emprendedores,12,2,saldo_insoluto,16762.86,18386.14,-1623.28,explicada por pago,Pagado,1623.28,saldo descontado por capital pagado
+2,Emprendedores,18,1,saldo_insoluto,33150.20,35000.00,-1849.80,explicada por pago,Pagado,1849.80,saldo descontado por capital pagado
+2,Emprendedores,18,2,saldo_insoluto,31289.61,33150.20,-1860.59,explicada por pago,Pagado,1860.59,saldo descontado por capital pagado
+4,Artesanal,10,1,saldo_insoluto,9000.00,10000.00,-1000.00,explicada por pago,Pagado,1000.00,saldo descontado por capital pagado
+4,Artesanal,10,2,saldo_insoluto,8000.00,9000.00,-1000.00,explicada por pago,Pagado,1000.00,saldo descontado por capital pagado
+4,Artesanal,10,3,saldo_insoluto,7000.00,8000.00,-1000.00,explicada por pago,Pagado,1000.00,saldo descontado por capital pagado
+4,Artesanal,10,4,saldo_insoluto,6000.00,7000.00,-1000.00,explicada por pago,Pagado,1000.00,saldo descontado por capital pagado
+4,Artesanal,10,5,saldo_insoluto,5000.00,6000.00,-1000.00,explicada por pago,Pagado,1000.00,saldo descontado por capital pagado
+4,Artesanal,10,6,saldo_insoluto,4000.00,5000.00,-1000.00,explicada por pago,Pagado,1000.00,saldo descontado por capital pagado
+4,Artesanal,10,7,saldo_insoluto,3000.00,4000.00,-1000.00,explicada por pago,Pagado,1000.00,saldo descontado por capital pagado
+4,Artesanal,10,8,saldo_insoluto,2000.00,3000.00,-1000.00,explicada por pago,Pagado,1000.00,saldo descontado por capital pagado
+4,Artesanal,10,9,saldo_insoluto,1000.00,2000.00,-1000.00,explicada por pago,Pagado,1000.00,saldo descontado por capital pagado
+4,Artesanal,10,10,saldo_insoluto,0.00,1000.00,-1000.00,explicada por pago,Pagado,1000.00,saldo descontado por capital pagado
+5,Emprendedores,24,1,saldo_insoluto,48053.04,50000.00,-1946.96,explicada por pago,Pagado,1946.96,saldo descontado por capital pagado
+5,Emprendedores,24,2,saldo_insoluto,46094.72,48053.04,-1958.32,explicada por pago,Pagado,1958.32,saldo descontado por capital pagado
+5,Emprendedores,24,3,saldo_insoluto,44124.98,46094.72,-1969.74,explicada por pago,Pagado,1969.74,saldo descontado por capital pagado
+5,Emprendedores,24,4,saldo_insoluto,42143.75,44124.98,-1981.23,explicada por pago,Pagado,1981.23,saldo descontado por capital pagado
+5,Emprendedores,24,5,saldo_insoluto,40150.96,42143.75,-1992.79,explicada por pago,Pagado,1992.79,saldo descontado por capital pagado
+5,Emprendedores,24,6,saldo_insoluto,38146.54,40150.96,-2004.42,explicada por pago,Pagado,2004.42,saldo descontado por capital pagado
+5,Emprendedores,24,7,saldo_insoluto,36130.43,38146.54,-2016.11,explicada por pago,Pagado,2016.11,saldo descontado por capital pagado
+5,Emprendedores,24,8,saldo_insoluto,34102.56,36130.43,-2027.87,explicada por pago,Pagado,2027.87,saldo descontado por capital pagado
+5,Emprendedores,24,9,saldo_insoluto,32062.86,34102.56,-2039.70,explicada por pago,Pagado,2039.70,saldo descontado por capital pagado
+5,Emprendedores,24,10,saldo_insoluto,31204.41,32062.86,-858.45,explicada por pago,Parcial,858.45,saldo descontado por capital pagado
+6,Emprendedores,12,1,saldo_insoluto,22982.66,25000.00,-2017.34,explicada por pago,Pagado,2017.34,saldo descontado por capital pagado
+6,Emprendedores,12,2,saldo_insoluto,20953.56,22982.66,-2029.10,explicada por pago,Pagado,2029.10,saldo descontado por capital pagado
+6,Emprendedores,12,3,saldo_insoluto,18912.62,20953.56,-2040.94,explicada por pago,Pagado,2040.94,saldo descontado por capital pagado
+7,Emprendedores,24,1,saldo_insoluto,57663.65,60000.00,-2336.35,explicada por pago,Pagado,2336.35,saldo descontado por capital pagado
+7,Emprendedores,24,2,saldo_insoluto,55313.67,57663.65,-2349.98,explicada por pago,Pagado,2349.98,saldo descontado por capital pagado
+7,Emprendedores,24,3,saldo_insoluto,52949.98,55313.67,-2363.69,explicada por pago,Pagado,2363.69,saldo descontado por capital pagado
+7,Emprendedores,24,4,saldo_insoluto,50572.50,52949.98,-2377.48,explicada por pago,Pagado,2377.48,saldo descontado por capital pagado
+7,Emprendedores,24,5,saldo_insoluto,48181.16,50572.50,-2391.34,explicada por pago,Pagado,2391.34,saldo descontado por capital pagado
+7,Emprendedores,24,6,saldo_insoluto,45775.87,48181.16,-2405.29,explicada por pago,Pagado,2405.29,saldo descontado por capital pagado
+7,Emprendedores,24,7,saldo_insoluto,43356.55,45775.87,-2419.32,explicada por pago,Pagado,2419.32,saldo descontado por capital pagado
+8,Emprendedores,12,1,saldo_insoluto,25740.58,28000.00,-2259.42,explicada por pago,Pagado,2259.42,saldo descontado por capital pagado
+8,Emprendedores,12,2,saldo_insoluto,23467.98,25740.58,-2272.60,explicada por pago,Pagado,2272.60,saldo descontado por capital pagado
+8,Emprendedores,12,3,saldo_insoluto,21182.13,23467.98,-2285.85,explicada por pago,Pagado,2285.85,saldo descontado por capital pagado
+9,Emprendedores,15,1,saldo_insoluto,30888.44,33000.00,-2111.56,explicada por pago,Pagado,2111.56,saldo descontado por capital pagado
+9,Emprendedores,15,2,saldo_insoluto,28764.56,30888.44,-2123.88,explicada por pago,Pagado,2123.88,saldo descontado por capital pagado
+9,Emprendedores,15,3,saldo_insoluto,26628.29,28764.56,-2136.27,explicada por pago,Pagado,2136.27,saldo descontado por capital pagado
+10,Emprendedores,24,1,saldo_insoluto,52858.34,55000.00,-2141.66,explicada por pago,Pagado,2141.66,saldo descontado por capital pagado
+10,Emprendedores,24,2,saldo_insoluto,50704.19,52858.34,-2154.15,explicada por pago,Pagado,2154.15,saldo descontado por capital pagado
+10,Emprendedores,24,3,saldo_insoluto,48537.47,50704.19,-2166.72,explicada por pago,Pagado,2166.72,saldo descontado por capital pagado
+10,Emprendedores,24,4,saldo_insoluto,46358.12,48537.47,-2179.35,explicada por pago,Pagado,2179.35,saldo descontado por capital pagado
+10,Emprendedores,24,5,saldo_insoluto,44166.05,46358.12,-2192.07,explicada por pago,Pagado,2192.07,saldo descontado por capital pagado
+10,Emprendedores,24,6,saldo_insoluto,41961.20,44166.05,-2204.85,explicada por pago,Pagado,2204.85,saldo descontado por capital pagado
+11,Emprendedores,12,1,saldo_insoluto,16547.52,18000.00,-1452.48,explicada por pago,Pagado,1452.48,saldo descontado por capital pagado
+11,Emprendedores,12,2,saldo_insoluto,15086.57,16547.52,-1460.95,explicada por pago,Pagado,1460.95,saldo descontado por capital pagado
+11,Emprendedores,12,3,saldo_insoluto,13617.09,15086.57,-1469.48,explicada por pago,Pagado,1469.48,saldo descontado por capital pagado
+12,Emprendedores,18,1,saldo_insoluto,35991.64,38000.00,-2008.36,explicada por pago,Pagado,2008.36,saldo descontado por capital pagado
+12,Emprendedores,18,2,saldo_insoluto,33971.56,35991.64,-2020.08,explicada por pago,Pagado,2020.08,saldo descontado por capital pagado
+12,Emprendedores,18,3,saldo_insoluto,31939.70,33971.56,-2031.86,explicada por pago,Pagado,2031.86,saldo descontado por capital pagado
+12,Emprendedores,18,4,saldo_insoluto,29895.98,31939.70,-2043.72,explicada por pago,Pagado,2043.72,saldo descontado por capital pagado
+12,Emprendedores,18,5,saldo_insoluto,27840.34,29895.98,-2055.64,explicada por pago,Pagado,2055.64,saldo descontado por capital pagado
+13,Emprendedores,24,1,saldo_insoluto,76884.86,80000.00,-3115.14,explicada por pago,Pagado,3115.14,saldo descontado por capital pagado
+13,Emprendedores,24,2,saldo_insoluto,73751.55,76884.86,-3133.31,explicada por pago,Pagado,3133.31,saldo descontado por capital pagado
+13,Emprendedores,24,3,saldo_insoluto,70599.96,73751.55,-3151.59,explicada por pago,Pagado,3151.59,saldo descontado por capital pagado
+13,Emprendedores,24,4,saldo_insoluto,67429.98,70599.96,-3169.98,explicada por pago,Pagado,3169.98,saldo descontado por capital pagado
+13,Emprendedores,24,5,saldo_insoluto,64241.51,67429.98,-3188.47,explicada por pago,Pagado,3188.47,saldo descontado por capital pagado
+13,Emprendedores,24,6,saldo_insoluto,61034.44,64241.51,-3207.07,explicada por pago,Pagado,3207.07,saldo descontado por capital pagado
+13,Emprendedores,24,7,saldo_insoluto,57808.66,61034.44,-3225.78,explicada por pago,Pagado,3225.78,saldo descontado por capital pagado
+14,Sustentable,8,1,saldo_insoluto,15782.61,18000.00,-2217.39,explicada por pago,Pagado,2217.39,saldo descontado por capital pagado
+14,Sustentable,8,2,saldo_insoluto,13555.98,15782.61,-2226.63,explicada por pago,Pagado,2226.63,saldo descontado por capital pagado
+15,Sustentable,6,1,saldo_insoluto,10020.73,12000.00,-1979.27,explicada por pago,Pagado,1979.27,saldo descontado por capital pagado
+16,Sustentable,18,1,saldo_insoluto,33123.51,35000.00,-1876.49,explicada por pago,Pagado,1876.49,saldo descontado por capital pagado
+16,Sustentable,18,2,saldo_insoluto,31239.20,33123.51,-1884.31,explicada por pago,Pagado,1884.31,saldo descontado por capital pagado
+16,Sustentable,18,3,saldo_insoluto,29347.04,31239.20,-1892.16,explicada por pago,Pagado,1892.16,saldo descontado por capital pagado
+16,Sustentable,18,4,saldo_insoluto,27447.00,29347.04,-1900.04,explicada por pago,Pagado,1900.04,saldo descontado por capital pagado
+17,Sustentable,8,1,saldo_insoluto,14028.99,16000.00,-1971.01,explicada por pago,Pagado,1971.01,saldo descontado por capital pagado
+18,Sustentable,7,1,saldo_insoluto,12024.86,14000.00,-1975.14,explicada por pago,Pagado,1975.14,saldo descontado por capital pagado
+19,Artesanal,8,1,saldo_insoluto,7000.00,8000.00,-1000.00,explicada por pago,Pagado,1000.00,saldo descontado por capital pagado
+19,Artesanal,8,2,saldo_insoluto,6000.00,7000.00,-1000.00,explicada por pago,Pagado,1000.00,saldo descontado por capital pagado
+20,Artesanal,6,1,saldo_insoluto,6250.00,7500.00,-1250.00,explicada por pago,Pagado,1250.00,saldo descontado por capital pagado
+20,Artesanal,6,2,saldo_insoluto,5000.00,6250.00,-1250.00,explicada por pago,Pagado,1250.00,saldo descontado por capital pagado
+21,Artesanal,5,1,saldo_insoluto,4000.00,5000.00,-1000.00,explicada por pago,Pagado,1000.00,saldo descontado por capital pagado
+21,Artesanal,5,2,saldo_insoluto,3000.00,4000.00,-1000.00,explicada por pago,Pagado,1000.00,saldo descontado por capital pagado
+21,Artesanal,5,3,saldo_insoluto,2000.00,3000.00,-1000.00,explicada por pago,Pagado,1000.00,saldo descontado por capital pagado
+22,Artesanal,9,1,saldo_insoluto,8000.00,9000.00,-1000.00,explicada por pago,Pagado,1000.00,saldo descontado por capital pagado
+22,Artesanal,9,2,saldo_insoluto,7000.00,8000.00,-1000.00,explicada por pago,Pagado,1000.00,saldo descontado por capital pagado
+22,Artesanal,9,3,saldo_insoluto,6000.00,7000.00,-1000.00,explicada por pago,Pagado,1000.00,saldo descontado por capital pagado
+22,Artesanal,9,4,saldo_insoluto,5000.00,6000.00,-1000.00,explicada por pago,Pagado,1000.00,saldo descontado por capital pagado
+23,Artesanal,10,1,saldo_insoluto,9900.00,11000.00,-1100.00,explicada por pago,Pagado,1100.00,saldo descontado por capital pagado
+23,Artesanal,10,2,saldo_insoluto,8800.00,9900.00,-1100.00,explicada por pago,Pagado,1100.00,saldo descontado por capital pagado
+23,Artesanal,10,3,saldo_insoluto,7700.00,8800.00,-1100.00,explicada por pago,Pagado,1100.00,saldo descontado por capital pagado
+24,Artesanal,8,1,saldo_insoluto,7437.50,8500.00,-1062.50,explicada por pago,Pagado,1062.50,saldo descontado por capital pagado
+24,Artesanal,8,2,saldo_insoluto,6375.00,7437.50,-1062.50,explicada por pago,Pagado,1062.50,saldo descontado por capital pagado
+24,Artesanal,8,3,saldo_insoluto,5312.50,6375.00,-1062.50,explicada por pago,Pagado,1062.50,saldo descontado por capital pagado
+26,Emprendedores,12,1,saldo_insoluto,20224.74,22000.00,-1775.26,explicada por pago,Pagado,1775.26,saldo descontado por capital pagado
+33,Emprendedores,12,1,saldo_insoluto,27579.20,30000.00,-2420.80,explicada por pago,Pagado,2420.80,saldo descontado por capital pagado
+33,Emprendedores,12,2,saldo_insoluto,25144.28,27579.20,-2434.92,explicada por pago,Pagado,2434.92,saldo descontado por capital pagado
+33,Emprendedores,12,3,saldo_insoluto,22695.15,25144.28,-2449.13,explicada por pago,Pagado,2449.13,saldo descontado por capital pagado
+33,Emprendedores,12,4,saldo_insoluto,20231.74,22695.15,-2463.41,explicada por pago,Pagado,2463.41,saldo descontado por capital pagado
+33,Emprendedores,12,5,saldo_insoluto,17753.96,20231.74,-2477.78,explicada por pago,Pagado,2477.78,saldo descontado por capital pagado
+33,Emprendedores,12,6,interes_ordinario_esperado,0.00,103.56,-103.56,explicada por pago,Pagado,2492.24,interes recortado por liquidacion anticipada
+33,Emprendedores,12,6,saldo_insoluto,15261.72,17753.96,-2492.24,explicada por pago,Pagado,2492.24,saldo descontado por capital pagado
+33,Emprendedores,12,7,interes_ordinario_esperado,0.00,89.03,-89.03,explicada por pago,Pagado,2506.77,interes recortado por liquidacion anticipada
+33,Emprendedores,12,7,saldo_insoluto,12754.95,15261.72,-2506.77,explicada por pago,Pagado,2506.77,saldo descontado por capital pagado
+33,Emprendedores,12,8,interes_ordinario_esperado,0.00,74.40,-74.40,explicada por pago,Pagado,2521.40,interes recortado por liquidacion anticipada
+33,Emprendedores,12,8,saldo_insoluto,10233.55,12754.95,-2521.40,explicada por pago,Pagado,2521.40,saldo descontado por capital pagado
+33,Emprendedores,12,9,interes_ordinario_esperado,0.00,59.70,-59.70,explicada por pago,Pagado,2536.10,interes recortado por liquidacion anticipada
+33,Emprendedores,12,9,saldo_insoluto,7697.45,10233.55,-2536.10,explicada por pago,Pagado,2536.10,saldo descontado por capital pagado
+33,Emprendedores,12,10,interes_ordinario_esperado,0.00,44.90,-44.90,explicada por pago,Pagado,2550.90,interes recortado por liquidacion anticipada
+33,Emprendedores,12,10,saldo_insoluto,5146.55,7697.45,-2550.90,explicada por pago,Pagado,2550.90,saldo descontado por capital pagado
+33,Emprendedores,12,11,interes_ordinario_esperado,0.00,30.02,-30.02,explicada por pago,Pagado,2565.78,interes recortado por liquidacion anticipada
+33,Emprendedores,12,11,saldo_insoluto,2580.77,5146.55,-2565.78,explicada por pago,Pagado,2565.78,saldo descontado por capital pagado
+33,Emprendedores,12,12,interes_ordinario_esperado,0.00,15.05,-15.05,explicada por pago,Pagado,2580.77,interes recortado por liquidacion anticipada
+33,Emprendedores,12,12,saldo_insoluto,0.00,2580.77,-2580.77,explicada por pago,Pagado,2580.77,saldo descontado por capital pagado
+34,Artesanal,6,1,saldo_insoluto,5000.00,6000.00,-1000.00,explicada por pago,Pagado,1000.00,saldo descontado por capital pagado
+34,Artesanal,6,2,saldo_insoluto,4000.00,5000.00,-1000.00,explicada por pago,Pagado,1000.00,saldo descontado por capital pagado
+34,Artesanal,6,3,saldo_insoluto,3000.00,4000.00,-1000.00,explicada por pago,Pagado,1000.00,saldo descontado por capital pagado
+34,Artesanal,6,4,saldo_insoluto,2000.00,3000.00,-1000.00,explicada por pago,Pagado,1000.00,saldo descontado por capital pagado
+34,Artesanal,6,5,saldo_insoluto,1000.00,2000.00,-1000.00,explicada por pago,Pagado,1000.00,saldo descontado por capital pagado
+34,Artesanal,6,6,saldo_insoluto,0.00,1000.00,-1000.00,explicada por pago,Pagado,1000.00,saldo descontado por capital pagado
+35,Emprendedores,12,1,saldo_insoluto,23901.97,26000.00,-2098.03,explicada por pago,Pagado,2098.03,saldo descontado por capital pagado
+35,Emprendedores,12,2,saldo_insoluto,21791.70,23901.97,-2110.27,explicada por pago,Pagado,2110.27,saldo descontado por capital pagado
+35,Emprendedores,12,3,saldo_insoluto,19669.12,21791.70,-2122.58,explicada por pago,Pagado,2122.58,saldo descontado por capital pagado
+35,Emprendedores,12,4,saldo_insoluto,17534.16,19669.12,-2134.96,explicada por pago,Pagado,2134.96,saldo descontado por capital pagado
+35,Emprendedores,12,5,saldo_insoluto,15386.74,17534.16,-2147.42,explicada por pago,Pagado,2147.42,saldo descontado por capital pagado
+35,Emprendedores,12,6,saldo_insoluto,13226.80,15386.74,-2159.94,explicada por pago,Pagado,2159.94,saldo descontado por capital pagado
+35,Emprendedores,12,7,interes_ordinario_esperado,0.00,77.16,-77.16,explicada por pago,Pagado,2172.54,interes recortado por liquidacion anticipada
+35,Emprendedores,12,7,saldo_insoluto,11054.26,13226.80,-2172.54,explicada por pago,Pagado,2172.54,saldo descontado por capital pagado
+35,Emprendedores,12,8,interes_ordinario_esperado,0.00,64.48,-64.48,explicada por pago,Pagado,2185.22,interes recortado por liquidacion anticipada
+35,Emprendedores,12,8,saldo_insoluto,8869.04,11054.26,-2185.22,explicada por pago,Pagado,2185.22,saldo descontado por capital pagado
+35,Emprendedores,12,9,interes_ordinario_esperado,0.00,51.74,-51.74,explicada por pago,Pagado,2197.96,interes recortado por liquidacion anticipada
+35,Emprendedores,12,9,saldo_insoluto,6671.08,8869.04,-2197.96,explicada por pago,Pagado,2197.96,saldo descontado por capital pagado
+35,Emprendedores,12,10,interes_ordinario_esperado,0.00,38.91,-38.91,explicada por pago,Pagado,2210.79,interes recortado por liquidacion anticipada
+35,Emprendedores,12,10,saldo_insoluto,4460.29,6671.08,-2210.79,explicada por pago,Pagado,2210.79,saldo descontado por capital pagado
+35,Emprendedores,12,11,interes_ordinario_esperado,0.00,26.02,-26.02,explicada por pago,Pagado,2223.68,interes recortado por liquidacion anticipada
+35,Emprendedores,12,11,saldo_insoluto,2236.61,4460.29,-2223.68,explicada por pago,Pagado,2223.68,saldo descontado por capital pagado
+35,Emprendedores,12,12,interes_ordinario_esperado,0.00,13.05,-13.05,explicada por pago,Pagado,2236.61,interes recortado por liquidacion anticipada
+35,Emprendedores,12,12,saldo_insoluto,0.00,2236.61,-2236.61,explicada por pago,Pagado,2236.61,saldo descontado por capital pagado
+3,Sustentable,6,-3,estructura,,,,fila ausente,,,
+3,Sustentable,6,-2,estructura,,,,fila ausente,,,
+3,Sustentable,6,-1,estructura,,,,fila ausente,,,
+14,Sustentable,8,-3,estructura,,,,fila ausente,,,
+14,Sustentable,8,-2,estructura,,,,fila ausente,,,
+14,Sustentable,8,-1,estructura,,,,fila ausente,,,
+15,Sustentable,6,-3,estructura,,,,fila ausente,,,
+15,Sustentable,6,-2,estructura,,,,fila ausente,,,
+15,Sustentable,6,-1,estructura,,,,fila ausente,,,
+16,Sustentable,18,-3,estructura,,,,fila ausente,,,
+16,Sustentable,18,-2,estructura,,,,fila ausente,,,
+16,Sustentable,18,-1,estructura,,,,fila ausente,,,
+17,Sustentable,8,-3,estructura,,,,fila ausente,,,
+17,Sustentable,8,-2,estructura,,,,fila ausente,,,
+17,Sustentable,8,-1,estructura,,,,fila ausente,,,
+18,Sustentable,7,-3,estructura,,,,fila ausente,,,
+18,Sustentable,7,-2,estructura,,,,fila ausente,,,
+18,Sustentable,7,-1,estructura,,,,fila ausente,,,
+28,Sustentable,12,-3,estructura,,,,fila ausente,,,
+28,Sustentable,12,-2,estructura,,,,fila ausente,,,
+28,Sustentable,12,-1,estructura,,,,fila ausente,,,
+30,Sustentable,12,-3,estructura,,,,fila ausente,,,
+30,Sustentable,12,-2,estructura,,,,fila ausente,,,
+30,Sustentable,12,-1,estructura,,,,fila ausente,,,
+32,Sustentable,15,-3,estructura,,,,fila ausente,,,
+32,Sustentable,15,-2,estructura,,,,fila ausente,,,
+32,Sustentable,15,-1,estructura,,,,fila ausente,,,

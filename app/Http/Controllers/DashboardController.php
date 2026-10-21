@@ -2,8 +2,10 @@
 
 namespace App\Http\Controllers;
 
+use App\Jobs\CalcularCarteraActiva;
 use App\Models\ModalidadCrea;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 
@@ -139,6 +141,10 @@ class DashboardController extends Controller
             )
             ->get();
 
+        // se pasan los valores de configuracion de los dias a variables
+        $diasGraciaMora = config('credito.dias_gracia_mora');
+        $diasAnioComercial = config('credito.dias_anio_comercial');
+
         // ── Mora pendiente (calculada dinámicamente) ──────────────────────────
         $esMysql = DB::getDriverName() === 'mysql';
 
@@ -157,15 +163,15 @@ class DashboardController extends Controller
             ->when($modId, fn ($q) => $q->where('c_mp.modalidad_id', $modId))
             ->selectRaw("
                 SUM(
-                    CASE WHEN {$diasVencido} > 5
+                    CASE WHEN {$diasVencido} > ?
                     THEN ROUND(
                         {$saldoPendiente}
-                        * (c_mp.tasa_interes_moratorio / 100.0 / 360.0)
+                        * (c_mp.tasa_interes_moratorio / 100.0 / ?)
                         * {$diasVencido},
                     2)
                     ELSE 0 END
                 ) as mora_calc
-            ", [$hoy, $hoy])
+            ", [$hoy, $diasGraciaMora, $diasAnioComercial, $hoy])
             ->first()
             ->mora_calc ?? 0);
 
@@ -237,6 +243,8 @@ class DashboardController extends Controller
         return Inertia::render('Dashboard', [
             'modalidades' => $modalidades,
             'modalidad_activa' => $modId,
+            // Calculado una vez al día por el Job CalcularCarteraActiva; aquí solo se lee
+            'cartera_activa' => Cache::get(CalcularCarteraActiva::CLAVE_CACHE),
             'stats' => [
                 'capital' => [
                     'colocado' => $colocado,
