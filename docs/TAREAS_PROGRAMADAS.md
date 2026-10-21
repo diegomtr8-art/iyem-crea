@@ -58,7 +58,7 @@ Con eso queda activo todo lo de la sección 2.
 
 ### Cómo comprobar que quedó
 
-- **Al día siguiente**, en el panel de **Tareas programadas** (menú lateral → Sistema, solo administradores) deben aparecer en verde las ejecuciones de las 3:00, 7:00, 8:00 y 9:00. Una tarea diaria que lleva más de 24 horas sin correr sale en rojo.
+- **Al día siguiente**, en el panel de **Tareas programadas** (menú lateral → Sistema, solo administradores) deben aparecer en verde las ejecuciones de las 3:00, 4:30, 6:00, 7:00, 8:00 y 9:00. Una tarea diaria que lleva más de 24 horas sin correr sale en rojo.
 - **Ese mismo día**, por SSH, `php artisan schedule:list` muestra todas las tareas y cuándo les toca. Eso confirma que están registradas, pero no que el cron esté corriendo; eso solo lo confirma el panel.
 
 ---
@@ -70,6 +70,8 @@ Todas las horas son de Mérida (`America/Merida`) y están en `routes/console.ph
 | Tarea | Qué hace | Cuándo | Qué pasa si no corre |
 |---|---|---|---|
 | `crea:respaldo-base` | Respaldo comprimido de la base (ver `docs/RESPALDO.md`). | Diario, 3:00 | No hay respaldo de ese día. Si pasan varios días, el último respaldo bueno se va quedando viejo. |
+| `crea:limpiar-bitacoras` | Borra la bitácora de tareas y los correos fallidos más viejos que su plazo (por omisión 90 y 30 días), y el caché vencido (sección 6). | Diario, 4:30 | Esas tablas siguen creciendo. No pasa nada grave de inmediato. |
+| `crea:verificar-respaldo` | Revisa que haya un respaldo de las últimas 26 h de al menos 10 KB. Si no, falla y avisa a los administradores (ver `docs/RESPALDO.md`). | Diario, 6:00 | Nadie se entera si falta el respaldo, salvo con la tarjeta del panel, que revisa la carpeta al abrirlo. |
 | `CalcularCarteraActiva` | Calcula el total de la cartera activa para la tarjeta del panel. | Diario, 7:00 | La tarjeta sigue mostrando el último cálculo con su fecha; si nunca corrió, dice que aún no se ha calculado. |
 | `crea:update-moratorio` | Recalcula el interés moratorio de las cuotas vencidas. | Diario, 8:00 | La mora se queda congelada en el último cálculo: el portal del acreditado y los estados de cuenta muestran menos mora de la que corresponde. |
 | `crea:recordatorios-pago` | Encola un correo para cada cuota que vence en 3 días. | Diario, 9:00 | Esas cuotas no reciben aviso. El proceso solo busca las que vencen justo en 3 días, así que un día sin correr deja a ese grupo sin aviso (se puede mandar desde la pantalla Recordatorios de pago). |
@@ -123,6 +125,7 @@ Para reenviar, usa la pantalla **Recordatorios de pago** (menú lateral → Sist
 
 - No hay ejecuciones, así que tampoco hay alertas.
 - La única señal es el panel: las tareas diarias salen en rojo al pasar 24 horas sin correr. Conviene revisarlo de vez en cuando.
+- La tarjeta del último respaldo, arriba en el panel, también sale en rojo, porque revisa la carpeta de respaldos al abrir la página.
 
 **Falla un correo directo** (verificación, contraseña o contacto):
 
@@ -148,3 +151,42 @@ Con `MAIL_MAILER=log` ningún correo sale de tu computadora: se escriben complet
 4. Revisa el final de `storage/logs/laravel.log`: ahí está el correo con nombre, contrato, cuota, monto y fecha. Compáralos con el crédito en el sistema.
 
 Si en lugar de `schedule:run` prefieres vaciar la cola directo: `php artisan queue:work --stop-when-empty`.
+
+---
+
+## 6. Limpieza de bitácoras
+
+Algunas tablas crecen sin límite. Todos los días a las 4:30, `crea:limpiar-bitacoras` borra lo viejo. Los plazos por omisión se acordaron con Diego en el ticket J.13:
+
+| Tabla | Qué se borra | Por qué |
+|---|---|---|
+| `bitacora_tareas_programadas` | Ejecuciones de hace más de **90 días** (por omisión) | El panel solo usa la última ejecución y los errores de los últimos 7 días. |
+| `failed_jobs` | Correos fallidos de hace más de **30 días** (por omisión) | Un recordatorio sale 3 días antes de la fecha de pago, así que a los 30 días esa fecha ya pasó y reintentarlo ya no sirve. |
+| `cache` | Entradas vencidas | Ya no sirven, pero Laravel solo las borra cuando alguien vuelve a leerlas. |
+
+**No se toca:**
+
+- **`auditoria_log`:** es el registro de quién hizo qué con el dinero. Cualquier plazo ahí lo decide dirección.
+- **`sessions`:** Laravel ya borra las sesiones vencidas por su cuenta.
+- **Datos de créditos y pagos.**
+
+Cada corrida programada deja en la bitácora cuántas filas borró de cada tabla, por ejemplo: «Se borraron bitacora_tareas_programadas: 12 (más de 90 días), failed_jobs: 0 (más de 30 días), cache: 3 (vencidas).» Si se corre a mano, el resumen queda en `storage/logs/laravel.log`.
+
+Antes de borrar a mano, se puede ver cuánto borraría sin tocar nada:
+
+```bash
+php artisan crea:limpiar-bitacoras --dry-run
+```
+
+### Cambiar los plazos
+
+Los plazos están en `config/limpieza.php` y se cambian desde el `.env`, sin tocar el código:
+
+```
+LIMPIEZA_BITACORA_TAREAS_DIAS=90
+LIMPIEZA_CORREOS_FALLIDOS_DIAS=30
+```
+
+Son los días que se conservan. Si una variable no está en el `.env`, se usa el valor por omisión. Después de cambiarlas hay que correr `php artisan config:cache`, porque en producción la configuración está en caché. Conviene probar el plazo nuevo con `--dry-run` antes de que corra la limpieza de las 4:30.
+
+Si un plazo queda en 0, en negativo o con texto, el comando no borra nada y termina con error. Así un error de escritura en el `.env` no puede vaciar la bitácora. La corrida queda en rojo en el panel y los administradores reciben la alerta con la variable que hay que revisar.

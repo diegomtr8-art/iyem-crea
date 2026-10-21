@@ -26,10 +26,30 @@ Para entrar a la base usa los mismos datos del `.env` (`DB_HOST`, `DB_DATABASE`,
 ### Cómo saber si funcionó
 
 - **Panel de Tareas programadas** (menú lateral → Sistema → Tareas programadas, solo para administradores): `crea:respaldo-base` aparece con su última ejecución. Si no ha corrido en 24 horas o terminó con error, sale en rojo.
+- **Tarjeta del último respaldo**, arriba en el mismo panel: fecha, tamaño y nombre del archivo más reciente. Sale en rojo si falta el respaldo (ver «Verificación diaria»).
 - **Ícono de tareas fallidas** del encabezado: si el respaldo falla, los administradores reciben una alerta.
 - **Motivo exacto del error**: queda en `storage/logs/laravel.log`. Busca la línea `Falló el respaldo de la base de datos`.
 
 Si se corre a mano, el resultado sale en la terminal, pero no queda en el panel. Ahí solo se registran las ejecuciones que lanza el scheduler.
+
+### Verificación diaria
+
+El respaldo puede fallar sin avisar, por ejemplo si `mysqldump` deja de funcionar o si el cron no lo lanzó. Por eso, todos los días a las **6:00 de Mérida**, tres horas después del respaldo, `crea:verificar-respaldo` revisa la carpeta de respaldos (`RESPALDO_DIRECTORIO`):
+
+1. Busca el archivo más reciente con el nombre que pone `crea:respaldo-base` (`crea-respaldo-AAAA-MM-DD_HHMMSS.sql.gz`). No cuentan los `.part` ni otros archivos.
+2. Revisa que sea de las **últimas 26 horas**. Usa la hora de modificación del archivo.
+3. Revisa que pese al menos **10 KB**. La base vacía, solo con la estructura, ya pesa 7.4 KB comprimida; un respaldo con datos pesa cientos de KB.
+
+| Resultado | Qué queda |
+|---|---|
+| Todo bien | En la bitácora sale como exitosa, con «OK: *archivo* (*tamaño*), del *fecha*». |
+| Falta el respaldo o está vacío | La tarea termina con error y el motivo queda en la bitácora; los administradores reciben la alerta en el ícono del encabezado. Ejemplo: «Falta respaldo: no hay respaldo de las últimas 26 h. Último respaldo: crea-respaldo-2026-10-14_030000.sql.gz (412.3 KB), del 14/10/2026 03:00.» |
+
+Si el respaldo de las 3:00 no se genera, el aviso llega ese mismo día a las 6:00: a esa hora el respaldo del día anterior ya tiene 27 horas. Se revisa a las 6:00 y no antes porque, con el margen de 26 horas, a las 4:00 el de ayer tendría solo 25 y el aviso llegaría un día tarde. La hora de margen sirve por si un respaldo tarda en terminar.
+
+Si el cron entero se cae, la verificación tampoco corre y no hay alerta. Lo que sí avisa en ese caso es la tarjeta del panel: revisa la carpeta cada vez que se abre la página, así que sale en rojo aunque no haya corrido ninguna tarea.
+
+Para revisarlo a mano: `php artisan crea:verificar-respaldo`. Igual que el respaldo, la corrida a mano no queda en el panel.
 
 ---
 
