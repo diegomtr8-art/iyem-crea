@@ -164,7 +164,7 @@ Revisa qué tan reciente es el respaldo:
 mysql -u USUARIO_BD -p NOMBRE_BD -e "SELECT COUNT(*) AS creditos FROM creditos; SELECT MAX(created_at) AS ultimo_pago FROM pagos;"
 ```
 
-**Guarda también quiénes son administradores y cómo están las modalidades.** El deploy del paso 6 puede cambiar las dos cosas (ver el aviso de ese paso), y con estas listas vas a notar si pasó. Cópialas a un archivo de texto en tu computadora:
+**Guarda también quiénes son administradores y cómo están las modalidades.** Si el `deploy.sh` que vas a usar corre seeders, el deploy del paso 6 puede cambiar las dos cosas (ver el aviso de ese paso), y con estas listas vas a notar si pasó. Cópialas a un archivo de texto en tu computadora:
 
 ```bash
 mysql -u USUARIO_BD -p NOMBRE_BD -e "SELECT u.id, u.name, u.email FROM users u JOIN model_has_roles m ON m.model_id = u.id JOIN roles r ON r.id = m.role_id WHERE r.name = 'Administrador' ORDER BY u.id;"
@@ -238,7 +238,7 @@ Todo esto lo hace `deploy.sh` desde tu computadora:
 2. empaquetado y subida del código;
 3. `composer install --no-dev` en el servidor;
 4. `php artisan migrate --force`;
-5. los seeders de modalidades y de roles y permisos;
+5. solo en versiones anteriores al PR #61 (como `main` hoy), los seeders de modalidades y de roles y permisos;
 6. las cachés y la copia de `build/`.
 
 En Git Bash, clona el repositorio en una carpeta de **ruta corta**, por ejemplo `C:\crea`. En una ruta larga (dentro de OneDrive o del Escritorio, con nombres largos), Windows falla con «Filename too long».
@@ -263,14 +263,20 @@ SSH_HOST="USUARIO@IP_DEL_SERVIDOR"
 REMOTE_DIR='~/domains/crea.iyemyucatan.com/public_html'
 ```
 
-> **⚠️ Antes de correr `deploy.sh`: puede dejar a alguien como Administrador sin querer.**
+> **⚠️ Antes de correr `deploy.sh`: revisa si corre seeders.** Puede dejar a alguien como Administrador sin querer.
 >
-> `deploy.sh` corre dos seeders que cambian la base restaurada (sección 16):
+> ```bash
+> grep -n "db:seed" deploy.sh | grep -v "#"
+> ```
 >
-> - **`RoleAndPermissionSeeder`** le da el rol Administrador al primer usuario operativo de la base. En el simulacro, ese usuario era un Cajero y quedó como Administrador.
-> - **`ActualizarModalidadesSeeder`** reescribe tasas, montos y plazos de las modalidades con los valores que trae el código.
+> El segundo `grep` quita los comentarios: en `develop`, `deploy.sh` menciona los seeders solo en un comentario.
 >
-> Antes de seguir, ten a la mano las dos listas que guardaste en el paso 4. Justo después del deploy las vas a comparar («Revisa administradores y modalidades», abajo).
+> - **No sale nada** (`develop` desde el PR #61, del 16/10/2026): el deploy no cambia roles ni modalidades.
+> - **Salen dos líneas** (`main` hoy, o una copia vieja de `deploy.sh`): corre dos seeders que, con el código anterior a la J.17, cambian la base restaurada (sección 16):
+>   - **`RoleAndPermissionSeeder`** le da el rol Administrador al primer usuario operativo de la base. En el simulacro, ese usuario era un Cajero y quedó como Administrador.
+>   - **`ActualizarModalidadesSeeder`** reescribe tasas, montos y plazos de las modalidades con los valores que trae el código.
+>
+>   Antes de seguir, ten a la mano las dos listas que guardaste en el paso 4. Justo después del deploy las vas a comparar («Revisa administradores y modalidades», abajo).
 
 Córrelo:
 
@@ -282,13 +288,13 @@ La primera vez que se conecta, pregunta si confías en el servidor: escribe `yes
 
 ### Si `deploy.sh` se detiene en `route:cache`
 
-En el simulacro, con `develop` del 16/10/2026, `deploy.sh` se detuvo con este error:
+En el simulacro, con `develop` del 16/10/2026, `deploy.sh` se detuvo con este error. Con `develop` del 22/10/2026 (`4fb46b8`) sigue pasando; `main` no tiene la ruta repetida.
 
 ```
 Unable to prepare route [acreditados/{acreditado}] for serialization. Another route has already been assigned name [acreditados.update].
 ```
 
-Las migraciones, los seeders y la caché de configuración ya habían corrido; faltaba el resto del paso 5 de `deploy.sh`. Termínalo a mano, sin la caché de rutas (el sistema funciona igual, solo un poco más lento):
+Las migraciones (y los seeders, si tu `deploy.sh` los corre) y la caché de configuración ya habían corrido; faltaba el resto del paso 5 de `deploy.sh`. Termínalo a mano, sin la caché de rutas (el sistema funciona igual, solo un poco más lento):
 
 ```bash
 ssh -i ~/.ssh/id_deploy -p 65002 USUARIO@IP_DEL_SERVIDOR "cd ~/domains/crea.iyemyucatan.com/public_html && php artisan route:clear && php artisan view:cache && php artisan event:cache && rm -rf build && cp -r public/build/ build/"
@@ -302,6 +308,11 @@ Vuelve a correr las dos consultas del paso 4 y compáralas con lo que guardaste:
 
 - **Si aparece un administrador nuevo**, fue el seeder. En el panel ve a Sistema → Usuarios, edita a esa persona, déjale su rol original y guarda. Hazlo antes de abrir el sistema a los usuarios.
 - **Si cambió algún valor de las modalidades**, avísale a Diego con los valores de antes y los de ahora. Él decide cuáles son los correctos.
+- **Si no quedó ningún administrador**, dale el rol a quien diga Diego (el comando existe desde la J.17). La persona tiene que existir en la base como usuario operativo; el comando no le quita los roles que ya tenga y deja el cambio en la bitácora de auditoría:
+
+  ```bash
+  ssh -i ~/.ssh/id_deploy -p 65002 USUARIO@IP_DEL_SERVIDOR "cd ~/domains/crea.iyemyucatan.com/public_html && php artisan crea:asignar-administrador CORREO_DE_LA_PERSONA"
+  ```
 
 ---
 
@@ -515,12 +526,17 @@ El respaldo de la J.9 (`crea:respaldo-base`) solo copia la base de datos. Esto s
 
 ## 16. Lo que cambian los seeders en una base restaurada
 
-`deploy.sh` corre dos seeders en cada deploy, y también al recuperar. En el simulacro cambiaron datos de la base restaurada:
+Hasta el PR #61 (16/10/2026), `deploy.sh` corría dos seeders en cada deploy, y también al recuperar; el de `main` todavía lo hace. En el simulacro, con el código de ese día, cambiaron datos de la base restaurada:
 
-- **`RoleAndPermissionSeeder`** le da el rol Administrador al primer usuario operativo que encuentra en la base (normalmente el de id más bajo), si no lo tiene. En el simulacro, ese usuario era un Cajero y quedó como Administrador. Por eso el paso 6 pide revisar a los administradores.
-- **`ActualizarModalidadesSeeder`** reescribe las modalidades (tasas, montos, plazos y documentos requeridos) con los valores de las convocatorias 2025 que trae el código. Cualquier cambio que se haya hecho desde el panel se pierde.
+- **`RoleAndPermissionSeeder`** le daba el rol Administrador al primer usuario operativo que encontrara en la base (normalmente el de id más bajo), si no lo tenía. En el simulacro, ese usuario era un Cajero y quedó como Administrador. Por eso el paso 6 pide revisar a los administradores.
+- **`ActualizarModalidadesSeeder`** reescribía las modalidades (tasas, montos, plazos y documentos requeridos) con los valores de las convocatorias 2025 que trae el código. Cualquier cambio hecho a mano en la base se perdía.
 
-Las dos cosas pasan igual en cada deploy normal, no solo al recuperar.
+Con el código anterior a la J.17, las dos cosas pasan en cada deploy que corra los seeders, no solo al recuperar.
+
+**Desde la J.17**, los seeders se pueden correr sobre una base con datos sin cambiar lo que ya existe:
+
+- **`RoleAndPermissionSeeder`** y **`RolesPermissionsSeeder`** solo crean los roles y permisos que falten. No le quitan permisos a ningún rol y no le cambian el rol a ningún usuario. El Administrador se asigna con `php artisan crea:asignar-administrador CORREO`.
+- **`ActualizarModalidadesSeeder`** solo crea la modalidad que falte y completa la que siga sin montos, plazos ni documentos. Una modalidad ya configurada no se toca, y las tasas de una que ya existe nunca se cambian: el seeder solo avisa en qué difiere de 2025.
 
 ---
 

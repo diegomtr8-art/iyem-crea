@@ -136,6 +136,21 @@ Cómo ejecutarlo:
 
 Importante: Si alguna variable falta o está vacía, el seeder se detiene con un mensaje y no crea ningún usuario.
 
+### Roles, permisos y modalidades
+
+`RoleAndPermissionSeeder`, `RolesPermissionsSeeder` (el de `php artisan db:seed`) y `ActualizarModalidadesSeeder` se pueden correr las veces que haga falta, también sobre una base con datos:
+
+- **Roles y permisos:** solo se crean los que falten. Ningún rol pierde permisos, así que lo editado en Sistema → Roles se respeta, y ningún usuario cambia de rol. Si en el código se agrega un permiso nuevo, lo reciben los roles que lo traen en su lista.
+- **Modalidades:** se crea la modalidad que falte y se completa con los datos de 2025 la que siga sin montos, plazos ni documentos. Una modalidad ya configurada no se toca, y las tasas de una que ya existe nunca se cambian; el seeder solo avisa en qué difiere de 2025.
+
+Los seeders de roles ya no le dan el rol Administrador a nadie. `LimpiarUsuariosSeeder` se lo sigue dando al usuario administrador que crea. A cualquier otro usuario operativo que ya exista se le da con:
+
+```bash
+php artisan crea:asignar-administrador correo@dominio.com
+```
+
+El comando solo acepta usuarios operativos, no les quita los roles que ya tengan y deja el cambio en la bitácora de auditoría.
+
 ## Variables de entorno
 
 ```env
