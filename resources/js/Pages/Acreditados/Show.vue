@@ -338,7 +338,7 @@ const desglosePago = computed(() => {
                             <AlertCircle :size="12"/> MXN
                         </span>
                         <span class="flex items-center gap-1 text-yellow-500">
-                            <Clock :size="12"/> Gracia: {{ dias_gracia }} días
+                            <Clock :size="12"/> Gracia: {{ dias_gracia_mora }} días
                         </span>
                         <span class="flex items-center gap-1 text-orange-500">
                             <Timer :size="12"/> Año: {{ dias_anio_comercial }} días
