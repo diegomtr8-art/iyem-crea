@@ -61,6 +61,8 @@ class PagoController extends Controller
             'cuotas_pendientes' => $cuotasPendientes,
             'formas_pago'       => ['Efectivo', 'Transferencia', 'Cheque', 'Tarjeta'],
             'tasa_mora'         => (float) $credito->tasa_interes_moratorio,
+            'dias_gracia_mora'=> config('credito.dias_gracia_mora'),
+            'dias_anio_comercial'=> config('credito.dias_anio_comercial'),
         ]);
     }
 

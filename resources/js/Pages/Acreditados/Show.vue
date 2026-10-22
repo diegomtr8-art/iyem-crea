@@ -15,7 +15,9 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger, DropdownMenuIte
 const props = defineProps({
     acreditado: Object,
     credito: Object,
-    amortizaciones: Array
+    amortizaciones: Array,
+    dias_gracia_mora: Number,
+    dias_anio_comercial: Number
 });
 
 // --- ESTADO LOCAL ---
@@ -336,10 +338,10 @@ const desglosePago = computed(() => {
                             <AlertCircle :size="12"/> MXN
                         </span>
                         <span class="flex items-center gap-1 text-yellow-500">
-                            <Clock :size="12"/> Gracia: 5 días
+                            <Clock :size="12"/> Gracia: {{ dias_gracia }} días
                         </span>
                         <span class="flex items-center gap-1 text-orange-500">
-                            <Timer :size="12"/> Año: 360 días
+                            <Timer :size="12"/> Año: {{ dias_anio_comercial }} días
                         </span>
                         <!-- Leyenda de colores -->
                         <span class="flex items-center gap-1 text-red-500">
