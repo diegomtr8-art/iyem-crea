@@ -167,4 +167,4 @@ echo "   NOTA: NO usar 'php artisan storage:link' - exec() deshabilitado en Host
 echo "   NOTA: build/ se copia automáticamente en paso 5 (NO es symlink, Apache no los sigue)"
 echo ""
 echo "5. Configurar SSL en Hostinger Panel para crea.iyemyucatan.com"
-echo "6. Apuntar DNS: A record crea.iyemyucatan.com -> 195.35.38.222"
+echo "6. Apuntar DNS: A record crea.iyemyucatan.com -> $DNS_TARGET"
