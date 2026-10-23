@@ -9,7 +9,7 @@ use Carbon\Carbon;
 /**
  * La constancia solo se emite a quien tiene crédito Activo y sin cuotas vencidas.
  */
-function ciudadanoConCredito(string $estatus, string $vencimiento): User
+function ciudadanoParaConstancia(string $estatus, string $vencimiento): User
 {
     $user = User::factory()->create(['tipo' => 'ciudadano', 'email_verified_at' => now()]);
 
@@ -55,7 +55,7 @@ function ciudadanoConCredito(string $estatus, string $vencimiento): User
 }
 
 test('un crédito activo y al corriente recibe la constancia', function () {
-    $user = ciudadanoConCredito('Activo', Carbon::today()->addMonth()->toDateString());
+    $user = ciudadanoParaConstancia('Activo', Carbon::today()->addMonth()->toDateString());
 
     $this->actingAs($user)->get(route('portal.credito.constancia'))
         ->assertOk()
@@ -63,7 +63,7 @@ test('un crédito activo y al corriente recibe la constancia', function () {
 });
 
 test('un crédito con cuotas vencidas no recibe la constancia', function () {
-    $user = ciudadanoConCredito('Activo', Carbon::today()->subDays(10)->toDateString());
+    $user = ciudadanoParaConstancia('Activo', Carbon::today()->subDays(10)->toDateString());
 
     $this->actingAs($user)->get(route('portal.credito.constancia'))
         ->assertRedirect(route('portal.credito'))
@@ -71,7 +71,7 @@ test('un crédito con cuotas vencidas no recibe la constancia', function () {
 });
 
 test('un crédito liquidado no recibe la constancia', function () {
-    $user = ciudadanoConCredito('Liquidado', Carbon::today()->subMonth()->toDateString());
+    $user = ciudadanoParaConstancia('Liquidado', Carbon::today()->subMonth()->toDateString());
 
     $this->actingAs($user)->get(route('portal.credito.constancia'))
         ->assertRedirect(route('portal.credito'))
