@@ -9,7 +9,7 @@ test('el ciudadano guarda un mensaje con su usuario de la sesión', function () 
     Mail::fake();
     $user  = User::factory()->create(['tipo' => 'ciudadano']);
     $otro  = User::factory()->create(['tipo' => 'ciudadano']);
-    $texto = str_repeat('Contenido completo. ', 20);
+    $texto = rtrim(str_repeat('Contenido completo. ', 20)); // el middleware recorta el espacio final
 
     $this->actingAs($user)->post(route('portal.contacto.enviar'), [
         'asunto'  => 'Duda de pago',

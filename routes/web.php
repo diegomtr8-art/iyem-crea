@@ -33,6 +33,7 @@ use App\Http\Controllers\Portal\MiCreditoController;
 use App\Http\Controllers\Portal\ExpedienteController;
 use App\Http\Controllers\Portal\AyudaController;
 use App\Http\Controllers\Portal\MensajeContactoController;
+use App\Http\Controllers\Portal\PerfilController;
 use App\Http\Controllers\Portal\HistorialPagosController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Admin\MensajesCiudadanoController;
@@ -68,6 +69,10 @@ Route::middleware(['auth', 'verified', 'ciudadano'])->prefix('mi-portal')->name(
     // Contacto con el equipo IYEM (ciudadano autenticado)
     Route::get('contacto', [MensajeContactoController::class, 'create'])->name('contacto');
     Route::post('contacto', [MensajeContactoController::class, 'store'])->middleware('throttle:5,1')->name('contacto.enviar');
+
+    // Mi perfil (teléfono y correo de contacto)
+    Route::get('perfil', [PerfilController::class, 'edit'])->name('perfil');
+    Route::patch('perfil', [PerfilController::class, 'update'])->name('perfil.update');
 
     // Wizard de solicitud (flujo principal en /solicitud)
     Route::get('solicitud', [WizardSolicitudController::class, 'index'])->name('solicitud.index');
