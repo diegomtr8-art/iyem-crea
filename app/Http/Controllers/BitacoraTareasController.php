@@ -5,12 +5,14 @@ namespace App\Http\Controllers;
 use App\Models\BitacoraTareaProgramada;
 use App\Services\CorreosFallidosService;
 use Inertia\Inertia;
+use App\Jobs\CalcularCarteraActiva;
+use App\Services\EstadoRespaldo;
 
 class BitacoraTareasController extends Controller
 {
     // Las tareas de routes/console.php. Si agregan una tarea nueva, sumarla aquí:
     // así aparece en rojo aunque nunca haya corrido.
-    private const TAREAS_ESPERADAS = ['crea:update-moratorio', 'crea:recordatorios-pago'];
+    private const TAREAS_ESPERADAS = ['crea:update-moratorio', 'crea:recordatorios-pago', CalcularCarteraActiva::class, 'crea:respaldo-base', 'crea:verificar-respaldo', 'crea:limpiar-bitacoras'];
 
     private const HORAS_ALERTA = 24;
 
@@ -31,19 +33,36 @@ class BitacoraTareasController extends Controller
                 'tarea'            => $nombre,
                 'ultima_ejecucion' => $ultima?->inicio->timezone('America/Merida')->format('d/m/Y H:i'),
                 'ultimo_estado'    => $ultima?->estado,
-                'ultimo_mensaje'   => $ultima?->mensaje_error,
+                'ultimo_mensaje'   => $ultima?->mensaje_error ?? $ultima?->resultado,
                 'errores_7_dias'   => BitacoraTareaProgramada::where('tarea', $nombre)
                     ->where('estado', 'error')->where('inicio', '>=', $desde)->count(),
-                'sin_correr'       => ! $ultima || $ultima->inicio->lt($limite),
+                // Solo las tareas diarias deben correr cada 24 h; procesar-cola corre solo cuando hay correos
+                'sin_correr'       => in_array($nombre, self::TAREAS_ESPERADAS, true) && (! $ultima || $ultima->inicio->lt($limite)),
                 'horas_sin_correr' => $ultima ? (int) $ultima->inicio->diffInHours($ahora) : null,
             ];
         });
 
         return Inertia::render('Admin/TareasProgramadas', [
+            'respaldo'    => $this->respaldo(),
             'tareas'      => $tareas,
             'horas_alerta' => self::HORAS_ALERTA,
             // Solo el número; el detalle y las acciones están en Correos fallidos
             'correos_fallidos' => app(CorreosFallidosService::class)->contar(),
         ]);
+    }
+
+    /** Se calcula al abrir la página: sigue avisando aunque el cron entero esté caído. */
+    private function respaldo(): array
+    {
+        ['ultimo' => $ultimo, 'problema' => $problema] = app(EstadoRespaldo::class)->revisar();
+
+        return [
+            'problema' => $problema,
+            'ultimo'   => $ultimo ? [
+                'archivo' => $ultimo['archivo'],
+                'fecha'   => $ultimo['fecha']->format('d/m/Y H:i'),
+                'kb'      => $ultimo['kb'],
+            ] : null,
+        ];
     }
 }

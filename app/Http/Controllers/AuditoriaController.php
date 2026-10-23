@@ -60,7 +60,7 @@ class AuditoriaController extends Controller
                 'fecha'           => $l->created_at->format('d/m/Y H:i:s'),
             ]),
             'filters' => $request->only(['entidad', 'accion', 'usuario_id', 'fecha_desde', 'fecha_hasta', 'buscar']),
-            'entidades' => ['Credito', 'Pago', 'SolicitudCredito', 'ExpedienteJuridico', 'Desembolso'],
+            'entidades' => ['Credito', 'Pago', 'SolicitudCredito', 'ExpedienteJuridico', 'Desembolso', 'RespaldoExcel'],
         ]);
     }
 }

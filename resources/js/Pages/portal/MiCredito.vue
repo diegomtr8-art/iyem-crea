@@ -5,7 +5,7 @@ import { ref, computed } from 'vue';
 import {
     BadgeCheck, CalendarDays, CreditCard, DollarSign, TrendingUp,
     FileText, Clock, CheckCircle2, AlertCircle, Minus,
-    Download, Calculator, X, ClipboardCheck, Plus, Trash2, ExternalLink, FileCheck2
+    Download, Calculator, X, ClipboardCheck, Plus, Trash2, ExternalLink, FileCheck2, FileSpreadsheet
 } from 'lucide-vue-next';
 import { router, useForm } from '@inertiajs/vue3';
 import { parseDate } from '@/utils/dateUtils';
@@ -83,6 +83,7 @@ const props = defineProps<{
         documentos: Array<{ id: number; tipo: string; descripcion?: string; monto?: number; proveedor?: string; nombre_original: string; url: string }>;
         observaciones_operativo?: string;
     };
+    dias_gracia_mora: number,
 }>();
 
 const activeTab = ref<'tabla' | 'pagos'>('tabla');
@@ -100,7 +101,7 @@ const estadoCuota = (item: typeof props.credito.tabla[0]) => {
 
     if (item.estado === 'Pagado' || pagado >= total)
                            return { texto: 'PAGADO',    clase: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' };
-    if (diff > 5)          return { texto: 'VENCIDO',   clase: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' };
+    if (diff > props.dias_gracia_mora)          return { texto: 'VENCIDO',   clase: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' };
     if (diff > 0)          return { texto: 'GRACIA',    clase: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400' };
     return                        { texto: 'PENDIENTE', clase: 'bg-slate-100 text-slate-600 dark:bg-zinc-800 dark:text-zinc-400' };
 };
@@ -491,6 +492,17 @@ const enviarComprobacion = () => {
                     <div>
                         <p class="font-bold text-slate-900 dark:text-white text-sm">Constancia de Crédito</p>
                         <p class="text-xs text-slate-500 dark:text-zinc-400">Descargar carta de crédito activo</p>
+                    </div>
+                </a>
+
+                <a :href="route('portal.credito.pagos.excel', credito.id)"
+                    class="flex items-center gap-3 bg-white dark:bg-zinc-900 border border-slate-100 dark:border-zinc-800 rounded-2xl p-5 shadow-sm hover:border-emerald-300 dark:hover:border-emerald-800 transition-all group">
+                    <div class="w-10 h-10 rounded-xl bg-emerald-50 dark:bg-emerald-900/30 flex items-center justify-center group-hover:bg-emerald-100 transition-colors">
+                        <FileSpreadsheet size="20" class="text-emerald-700" />
+                    </div>
+                    <div>
+                        <p class="font-bold text-slate-900 dark:text-white text-sm">Historial de pagos</p>
+                        <p class="text-xs text-slate-500 dark:text-zinc-400">Descargar Excel</p>
                     </div>
                 </a>
 

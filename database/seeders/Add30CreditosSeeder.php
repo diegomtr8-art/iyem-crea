@@ -231,7 +231,7 @@ class Add30CreditosSeeder extends Seeder
 
     private function pagar($cajero, Credito $credito, array $cfg): void
     {
-        $td    = ($credito->tasa_interes_moratorio / 100) / 360;
+        $td    = ($credito->tasa_interes_moratorio / 100) / config('credito.dias_anio_comercial');
         $esLiq = !empty($cfg['liq']);
 
         $fechaPago = $esLiq
@@ -251,7 +251,7 @@ class Add30CreditosSeeder extends Seeder
             $mora  = 0;
             if ($fechaPago->gt($venc)) {
                 $dias = (int)$venc->diffInDays($fechaPago);
-                if ($dias > 5) {
+                if ($dias > config('credito.dias_gracia_mora')) {
                     $sv   = max(0, (float)$first->saldo_insoluto - (float)$first->capital_pagado);
                     $mora = round($sv * $td * $dias, 2);
                 }
@@ -276,7 +276,7 @@ class Add30CreditosSeeder extends Seeder
             $mora = 0;
             if ($fechaPago->gt($venc)) {
                 $dias = (int)$venc->diffInDays($fechaPago);
-                if ($dias > 5) {
+                if ($dias > config('credito.dias_gracia_mora')) {
                     $sv   = max(0, (float)$f->saldo_insoluto - (float)$f->capital_pagado);
                     $mora = round($sv * $td * $dias, 2);
                 }

@@ -2,6 +2,7 @@
 import AppLayout from '@/layouts/app/AppSidebarLayout.vue';
 import { Head, Link } from '@inertiajs/vue3';
 import { computed } from 'vue';
+import EstadoRespaldo from '@/components/EstadoRespaldo.vue';
 
 const props = defineProps({ tareas: Array, horas_alerta: Number, correos_fallidos: Number });
 
@@ -13,6 +14,8 @@ const conAlerta = computed(() => props.tareas.filter(t => t.sin_correr || t.ulti
     <AppLayout>
         <div class="max-w-5xl mx-auto py-8 px-4 space-y-6">
             <h1 class="text-2xl font-black uppercase tracking-tight text-slate-900 dark:text-white">Tareas programadas</h1>
+
+            <EstadoRespaldo :respaldo="$page.props.respaldo" />
 
             <div :class="conAlerta.length
                 ? 'bg-red-50 border-red-200 text-red-700'

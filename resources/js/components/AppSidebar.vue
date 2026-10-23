@@ -118,12 +118,6 @@ const mainNavItems = computed(() => {
 
     // Sección: Sistema (Solo Admin)
     if (can('ver.usuarios')) {
-        items.push({
-            title: 'Bitácora Auditoría',
-            url: route('auditoria.index'),
-            icon: ScrollText,
-            group: 'Sistema',
-        });
         items.push({ title: 'Usuarios', url: '/users', icon: Users, group: 'Sistema' });
     }
     if (can('ver.roles')) {
@@ -131,6 +125,8 @@ const mainNavItems = computed(() => {
     }
 
     if (page.props.auth?.user?.roles?.includes('Administrador')) {
+        // La ruta exige role:Administrador; con otro rol el enlace daría 403
+        items.push({ title: 'Bitácora Auditoría', url: route('auditoria.index'), icon: ScrollText, group: 'Sistema' });
         items.push({ title: 'Tareas programadas', url: route('bitacora-tareas.index'), icon: Clock, group: 'Sistema' });
         items.push({ title: 'Correos fallidos', url: route('correos-fallidos.index'), icon: MailWarning, group: 'Sistema' });
         items.push({ title: 'Recordatorios de pago', url: route('recordatorios.index'), icon: Mail, group: 'Sistema' });

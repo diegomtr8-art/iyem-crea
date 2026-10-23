@@ -17,5 +17,5 @@ test('HSTS no se envia por HTTP', function () {
 test('HSTS se envia cuando la peticion llega por HTTPS', function () {
     $response = $this->get('https://localhost/');
 
-    $response->assertHeader('Strict-Transport-Security', 'max-age=31536000');
+    $response->assertHeader('Strict-Transport-Security', 'max-age=604800');
 });

@@ -19,7 +19,6 @@ divergencia con datos reales y recomienda la fuente única.
 |---|---|---|
 | `app/Services/CreditService.php:41` | Escribe | Inicializa en 0 la mora de cada cuota de gracia al generar la tabla |
 | `app/Services/CreditService.php:68` | Escribe | Inicializa en 0 la mora de cada cuota normal al generar la tabla |
-| `app/Services/CreditService.php:97` | Escribe | `actualizarMoraDeCuota`: persiste `pago_restante × tasaDiaria × días` (hoy solo invocado desde tests) |
 | `app/Console/Commands/UpdateMoratorio.php:39` | Escribe | Cron diario 08:00: `(saldo_insoluto − capital_pagado) × tasaDiaria × días` |
 | `app/Http/Controllers/PagoController.php:244` | Escribe | Al aplicar pago, guarda la mora de la cuota = `(saldo_insoluto − capital_pagado) × tasaDiaria × días` |
 | `app/Http/Controllers/PagoController.php:188` | Lee | Snapshot previo de la cuota (para reversión al cancelar) |
@@ -39,7 +38,6 @@ divergencia con datos reales y recomienda la fuente única.
 | `database/seeders/Add30CreditosSeeder.php:309` | Escribe | Fixture: simula pago y escribe la mora calculada |
 | `tests/Feature/PagoSobranteParcialTest.php:56` | Escribe | Fixture de test: inicializa en 0 |
 | `tests/Feature/PagoSobranteOpcionesTest.php:55,83,294,344` | Escribe | Fixture de test: inicializa en 0 |
-| `tests/Unit/MoraTest.php` | Indirecto | Ejercita `actualizarMoraDeCuota`; no referencia la columna directamente |
 
 ### `moratorio_acumulado`
 

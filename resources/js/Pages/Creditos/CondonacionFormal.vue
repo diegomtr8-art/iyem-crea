@@ -27,10 +27,10 @@ const props = defineProps<{
 }>();
 
 const form = useForm({
-    tipo:                       'Parcial_Mora',
+    tipo:                       'Parcial_Capital',
     monto_condonado_capital:    0,
     monto_condonado_intereses:  0,
-    monto_condonado_mora:       props.credito.saldo_mora ?? 0,
+    monto_condonado_mora:       0,
     motivo:                     '',
     numero_acuerdo:             '',
     fecha_autorizacion:         new Date().toISOString().split('T')[0],
@@ -51,7 +51,6 @@ const montoTotal = computed(() => {
 const tipoLabels: Record<string, string> = {
     Parcial_Capital:   'Parcial — Capital',
     Parcial_Intereses: 'Parcial — Intereses',
-    Parcial_Mora:      'Parcial — Mora',
     Total:             'Condonación Total',
 };
 
@@ -66,10 +65,6 @@ const onTipoChange = () => {
     } else if (form.tipo === 'Parcial_Intereses') {
         form.monto_condonado_capital   = 0;
         form.monto_condonado_mora      = 0;
-    } else if (form.tipo === 'Parcial_Mora') {
-        form.monto_condonado_capital   = 0;
-        form.monto_condonado_intereses = 0;
-        form.monto_condonado_mora      = props.credito.saldo_mora;
     }
 };
 
