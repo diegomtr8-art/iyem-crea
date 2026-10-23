@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Amortizacion;
+use App\Models\AuditoriaLog;
 use App\Models\Credito;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Style\Fill;
@@ -91,6 +92,10 @@ class RespaldoExcelController extends Controller
             });
 
         $nombre = 'Respaldo_creditos_' . now('America/Merida')->format('Ymd_His') . '.xlsx';
+
+        // El archivo trae los créditos y las cuotas de todos los acreditados: cada descarga queda con su usuario.
+        // Como en la descarga del contrato (CreditoController): accion solo admite created/updated/deleted.
+        AuditoriaLog::registrar('RespaldoExcel', 0, 'updated', 'respaldo_descargado', null, $nombre, 'Respaldo Excel de créditos descargado');
 
         return response()->streamDownload(function () use ($spreadsheet) {
             (new Xlsx($spreadsheet))->save('php://output');
