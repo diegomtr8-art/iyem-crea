@@ -27,8 +27,9 @@ class ModalidadCreaSeeder extends Seeder
             ],
         ];
 
+        // firstOrCreate: correr db:seed otra vez no duplica las modalidades
         foreach ($modalidades as $modalidad) {
-            ModalidadCrea::create($modalidad);
+            ModalidadCrea::firstOrCreate(['nombre' => $modalidad['nombre']], $modalidad);
         }
     }
 }

@@ -1,0 +1,7 @@
+credito_id	clave_contrato	modalidad	monto_otorgado	plazo_meses	tasa_interes_ordinario	tasa_interes_moratorio	fecha_entrega	estatus
+2	CREA-2024-002	Emprendedores	35000.00	18	7.00	17.50	2026-04-21	Moroso
+5	CREA-2024-005	Emprendedores	50000.00	24	7.00	17.50	2026-03-21	Activo
+22	CREA-2024-021	Artesanal	9000.00	9	0.00	0.00	2026-04-23	Activo
+29	CREA-2024-022	Emprendedores	40000.00	18	7.00	17.50	2026-02-21	Moroso
+30	CREA-2024-027	Sustentable	25000.00	12	5.00	12.50	2026-02-21	Moroso
+43	AUD-A11-REAL	Emprendedores	30000.00	24	7.00	17.50	2026-01-15	Moroso
