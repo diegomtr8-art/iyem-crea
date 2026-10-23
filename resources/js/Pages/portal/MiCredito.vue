@@ -83,6 +83,7 @@ const props = defineProps<{
         documentos: Array<{ id: number; tipo: string; descripcion?: string; monto?: number; proveedor?: string; nombre_original: string; url: string }>;
         observaciones_operativo?: string;
     };
+    dias_gracia_mora: number,
 }>();
 
 const activeTab = ref<'tabla' | 'pagos'>('tabla');
@@ -100,7 +101,7 @@ const estadoCuota = (item: typeof props.credito.tabla[0]) => {
 
     if (item.estado === 'Pagado' || pagado >= total)
                            return { texto: 'PAGADO',    clase: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' };
-    if (diff > 5)          return { texto: 'VENCIDO',   clase: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' };
+    if (diff > props.dias_gracia_mora)          return { texto: 'VENCIDO',   clase: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' };
     if (diff > 0)          return { texto: 'GRACIA',    clase: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400' };
     return                        { texto: 'PENDIENTE', clase: 'bg-slate-100 text-slate-600 dark:bg-zinc-800 dark:text-zinc-400' };
 };

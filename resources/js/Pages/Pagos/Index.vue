@@ -9,7 +9,9 @@ const props = defineProps({
     acreditado: Object,
     cuotas_pendientes: Array,
     formas_pago: Array,
-    tasa_mora: Number // Recibida desde el controlador
+    tasa_mora: Number, // Recibida desde el controlador
+    dias_gracia_mora: Number,
+    dias_anio_comercial: Number
 });
 
 const form = useForm({
@@ -52,7 +54,7 @@ const simulacion = computed(() => {
     const fechaValor = new Date(form.fecha_pago + 'T00:00:00');
     // Usamos props.tasa_mora o props.credito.tasa_interes_moratorio según disponibilidad
     const tasaAnual = props.tasa_mora || props.credito?.tasa_interes_moratorio || 0;
-    const tasaDiaria = (tasaAnual / 100) / 360;
+    const tasaDiaria = (tasaAnual / 100) / props.dias_anio_comercial;
     
     let resumen = { 
         moraTotal: 0, 
@@ -107,7 +109,7 @@ const simulacion = computed(() => {
         let moraFila = 0;
         if (fechaValor > vencimiento) {
             const dias = Math.floor((fechaValor - vencimiento) / (1000 * 60 * 60 * 24));
-            if (dias > 5) {
+            if (dias > props.dias_gracia_mora) {
                 const saldoVencido = Math.max(0, parseFloat(c.saldo_vencido) || 0);
                 moraFila = Math.round(saldoVencido * tasaDiaria * dias * 100) / 100;
             }

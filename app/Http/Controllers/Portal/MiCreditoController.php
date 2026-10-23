@@ -193,6 +193,7 @@ class MiCreditoController extends Controller
                 'correo'        => config('contacto.correo'),
                 'whatsapp'      => '9992342693',
             ],
+            'dias_gracia_mora'=> config('credito.dias_gracia_mora'),
         ]);
     }
 }
