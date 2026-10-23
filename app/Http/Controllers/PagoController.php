@@ -16,6 +16,9 @@ use App\Enums\EstadoCredito;
 
 class PagoController extends Controller
 {
+    // Tope de captura para evitar errores de dedo (el crédito más alto es de $500,000).
+    private const MONTO_MAXIMO_PAGO = 1000000;
+
     public function create(Credito $credito)
     {
         $credito->load(['acreditado:id,nombre_completo', 'modalidad']);
@@ -41,6 +44,8 @@ class PagoController extends Controller
                         $mora = round($saldoVencido * $tasaDiaria * $dias, 2);
                     }
                 }
+                // Solo la mora que aún no se ha pagado.
+                $mora = round(max(0, $mora - (float) $cuota->interes_moratorio_pagado), 2);
 
                 return [
                     'id'                => $cuota->id,
@@ -61,24 +66,65 @@ class PagoController extends Controller
             'cuotas_pendientes' => $cuotasPendientes,
             'formas_pago'       => ['Efectivo', 'Transferencia', 'Cheque', 'Tarjeta'],
             'tasa_mora'         => (float) $credito->tasa_interes_moratorio,
+            'dias_gracia_mora'=> config('credito.dias_gracia_mora'),
+            'dias_anio_comercial'=> config('credito.dias_anio_comercial'),
         ]);
     }
 
     public function store(Request $request, Credito $credito)
     {
         $validated = $request->validate([
-            'monto_recibido' => 'required|numeric|min:0.01',
+            'monto_recibido' => 'required|numeric|decimal:0,2|min:0.01|max:' . self::MONTO_MAXIMO_PAGO,
             'fecha_pago'     => 'required|date|before_or_equal:today',
             'forma_pago'     => 'required|in:Efectivo,Transferencia,Cheque,Tarjeta',
             'tipo_abono'     => 'nullable|in:Adelantado,Reducir Cuota,Reducir Plazo',
             'referencia'     => 'nullable|string|max:255',
             'observaciones'  => 'nullable|string|max:1000',
+        ], [
+            'monto_recibido.decimal' => 'El monto solo puede llevar hasta 2 decimales (centavos).',
+            'monto_recibido.max'     => 'El monto no puede ser mayor a $' . number_format(self::MONTO_MAXIMO_PAGO, 2) . '. Verifique la cantidad.',
         ]);
 
         abort_if($credito->estatus === 'Liquidado', 403, 'Este crédito ya está liquidado.');
         abort_if($credito->estatus === 'Cancelado', 403, 'Este crédito está cancelado.');
 
         $pagoId = DB::transaction(function () use ($validated, $credito) {
+            // Bloquear el crédito: dos envíos simultáneos se atienden uno tras otro.
+            $credito = Credito::whereKey($credito->id)->lockForUpdate()->firstOrFail();
+
+            abort_if($credito->estatus === 'Liquidado', 403, 'Este crédito ya está liquidado.');
+            abort_if($credito->estatus === 'Cancelado', 403, 'Este crédito está cancelado.');
+
+            $duplicado = Pago::where('credito_id', $credito->id)
+                ->where('cancelado', false)
+                ->where('monto_recibido', $validated['monto_recibido'])
+                ->whereDate('fecha_pago', $validated['fecha_pago'])
+                ->where('forma_pago', $validated['forma_pago'])
+                ->where('created_at', '>=', now()->subMinutes(2))
+                ->exists();
+            if ($duplicado) {
+                throw ValidationException::withMessages([
+                    'monto_recibido' => 'Ya se registró un pago igual hace un momento. Revise el historial de pagos antes de volver a capturarlo.',
+                ]);
+            }
+
+            // Los pagos se capturan en orden cronológico.
+            $fechaPago = Carbon::parse($validated['fecha_pago'])->startOfDay();
+            if ($credito->fecha_entrega && $fechaPago->lt($credito->fecha_entrega->copy()->startOfDay())) {
+                throw ValidationException::withMessages([
+                    'fecha_pago' => 'La fecha del pago no puede ser anterior a la entrega del crédito ('
+                        . $credito->fecha_entrega->format('d/m/Y') . ').',
+                ]);
+            }
+            $ultimoPago = Pago::where('credito_id', $credito->id)->where('cancelado', false)->max('fecha_pago');
+            if ($ultimoPago && $fechaPago->lt(Carbon::parse($ultimoPago)->startOfDay())) {
+                throw ValidationException::withMessages([
+                    'fecha_pago' => 'La fecha no puede ser anterior al último pago registrado ('
+                        . Carbon::parse($ultimoPago)->format('d/m/Y')
+                        . '). Los pagos se capturan en orden cronológico.',
+                ]);
+            }
+
             $hoy           = Carbon::parse($validated['fecha_pago'])->startOfDay();
             $montoRestante = (float) $validated['monto_recibido'];
             $tasaDiaria    = ($credito->tasaMoratoriaEfectiva() / 100) / config('credito.dias_anio_comercial');
@@ -217,7 +263,9 @@ class PagoController extends Controller
                 }
 
                 // Cascada: Mora → Interés Ordinario → Capital
-                $pagoMora = min($montoRestante, $moraFila);
+                // Solo se cobra la mora que aún no se ha pagado en pagos anteriores.
+                $moraPendiente = round(max(0, $moraFila - (float)$fila->interes_moratorio_pagado), 2);
+                $pagoMora = min($montoRestante, $moraPendiente);
                 $montoRestante -= $pagoMora;
 
                 $ordPendiente = round((float)$fila->interes_ordinario_esperado - (float)$fila->interes_ordinario_pagado, 2);
@@ -311,7 +359,7 @@ class PagoController extends Controller
 
             if ($activasQuery()->count() === 0) {
                 $credito->update(['estatus' => EstadoCredito::LIQUIDADO]);
-            } elseif ($activasQuery()->where('fecha_vencimiento', '<', now())->exists()) {
+            } elseif ($activasQuery()->where('fecha_vencimiento', '<', $this->limiteMoroso())->exists()) {
                 $credito->update(['estatus' => EstadoCredito::MOROSO]);
             } else {
                 $credito->update(['estatus' => EstadoCredito::ACTIVO]);
@@ -563,9 +611,30 @@ class PagoController extends Controller
             'motivo_cancelacion' => 'required|string|max:500',
         ]);
 
-        abort_if($pago->cancelado, 422, 'Este pago ya fue cancelado.');
-
         DB::transaction(function () use ($pago, $validated) {
+            // Bloquear crédito y pago: evita cancelar dos veces o en desorden.
+            Credito::whereKey($pago->credito_id)->lockForUpdate()->first();
+            $pago = Pago::whereKey($pago->id)->lockForUpdate()->firstOrFail();
+
+            abort_if($pago->cancelado, 422, 'Este pago ya fue cancelado.');
+
+            if ($pago->forma_pago === 'Condonación') {
+                throw ValidationException::withMessages([
+                    'motivo_cancelacion' => 'Este movimiento es una condonación, no un pago; no se puede cancelar desde aquí.',
+                ]);
+            }
+
+            $hayPosterior = Pago::where('credito_id', $pago->credito_id)
+                ->where('cancelado', false)
+                ->where('id', '>', $pago->id)
+                ->exists();
+            if ($hayPosterior) {
+                throw ValidationException::withMessages([
+                    'motivo_cancelacion' => 'Solo se puede cancelar el último pago del crédito. '
+                        . 'Si necesita cancelar este, primero cancele los pagos posteriores, del más reciente al más antiguo.',
+                ]);
+            }
+
             $snapshot = collect($pago->snapshot_amortizaciones ?? []);
 
             if ($snapshot->isNotEmpty()) {
@@ -645,7 +714,7 @@ class PagoController extends Controller
 
             if ($activasQuery()->count() === 0) {
                 $credito->update(['estatus' => EstadoCredito::LIQUIDADO]);
-            } elseif ($activasQuery()->where('fecha_vencimiento', '<', now())->exists()) {
+            } elseif ($activasQuery()->where('fecha_vencimiento', '<', $this->limiteMoroso())->exists()) {
                 $credito->update(['estatus' => EstadoCredito::MOROSO]);
             } else {
                 $credito->update(['estatus' => EstadoCredito::ACTIVO]);
@@ -743,6 +812,17 @@ class PagoController extends Controller
     }
 
     /**
+     * Un crédito es Moroso si tiene una cuota vencida hace más de los días de
+     * gracia (misma regla que la mora y que crea:update-moratorio).
+     */
+    private function limiteMoroso(): string
+    {
+        return Carbon::now('America/Merida')->startOfDay()
+            ->subDays((int) config('credito.dias_gracia_mora'))
+            ->toDateString();
+    }
+
+    /**
      * Mora real de una cuota vencida (RO Cláusula 7a): días > 5 sobre saldo vencido.
      */
     private function moraFilaPara(Carbon $hoy, Carbon $vencimiento, float $saldoVencido, float $tasaDiaria): float
@@ -783,6 +863,7 @@ class PagoController extends Controller
             if ($vencimiento->lte($hoy)) {
                 $saldoVencido = round(max(0, (float) $cuota->saldo_insoluto - (float) $cuota->capital_pagado), 2);
                 $mora         = $this->moraFilaPara($hoy, $vencimiento, $saldoVencido, $tasaDiaria);
+                $mora         = round(max(0, $mora - (float) $cuota->interes_moratorio_pagado), 2);
 
                 $moraTotal       += $mora;
                 $interesVencido  += $interesPend;

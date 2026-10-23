@@ -11,7 +11,7 @@ use Carbon\Carbon;
 /**
  * Textos del portal ciudadano: C-01 (estatus del crédito) y C-05 (fecha de pago).
  */
-function ciudadanoConCredito(string $estatus): array
+function ciudadanoParaTextos(string $estatus): array
 {
     $user = User::factory()->create(['tipo' => 'ciudadano', 'email_verified_at' => now()]);
 
@@ -49,7 +49,7 @@ function ciudadanoConCredito(string $estatus): array
 }
 
 test('C-01: un crédito Liquidado llega al dashboard como Liquidado, no como Activo', function () {
-    [$user] = ciudadanoConCredito('Liquidado');
+    [$user] = ciudadanoParaTextos('Liquidado');
 
     $this->actingAs($user)
         ->get(route('portal.dashboard'))
@@ -76,7 +76,7 @@ test('P-04: sin crédito registrado el dashboard manda credito_activo en null', 
 });
 
 test('C-05: la fecha de pago llega como dd/mm/aaaa', function () {
-    [$user, $credito, $acreditado] = ciudadanoConCredito('Activo');
+    [$user, $credito, $acreditado] = ciudadanoParaTextos('Activo');
 
     Pago::create([
         'credito_id'     => $credito->id,

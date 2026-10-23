@@ -223,7 +223,7 @@ class TestCreditosSeeder extends Seeder
 
     private function aplicarPago(User $cajero, Credito $credito, array $cfg): void
     {
-        $tasaDiaria = ($credito->tasa_interes_moratorio / 100) / 360;
+        $tasaDiaria = ($credito->tasa_interes_moratorio / 100) / config('credito.dias_anio_comercial');
 
         // Determinar fecha del pago
         if (!empty($cfg['liquidacion'])) {
@@ -259,7 +259,7 @@ class TestCreditosSeeder extends Seeder
 
             if ($fechaPago->gt($venc)) {
                 $dias = (int) $venc->diffInDays($fechaPago);
-                if ($dias > 5) {
+                if ($dias > config('credito.dias_gracia_mora')) {
                     $saldoVencido = max(0, (float)$primera->saldo_insoluto - (float)$primera->capital_pagado);
                     $mora = round($saldoVencido * $tasaDiaria * $dias, 2);
                 }
@@ -296,7 +296,7 @@ class TestCreditosSeeder extends Seeder
             $mora = 0;
             if ($fechaPago->gt($vencimiento)) {
                 $dias = (int) $vencimiento->diffInDays($fechaPago);
-                if ($dias > 5) {
+                if ($dias > config('credito.dias_gracia_mora')) {
                     $saldoVencido = round(max(0, (float)$fila->saldo_insoluto - (float)$fila->capital_pagado), 2);
                     $mora = round($saldoVencido * $tasaDiaria * $dias, 2);
                 }

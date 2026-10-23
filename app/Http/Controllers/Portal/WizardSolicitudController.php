@@ -232,7 +232,7 @@ class WizardSolicitudController extends Controller
 
                 if (! empty($datos['rfc']) && strlen($datos['rfc']) >= 4 && strlen($datos['curp']) >= 4) {
                     if (strtoupper(substr($datos['rfc'], 0, 4)) !== strtoupper(substr($datos['curp'], 0, 4))) {
-                        \Log::warning("CURP/RFC mismatch: solicitud={$solicitud->id} RFC={$datos['rfc']} CURP={$datos['curp']}");
+                        \Log::warning("CURP/RFC mismatch: solicitud={$solicitud->id}");
                     }
                 }
 
@@ -506,15 +506,6 @@ class WizardSolicitudController extends Controller
 
         $solicitud->update(['estatus' => 'Enviada']);
 
-        $zipDisponible = false;
-        try {
-            $zipRuta = FormatosService::generarZip($solicitud);
-            $solicitud->update(['formatos_zip_ruta' => $zipRuta]);
-            $zipDisponible = true;
-        } catch (\Throwable $e) {
-            \Illuminate\Support\Facades\Log::warning("No se pudo generar el ZIP de formatos al enviar la solicitud {$solicitud->id}: {$e->getMessage()}");
-        }
-
         AnuncioCiudadano::create([
             'user_id' => $user->id,
             'titulo' => 'Tu solicitud fue recibida',
@@ -524,9 +515,8 @@ class WizardSolicitudController extends Controller
         ]);
 
         return response()->json([
-            'ok' => true,
-            'solicitud_id' => $solicitud->id,
-            'zip_disponible' => $zipDisponible,
+            'ok'             => true,
+            'solicitud_id'   => $solicitud->id,
         ]);
     }
 
@@ -535,7 +525,8 @@ class WizardSolicitudController extends Controller
     public function descargarFormatos(SolicitudCredito $solicitud): \Symfony\Component\HttpFoundation\Response
     {
         abort_if($solicitud->user_id !== auth()->id(), 403);
-        abort_if(! $solicitud->formatos_zip_ruta || ! Storage::disk('local')->exists($solicitud->formatos_zip_ruta), 404, 'Formatos no disponibles.');
+        abort_if($solicitud->estatus !== 'Aprobada', 404);
+        abort_if(!$solicitud->formatos_zip_ruta || !Storage::disk('local')->exists($solicitud->formatos_zip_ruta), 404, 'Formatos no disponibles.');
 
         $nombre = "CREA_Formatos_{$solicitud->id}.zip";
 

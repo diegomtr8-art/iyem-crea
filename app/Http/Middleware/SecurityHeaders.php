@@ -17,6 +17,14 @@ use Symfony\Component\HttpFoundation\Response;
  */
 class SecurityHeaders
 {
+        /**
+     * Tiempo (en segundos) que el navegador recordará usar solo HTTPS.
+     * Empieza en una semana (604800) por precaución: un HSTS largo no se
+     * deshace fácil si el SSL falla. Subir a 1 año (31536000) cuando el
+     * SSL esté confirmado.
+     */
+    public const HSTS_MAX_AGE = 604800;
+    
     public function handle(Request $request, Closure $next): Response
     {
         $response = $next($request);
@@ -26,7 +34,7 @@ class SecurityHeaders
         $response->headers->set('Referrer-Policy', 'strict-origin-when-cross-origin');
 
         if ($request->isSecure()) {
-            $response->headers->set('Strict-Transport-Security', 'max-age=31536000');
+                        $response->headers->set('Strict-Transport-Security', 'max-age='.self::HSTS_MAX_AGE);
         }
 
         return $response;

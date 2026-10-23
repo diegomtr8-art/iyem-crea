@@ -261,6 +261,8 @@ class AcreditadoController extends Controller
             'acreditado'     => $acreditado,
             'credito'        => $credito,
             'amortizaciones' => $amortizacionesParaVista,
+            'dias_gracia_mora'=> config('credito.dias_gracia_mora'),
+            'dias_anio_comercial'=> config('credito.dias_anio_comercial'),
         ]);
     }
 

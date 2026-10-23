@@ -25,6 +25,7 @@ use App\Http\Controllers\SimuladorController;
 use App\Http\Controllers\SolicitudOperativoController;
 use App\Http\Controllers\CobranzaController;
 // use App\Http\Controllers\CobranzaJuridicaController; // Módulo eliminado (Cobranza Jurídica / listado juridico.*)
+use App\Http\Controllers\Portal\AccesosController;
 use App\Http\Controllers\Portal\BeneficiarioController;
 use App\Http\Controllers\Portal\ComprobacionPortalController;
 use App\Http\Controllers\Portal\WizardSolicitudController;
@@ -33,6 +34,8 @@ use App\Http\Controllers\Portal\ExpedienteController;
 use App\Http\Controllers\Portal\AyudaController;
 use App\Http\Controllers\Portal\MensajeContactoController;
 use App\Http\Controllers\Portal\AvisosController;
+use App\Http\Controllers\Portal\PerfilController;
+use App\Http\Controllers\Portal\HistorialPagosController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Admin\MensajesCiudadanoController;
 use App\Http\Controllers\BitacoraTareasController;
@@ -58,12 +61,19 @@ Route::middleware(['auth', 'verified', 'ciudadano'])->prefix('mi-portal')->name(
     Route::post('anuncios/leer-todos', [BeneficiarioController::class, 'marcarTodosLeidos'])->name('anuncios.leer-todos');
     Route::get('notificaciones', [BeneficiarioController::class, 'notificaciones'])->name('notificaciones.lista');
 
+    // Bitácora de accesos del propio ciudadano
+    Route::get('accesos', [AccesosController::class, 'index'])->name('accesos');
+
     // Expediente digital
     Route::get('expediente', [ExpedienteController::class, 'index'])->name('expediente');
 
     // Contacto con el equipo IYEM (ciudadano autenticado)
     Route::get('contacto', [MensajeContactoController::class, 'create'])->name('contacto');
     Route::post('contacto', [MensajeContactoController::class, 'store'])->middleware('throttle:5,1')->name('contacto.enviar');
+
+    // Mi perfil (teléfono y correo de contacto)
+    Route::get('perfil', [PerfilController::class, 'edit'])->name('perfil');
+    Route::patch('perfil', [PerfilController::class, 'update'])->name('perfil.update');
 
     // Wizard de solicitud (flujo principal en /solicitud)
     Route::get('solicitud', [WizardSolicitudController::class, 'index'])->name('solicitud.index');
@@ -85,6 +95,7 @@ Route::middleware(['auth', 'verified', 'ciudadano'])->prefix('mi-portal')->name(
     Route::get('mi-credito/estado-cuenta/pdf', [EstadoCuentaController::class, 'pdf'])->name('credito.estado-cuenta.pdf');
     Route::get('mi-credito/liquidacion-anticipada', [EstadoCuentaController::class, 'liquidacionAnticipada'])->name('credito.liquidacion');
     Route::get('mi-credito/constancia', [EstadoCuentaController::class, 'constancia'])->name('credito.constancia');
+    Route::get('mi-credito/{credito}/pagos/excel', [HistorialPagosController::class, 'excel'])->name('credito.pagos.excel');
 
     // Avisos de vencimiento (solo lectura)
     Route::get('avisos', [AvisosController::class, 'index'])->name('avisos');
@@ -196,7 +207,8 @@ Route::middleware(['auth', 'verified', 'operativo'])->group(function () {
     Route::get('admin/respaldo-excel', [RespaldoExcelController::class, 'descargar'])->middleware('role:Administrador')->name('respaldo-excel.descargar');
 
     // AUDITORÍA
-    Route::get('auditoria', [AuditoriaController::class, 'index'])->name('auditoria.index');
+    // La bitácora tiene valores antes y después de créditos y pagos: solo Administrador (auditoria.ver en RoleAndPermissionSeeder)
+    Route::get('auditoria', [AuditoriaController::class, 'index'])->middleware('role:Administrador')->name('auditoria.index');
     Route::get('admin/tareas-programadas', [BitacoraTareasController::class, 'index'])->middleware('role:Administrador')->name('bitacora-tareas.index');
     Route::get('admin/correos-fallidos', [CorreosFallidosController::class, 'index'])->middleware('role:Administrador')->name('correos-fallidos.index');
     Route::post('admin/correos-fallidos/reintentar-todos', [CorreosFallidosController::class, 'reintentarTodos'])->middleware('role:Administrador')->name('correos-fallidos.reintentar-todos');
