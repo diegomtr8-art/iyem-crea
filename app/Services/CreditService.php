@@ -27,7 +27,7 @@ class CreditService
         for ($g = 1; $g <= $mesesGracia; $g++) {
             $credito->amortizaciones()->create([
                 'numero_cuota'               => $g - $mesesGracia - 1,
-                'fecha_vencimiento'          => $fechaInicial->copy()->addMonths($g)->format('Y-m-d'),
+                'fecha_vencimiento'          => $fechaInicial->copy()->addMonthsNoOverflow($g)->format('Y-m-d'),
                 'saldo_insoluto'             => round($monto, 2),
                 'capital_esperado'           => 0,
                 'interes_ordinario_esperado' => 0,
@@ -54,7 +54,7 @@ class CreditService
 
             $credito->amortizaciones()->create([
                 'numero_cuota'               => $i,
-                'fecha_vencimiento'          => $fechaInicial->copy()->addMonths($i + $mesesGracia)->format('Y-m-d'),
+                'fecha_vencimiento'          => $fechaInicial->copy()->addMonthsNoOverflow($i + $mesesGracia)->format('Y-m-d'),
                 'saldo_insoluto'             => round($saldo, 2),
                 'capital_esperado'           => $capital,
                 'interes_ordinario_esperado' => $interes,
