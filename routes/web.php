@@ -33,6 +33,7 @@ use App\Http\Controllers\Portal\MiCreditoController;
 use App\Http\Controllers\Portal\ExpedienteController;
 use App\Http\Controllers\Portal\AyudaController;
 use App\Http\Controllers\Portal\MensajeContactoController;
+use App\Http\Controllers\Portal\AvisosController;
 use App\Http\Controllers\Portal\PerfilController;
 use App\Http\Controllers\Portal\HistorialPagosController;
 use Illuminate\Support\Facades\Route;
@@ -95,6 +96,9 @@ Route::middleware(['auth', 'verified', 'ciudadano'])->prefix('mi-portal')->name(
     Route::get('mi-credito/liquidacion-anticipada', [EstadoCuentaController::class, 'liquidacionAnticipada'])->name('credito.liquidacion');
     Route::get('mi-credito/constancia', [EstadoCuentaController::class, 'constancia'])->name('credito.constancia');
     Route::get('mi-credito/{credito}/pagos/excel', [HistorialPagosController::class, 'excel'])->name('credito.pagos.excel');
+
+    // Avisos de vencimiento (solo lectura)
+    Route::get('avisos', [AvisosController::class, 'index'])->name('avisos');
 
     // Comprobación de uso del crédito
     Route::post('comprobacion/{comprobacion}/enviar', [ComprobacionPortalController::class, 'enviar'])->name('comprobacion.enviar');
