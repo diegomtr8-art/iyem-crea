@@ -232,7 +232,7 @@ class WizardSolicitudController extends Controller
 
                 if (! empty($datos['rfc']) && strlen($datos['rfc']) >= 4 && strlen($datos['curp']) >= 4) {
                     if (strtoupper(substr($datos['rfc'], 0, 4)) !== strtoupper(substr($datos['curp'], 0, 4))) {
-                        \Log::warning("CURP/RFC mismatch: solicitud={$solicitud->id} RFC={$datos['rfc']} CURP={$datos['curp']}");
+                        \Log::warning("CURP/RFC mismatch: solicitud={$solicitud->id}");
                     }
                 }
 
