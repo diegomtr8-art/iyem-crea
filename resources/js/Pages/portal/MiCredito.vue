@@ -5,7 +5,7 @@ import { ref, computed } from 'vue';
 import {
     BadgeCheck, CalendarDays, CreditCard, DollarSign, TrendingUp,
     FileText, Clock, CheckCircle2, AlertCircle, Minus,
-    Download, Calculator, X, ClipboardCheck, Plus, Trash2, ExternalLink, FileCheck2
+    Download, Calculator, X, ClipboardCheck, Plus, Trash2, ExternalLink, FileCheck2, FileSpreadsheet
 } from 'lucide-vue-next';
 import { router, useForm } from '@inertiajs/vue3';
 import { parseDate } from '@/utils/dateUtils';
@@ -491,6 +491,17 @@ const enviarComprobacion = () => {
                     <div>
                         <p class="font-bold text-slate-900 dark:text-white text-sm">Constancia de Crédito</p>
                         <p class="text-xs text-slate-500 dark:text-zinc-400">Descargar carta de crédito activo</p>
+                    </div>
+                </a>
+
+                <a :href="route('portal.credito.pagos.excel', credito.id)"
+                    class="flex items-center gap-3 bg-white dark:bg-zinc-900 border border-slate-100 dark:border-zinc-800 rounded-2xl p-5 shadow-sm hover:border-emerald-300 dark:hover:border-emerald-800 transition-all group">
+                    <div class="w-10 h-10 rounded-xl bg-emerald-50 dark:bg-emerald-900/30 flex items-center justify-center group-hover:bg-emerald-100 transition-colors">
+                        <FileSpreadsheet size="20" class="text-emerald-700" />
+                    </div>
+                    <div>
+                        <p class="font-bold text-slate-900 dark:text-white text-sm">Historial de pagos</p>
+                        <p class="text-xs text-slate-500 dark:text-zinc-400">Descargar Excel</p>
                     </div>
                 </a>
 
