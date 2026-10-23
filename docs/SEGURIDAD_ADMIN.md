@@ -170,7 +170,7 @@ Estas son decisiones de Diego. No se cambian aquí, porque el ticket deja fuera 
 1. **Registrar el alias.** En `bootstrap/app.php` solo está `role`. Para usar `permission:...` hay que agregar `'permission' => \Spatie\Permission\Middleware\PermissionMiddleware::class`; sin eso la ruta responde 500.
 2. **Elegir un solo juego de permisos.** Hoy hay dos:
    - El menú lateral (`AppSidebar.vue`) revisa `ver.acreditados`, `ver.reportes`, etc., que crea `RolesPermissionsSeeder` (el de `db:seed`).
-   - `deploy.sh` corre `RoleAndPermissionSeeder`, que crea `acreditados.ver`, `pagos.registrar`, etc. En cada deploy le deja al Administrador solo estos.
+   - `RoleAndPermissionSeeder` (el que pide correr el README) crea `acreditados.ver`, `pagos.registrar`, etc., y cada vez que corre le deja al Administrador solo estos. El `deploy.sh` de `develop` ya no lo corre desde el PR #61; el de `main` sí, en cada deploy. La J.17 (rama `fix/crea-seeder-roles-deploy`) hace que ya no le quite permisos a ningún rol.
 
    Los roles Cajero, Cobranza, Jurídico, Analista y Consulta no tienen ningún `ver.*`. No ven casi nada en el menú, pero hoy pueden entrar a cualquier ruta escribiendo la URL.
 
