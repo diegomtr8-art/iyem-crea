@@ -7,6 +7,7 @@ use App\Models\AuditoriaLog;
 use App\Models\ComprobacionUso;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -99,27 +100,33 @@ class ComprobacionController extends Controller
             'monto_comprobado'        => 'required|numeric|min:0',
         ]);
 
-        $comprobacion->update([
-            'estatus'                 => 'Aprobada',
-            'monto_comprobado'        => $data['monto_comprobado'],
-            'observaciones_operativo' => $data['observaciones_operativo'] ?? null,
-            'fecha_revision'          => now(),
-            'revisado_por'            => auth()->id(),
-        ]);
+        // Todo o nada: antes, si fallaba la bitácora, la comprobación quedaba aprobada sin registro ni aviso
+        DB::transaction(function () use ($comprobacion, $data) {
+            $estatusAnterior = $comprobacion->estatus;
 
-        AuditoriaLog::registrar('ComprobacionUso', $comprobacion->id, 'aprobada', null, null, null,
-            "Comprobación de uso aprobada para el crédito {$comprobacion->credito?->clave_contrato}.");
-
-        $userId = $comprobacion->acreditado->solicitud?->user_id;
-        if ($userId) {
-            AnuncioCiudadano::create([
-                'user_id' => $userId,
-                'titulo'  => 'Comprobación de uso aprobada',
-                'mensaje' => 'Tu comprobación de uso del crédito fue revisada y aprobada. ¡Gracias!',
-                'tipo'    => 'exito',
-                'url_accion' => route('portal.credito'),
+            $comprobacion->update([
+                'estatus'                 => 'Aprobada',
+                'monto_comprobado'        => $data['monto_comprobado'],
+                'observaciones_operativo' => $data['observaciones_operativo'] ?? null,
+                'fecha_revision'          => now(),
+                'revisado_por'            => auth()->id(),
             ]);
-        }
+
+            AuditoriaLog::registrar('ComprobacionUso', $comprobacion->id, 'updated', 'estatus', $estatusAnterior, 'Aprobada',
+                "Comprobación de uso aprobada para el crédito {$comprobacion->credito?->clave_contrato}. "
+                . 'Monto comprobado: ' . AuditoriaLog::dinero($data['monto_comprobado']) . '.');
+
+            $userId = $comprobacion->acreditado->solicitud?->user_id;
+            if ($userId) {
+                AnuncioCiudadano::create([
+                    'user_id' => $userId,
+                    'titulo'  => 'Comprobación de uso aprobada',
+                    'mensaje' => 'Tu comprobación de uso del crédito fue revisada y aprobada. ¡Gracias!',
+                    'tipo'    => 'exito',
+                    'url_accion' => route('portal.credito'),
+                ]);
+            }
+        });
 
         return back()->with('success', 'Comprobación aprobada correctamente.');
     }
@@ -130,26 +137,30 @@ class ComprobacionController extends Controller
             'observaciones_operativo' => 'required|string|max:1000',
         ]);
 
-        $comprobacion->update([
-            'estatus'                 => 'Rechazada',
-            'observaciones_operativo' => $data['observaciones_operativo'],
-            'fecha_revision'          => now(),
-            'revisado_por'            => auth()->id(),
-        ]);
+        DB::transaction(function () use ($comprobacion, $data) {
+            $estatusAnterior = $comprobacion->estatus;
 
-        AuditoriaLog::registrar('ComprobacionUso', $comprobacion->id, 'rechazada', null, null, null,
-            "Comprobación de uso rechazada para el crédito {$comprobacion->credito?->clave_contrato}: {$data['observaciones_operativo']}");
-
-        $userId = $comprobacion->acreditado->solicitud?->user_id;
-        if ($userId) {
-            AnuncioCiudadano::create([
-                'user_id' => $userId,
-                'titulo'  => 'Comprobación de uso rechazada',
-                'mensaje' => "Tu comprobación de uso fue rechazada: {$data['observaciones_operativo']}. Por favor corrige y vuelve a enviarla.",
-                'tipo'    => 'alerta',
-                'url_accion' => route('portal.credito'),
+            $comprobacion->update([
+                'estatus'                 => 'Rechazada',
+                'observaciones_operativo' => $data['observaciones_operativo'],
+                'fecha_revision'          => now(),
+                'revisado_por'            => auth()->id(),
             ]);
-        }
+
+            AuditoriaLog::registrar('ComprobacionUso', $comprobacion->id, 'updated', 'estatus', $estatusAnterior, 'Rechazada',
+                "Comprobación de uso rechazada para el crédito {$comprobacion->credito?->clave_contrato}: {$data['observaciones_operativo']}");
+
+            $userId = $comprobacion->acreditado->solicitud?->user_id;
+            if ($userId) {
+                AnuncioCiudadano::create([
+                    'user_id' => $userId,
+                    'titulo'  => 'Comprobación de uso rechazada',
+                    'mensaje' => "Tu comprobación de uso fue rechazada: {$data['observaciones_operativo']}. Por favor corrige y vuelve a enviarla.",
+                    'tipo'    => 'alerta',
+                    'url_accion' => route('portal.credito'),
+                ]);
+            }
+        });
 
         return back()->with('success', 'Comprobación rechazada. Se notificó al acreditado.');
     }

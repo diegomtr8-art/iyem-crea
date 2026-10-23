@@ -79,11 +79,11 @@ class DesembolsoController extends Controller
             'Desembolso',
             $desembolso->id,
             'created',
+            'monto_desembolsado',
             null,
-            null,
-            null,
+            $desembolso->monto_desembolsado,
             "Desembolso registrado para crédito {$credito->clave_contrato}. " .
-            "Monto: \${$desembolso->monto_desembolsado} vía {$desembolso->forma_desembolso}"
+            'Monto: ' . AuditoriaLog::dinero($desembolso->monto_desembolsado) . " vía {$desembolso->forma_desembolso}"
         );
 
         // Notificar al ciudadano si tiene cuenta

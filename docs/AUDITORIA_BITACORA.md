@@ -1,186 +1,182 @@
-# Bitácora de auditoría: diagnóstico
+# Bitácora de auditoría
 
 CREA guarda en la tabla `auditoria_log` quién hizo qué operación, cuándo y desde qué IP. Las filas se escriben con `AuditoriaLog::registrar(...)`, ya sea desde los observers de `Credito` y `Pago` o con llamadas directas en algunos controladores. Se consultan en la pantalla **Bitácora Auditoría** (`/auditoria`).
 
-Este documento revisa, operación por operación, qué queda registrado hoy y qué falta.
+Este documento dice qué queda registrado, qué no, y cómo se comprobó (ticket J.11).
 
-**Cómo se revisó.** Sobre `develop` (commit `3a66703`, 13/10/2026) se ejecutó cada operación en una base de prueba y después se leyó lo que quedó en `auditoria_log`. El punto del `enum` se probó en MySQL 8.0 con el mismo modo estricto que usa Laravel. Los números de línea corresponden a ese commit.
+**Cómo se revisó.**
+- **Diagnóstico:** se hizo sobre `develop` (commit `3a66703`, 13/10/2026). Cada operación se ejecutó en una base de prueba y después se leyó lo que quedó en `auditoria_log`. El punto del `enum` se probó en MySQL 8.0 con el mismo modo estricto que usa Laravel.
+- **Correcciones:** se hicieron sobre `develop` (`4fb46b8`, 22/10/2026). Los números de línea corresponden a esta versión.
+- **Pruebas:** cada operación tiene una en `tests/Feature/AuditoriaBitacoraTest.php` (sección 8).
 
 ---
 
-## 1. Operaciones que mueven dinero o cambian un crédito
+## 1. Qué queda registrado
 
-| Operación | ¿Deja registro? | Qué queda hoy | Dónde está la llamada | Qué falta |
+Cada fila trae **entidad, id, acción, campo, valor anterior, valor nuevo, usuario, IP y descripción**. La descripción lleva la clave del crédito y los montos con formato `$1,234.56`.
+
+| Operación | Fila | Campo: antes → después | La descripción dice | Dónde está la llamada |
 |---|---|---|---|---|
-| Registrar pago | Sí | Pago · created. Sin campo ni valores. *«Pago REC-000001-2026 registrado. Monto: $2076.61 — Crédito ID: 1»* | `PagoController::store` crea el pago en `PagoController.php:289` → `PagoObserver.php:12` | La clave del crédito (dice «Crédito ID: 1»), el desglose mora / interés / capital, la forma de pago y el monto como valor nuevo. |
-| Cancelar pago | Sí | Pago · updated · `cancelado`: Activo → Cancelado. *«Pago REC-… cancelado. Motivo: …»* | `PagoController.php:634` → `PagoObserver.php:26` | La clave del crédito y el monto del pago cancelado. |
-| Cambio de estatus del crédito | Sí | Credito · updated · `estatus`: Activo → Moroso. *«Modificación en crédito CREA-…»* | `CreditoObserver.php:29`. Lo disparan `PagoController.php:313-317` y `:647-651`, `CreditoController.php:75`, `CondonacionFormalController.php:79` y `ReestructuracionController.php:126` | La descripción no dice qué operación causó el cambio. |
-| Reducir plazo / reducir cuota | Solo el pago | La misma fila que un pago normal. | `PagoController::store` → `aplicarAbonoCapital` (`PagoController.php:336`; reescribe cuotas en `:467`, `:484` y `:542`) | Que se eligió reducir plazo o cuota, cuánto se abonó a capital y cómo cambió el plan (cuotas pendientes y monto de la cuota, antes y después). `plazo_meses` no cambia, así que el observer no ve nada. |
-| Condonación total (`CreditoController::condonar`) | Indirecto | 1) un pago de $0: *«Pago REC-… registrado. Monto: $0.00 — Crédito ID: 1»*; 2) `estatus`: Activo → Liquidado. | `CreditoController.php:57` (pago de $0) y `:75` (estatus) → observers | No hay fila de condonación: la causa, el motivo y los montos condonados (capital, interés y mora) solo están en las observaciones del pago de $0. |
-| Condonación formal parcial | Sí | Credito · updated · `condonacion_formal`: ∅ → Parcial_Mora. *«Condonación formal registrada. Tipo: Parcial_Mora. Monto total: $350.25. Acuerdo: AC-01»* | `CondonacionFormalController.php:86` | La clave del crédito, el desglose por concepto y el motivo. |
-| Condonación formal total | Sí | La misma fila (∅ → Total) más `estatus`: Activo → Liquidado. | `CondonacionFormalController.php:86`; cuotas en `:78` (sin registro por cuota) | Lo mismo que la parcial. |
-| Reestructuración | **No se puede ejecutar** | Error 500: *«no such table: reestructuracions»*. | `ReestructuracionController.php:72` | Ver 1.1. |
-| Desembolso | Sí | Desembolso · created. Sin campo ni valores. *«Desembolso registrado para crédito CREA-…. Monto: $24000.00 vía Transferencia»* | `DesembolsoController.php:78` | El monto como valor nuevo (hoy solo está en el texto). Fuera de eso, está completo. |
-| Alta de crédito | Sí | Credito · created. *«Crédito CREA-… creado. Monto: $…»* | `CreditoObserver.php:12`. Créditos creados en `AcreditadoController.php:150` y `SolicitudOperativoController.php:447` | Plazo y tasas. |
-| Edición de monto, plazo o tasa | Parcial | No existe pantalla ni ruta que edite estos datos después de crear el crédito. Si cambian por otra vía, el observer registra `monto_otorgado`, `plazo_meses` y `tasa_interes_ordinario` (probado: 24000.00 → 25000.00). | `CreditoObserver.php:23-40` | No registra `tasa_interes_moratorio` ni `fecha_entrega`: se cambiaron en la prueba y no quedó ninguna fila. Ver 2.2. |
-| Eliminar acreditado | **No** | Nada. | `AcreditadoController::destroy` (`AcreditadoController.php:324`) | Borra en cascada los créditos, cuotas, pagos, desembolso, condonaciones y reestructuraciones del acreditado. En la prueba quedaron 0 créditos, 0 pagos y 0 filas nuevas en la bitácora. No hay botón en pantalla, pero la ruta `DELETE /acreditados/{id}` está abierta a cualquier usuario operativo. |
-| Aprobar / rechazar comprobación de uso | **Falla** | Error 500 en MySQL. | `ComprobacionController.php:110` y `:140` | Ver 2.1. |
+| Registrar pago | Pago · created | `monto_recibido`: ∅ → 2076.61 | Folio, clave, monto, forma de pago y lo aplicado a mora, interés y capital | `PagoObserver.php:17`. El pago se crea en `PagoController.php:289` |
+| Reducir plazo / reducir cuota | Además, Credito · updated | `plan_de_pagos`: «12 cuotas pendientes, la siguiente de $2,000.00» → «8 cuotas pendientes, la siguiente de $2,000.00» | Clave, tipo de abono, folio y cuánto se abonó a capital | `PagoObserver.php:66`. El antes sale del *snapshot* que el pago guarda para poder cancelarse, así que no se tocó `PagoController` |
+| Cancelar pago | Pago · updated | `cancelado`: Activo → Cancelado | Folio, monto, clave y motivo | `PagoObserver.php:38`. Cancela `PagoController.php:634` |
+| Cambio de estatus del crédito | Credito · updated | `estatus`: Activo → Moroso | Clave y el cambio | `CreditoObserver.php:52`. Lo disparan pagos, cancelaciones, condonaciones y reestructuración |
+| Condonación total (`CreditoController::condonar`) | Credito · updated | `saldo_condonado`: 12450.30 → 0.00 | Clave, causa, motivo, capital, interés y mora condonados, y el folio del pago de $0 | `CreditoController.php:79`. Quedan también el pago de $0 y el cambio de estatus |
+| Condonación formal (parcial o total) | Credito · updated | `condonacion_formal`: ∅ → Parcial_Capital | Clave, capital, intereses, mora, total, motivo y acuerdo | `CondonacionFormalController.php:86`. La total deja además el cambio de estatus |
+| Reestructuración | Credito · updated | `reestructuracion`: «12 cuotas pendientes al 7.00 % (Moroso)» → «18 cuotas de $1,234.56 al 5 %» | Clave, motivo, saldo reestructurado, mora condonada, plazo, tasa y resolutivo | `ReestructuracionController.php:139`. El estatus (Moroso → Activo) va en otra fila |
+| Desembolso | Desembolso · created | `monto_desembolsado`: ∅ → 24000.00 | Clave, monto y forma de desembolso | `DesembolsoController.php:78` |
+| Alta de crédito | Credito · created | `monto_otorgado`: ∅ → 24000.00 | Clave, monto, plazo y las dos tasas | `CreditoObserver.php:29` |
+| Edición de monto, plazo, tasas, fechas, modalidad, acreditado o claves | Credito · updated, una fila por campo | El campo que cambió, de su valor anterior al nuevo | Clave (la de antes, si lo que cambió fue la clave) y el cambio | `CreditoObserver.php:52`. No hay pantalla que edite estos datos; el observer registra el cambio venga de donde venga |
+| Eliminar acreditado | Credito · deleted (una por crédito) y Acreditado · deleted | `monto_otorgado`: 24000.00 → ∅ / `nombre_completo`: nombre → ∅ | Clave, monto, estatus y los pagos activos que se borran en cascada | `AcreditadoController.php:337` y `:350`. Se registra **antes** de borrar y en la misma transacción |
+| Aprobar / rechazar comprobación de uso | ComprobacionUso · updated | `estatus`: En_Revision → Aprobada o Rechazada | Clave y monto comprobado, o el motivo del rechazo | `ComprobacionController.php:115` y `:150`, en una transacción |
 
-### 1.1 Reestructuración
-
-- **No funciona en `develop`.** Al modelo `Reestructuracion` le falta `protected $table = 'reestructuraciones';`, así que Laravel busca la tabla `reestructuracions`. La rama `docs/crea-reestructuracion-anatocismo` ya lo corrige, pero todavía no está fusionada.
-- **Valor anterior equivocado.** Con el modelo corregido, la fila de la reestructuración queda con *«reestructuracion: Activo → Activo»*. El valor anterior se lee en `ReestructuracionController.php:133`, cuando el crédito ya se cambió a Activo en la línea 126. El cambio real de estatus (Moroso → Activo) sí lo registra el observer en otra fila.
-- **Falta información.** La descripción tampoco trae la clave del crédito, el saldo reestructurado, la mora condonada ni la nueva tasa.
+**Los campos del crédito que vigila el observer** (`CreditoObserver::CAMPOS`):
+- `estatus`, `monto_otorgado`, `plazo_meses`;
+- `tasa_interes_ordinario`, `tasa_interes_moratorio`;
+- `fecha_entrega`, `fecha_contrato`;
+- `modalidad_id`, `acreditado_id`;
+- `clave_contrato`, `numero_contrato_oficial`, `folio_solicitud`.
 
 ---
 
 ## 2. Revisiones puntuales
 
-### 2.1 `accion` es un enum, pero dos controladores mandan otros valores
+### 2.1 `accion` es un enum (corregido)
 
-La migración `2026_05_07_000001_create_auditoria_log_table.php` define `accion` como `enum('created','updated','deleted')`. `ComprobacionController` registra `'aprobada'` (línea 110) y `'rechazada'` (línea 140).
-
-**Resultado en MySQL 8.0.41.** Laravel usa modo estricto por defecto (`'strict' => true` en `config/database.php`, tanto para `mysql` como para `mariadb`), y el insert falla con este error:
+La migración define `accion` como `enum('created','updated','deleted')`. `ComprobacionController` registraba `'aprobada'` y `'rechazada'`. En MySQL 8.0.41 con modo estricto (`'strict' => true`, el valor por defecto de Laravel), el insert fallaba:
 
 ```
 SQLSTATE[01000]: Warning: 1265 Data truncated for column 'accion' at row 1
 ```
 
-Al aprobar una comprobación pasa esto:
+**Qué pasaba al aprobar o rechazar:**
+- El operativo veía un error 500.
+- La comprobación sí quedaba aprobada o rechazada.
+- No quedaba fila en la bitácora.
+- El ciudadano no recibía el aviso.
+- Sin modo estricto, la acción se guardaba como texto vacío.
 
-1. El operativo ve un **error 500**.
-2. La comprobación **sí queda como Aprobada**: se actualiza en la línea 102, antes del registro, y no hay transacción.
-3. **No queda ninguna fila** en la bitácora.
-4. **El ciudadano no recibe el aviso**: el `AnuncioCiudadano` de la línea 115 nunca se crea.
+**Cómo quedó:**
+- **Comprobaciones:** se registran como `updated` con el campo `estatus`, sin migración. La comprobación, su registro y el aviso van en una sola transacción.
+- **Validación de la acción:** `AuditoriaLog::registrar` rechaza cualquier acción que no sea `created`, `updated` o `deleted`, con un mensaje claro, antes de llegar a la base.
 
-Rechazar se comporta igual.
-
-**Sin modo estricto**, el valor se guarda como texto vacío (`''`) y se pierde la acción. En las pruebas con SQLite, el enum es una restricción CHECK y también falla.
-
-Para saber qué pasó en producción, Diego puede revisar si hay filas con `accion = ''`:
+**Para saber qué pasó en producción,** Diego puede contar las filas con la acción vacía:
 
 ```sql
 SELECT COUNT(*) FROM auditoria_log WHERE accion = '';
 ```
 
-Si el resultado es 0 y el servidor usa modo estricto, cada aprobación o rechazo de comprobación dio error 500.
+Si da 0 y el servidor usa modo estricto, cada aprobación o rechazo anterior a este cambio dio error 500.
 
-### 2.2 Campos del crédito que el observer no vigila
+### 2.2 Campos del crédito y plan de pagos
 
-`CreditoObserver::updated` solo revisa `estatus`, `monto_otorgado`, `plazo_meses` y `tasa_interes_ordinario`. Estos campos también afectan dinero, estado o identidad del crédito y no se registran:
-
-| Campo | Por qué importa |
-|---|---|
-| `tasa_interes_moratorio` | Define la mora que se cobra. |
-| `fecha_entrega` | De ella salen las fechas de vencimiento y, por lo tanto, la mora. También cuenta para el presupuesto del año. |
-| `modalidad_id` | Programa del crédito: tasas y presupuesto. |
-| `acreditado_id` | A quién se le cobra. |
-| `clave_contrato`, `numero_contrato_oficial`, `folio_solicitud` | Identifican el crédito en contratos, recibos y búsquedas. |
-| `fecha_contrato` | Fecha legal del contrato. |
-
-Tampoco se registra el **plan de pagos** (la tabla `amortizaciones`). No es un campo del crédito, pero cambia con reducir plazo o cuota, la reestructuración y las condonaciones. Las condonaciones y la reestructuración lo hacen con updates masivos (`CondonacionFormalController.php:78`, `ReestructuracionController.php:90`), que no pasan por ningún observer.
+- **Campos del crédito:** el observer vigilaba solo 4 campos; ahora vigila los 12 de la sección 1.
+- **Plan de pagos** (tabla `amortizaciones`):
+  - Los cambios de reducir plazo o cuota, condonaciones y reestructuración quedan en la fila de cada operación.
+  - **No** hay una fila por cada cuota modificada. Las condonaciones y la reestructuración cambian las cuotas con updates masivos (`CondonacionFormalController.php:76`, `ReestructuracionController.php:100`) que no pasan por ningún observer.
 
 ### 2.3 Pagos que no pasan por el observer
 
-No hay una API para la app móvil: no existe `routes/api.php` en `develop` ni en ninguna otra rama del repositorio. Sanctum está instalado, pero sin rutas.
+No hay una API para la app móvil: no existe `routes/api.php` en `develop` ni en otra rama del repositorio, y Sanctum está instalado sin rutas.
 
-Los pagos se crean solo en dos lugares, y los dos usan Eloquent, así que el observer sí se ejecuta:
+Los pagos se crean solo en `PagoController.php:289` y `CreditoController.php:57`, y se cancelan solo en `PagoController.php:634`. Los tres usan Eloquent, así que el observer se ejecuta.
 
-- `PagoController.php:289`
-- `CreditoController.php:57`
-
-Los pagos se cancelan solo en `PagoController.php:634`, también con Eloquent. No hay updates masivos sobre `pagos`.
-
-**Riesgo a futuro:** si se agrega una API o un proceso que escriba pagos con `DB::table(...)` o con un update masivo, ese pago no quedaría en la bitácora.
+**Riesgo a futuro:** un proceso que escriba pagos con `DB::table(...)` o con un update masivo no quedaría en la bitácora.
 
 ---
 
 ## 3. La bitácora no se edita ni se borra
 
-No existe ninguna ruta, controlador, comando, job ni seeder que modifique o elimine filas de `auditoria_log`; se revisó todo `app/`, `routes/`, `database/seeders/` y `deploy.sh`. Solo hay lecturas (`AuditoriaController`, la relación `Credito::auditoria()`). El único `drop` es el `down()` de la propia migración, que solo corre si alguien revierte esa migración a mano.
+**Rutas, controladores y comandos.** Ninguno modifica ni elimina filas de `auditoria_log`; se revisó `app/`, `routes/`, `database/seeders/` y `deploy.sh`. Solo hay lecturas: `AuditoriaController` y `Credito::auditoria()`.
 
-Hay dos efectos indirectos:
+**Protección en el modelo.** `AuditoriaLog` lanza una excepción si alguien intenta `update()` o `delete()` sobre una fila.
 
-- **Borrar un usuario** (`UserController::destroy`) pone en `null` el `usuario_id` de sus filas, porque la llave foránea es `nullOnDelete`. El nombre se conserva en `usuario_nombre`.
-- **Nada lo impide a nivel de código.** El modelo `AuditoriaLog` acepta `update()` y `delete()` como cualquier otro. Hoy nadie los usa, pero nada evitaría que alguien lo haga en el futuro.
+**Límites que quedan:**
+- **Updates masivos y SQL directo.** Un `AuditoriaLog::query()->update(...)` o una consulta en la base no pasan por el modelo. Impedirlo del todo requiere permisos en MySQL: que el usuario de la aplicación no tenga `UPDATE` ni `DELETE` sobre esa tabla. Eso es del servidor y lo decide Diego.
+- **Borrar un usuario** (`UserController::destroy`) deja en `null` el `usuario_id` de sus filas, porque la llave foránea es `nullOnDelete`. El nombre se conserva en `usuario_nombre`.
+- **El `down()` de la migración** borra la tabla. Solo corre si alguien revierte esa migración a mano.
 
 ---
 
 ## 4. Pantalla `/auditoria`
 
-**La página y el controlador no coinciden.** `resources/js/Pages/Auditoria/Index.vue` se escribió para otro formato de datos (`event`, `auditable_type`, `user_name`, `created_at`...). `AuditoriaController` manda `accion`, `entidad`, `usuario`, `fecha`...
+La página (`resources/js/Pages/Auditoria/Index.vue`) se reescribió con los nombres que manda `AuditoriaController`.
 
-| | La página manda / espera | El controlador recibe / envía |
-|---|---|---|
-| Búsqueda | `search` | `buscar` |
-| Entidad | `modelo` | `entidad` |
-| Fecha | `fecha` (un solo día) | `fecha_desde` y `fecha_hasta` |
-| Usuario | no tiene control | `usuario_id` |
-| Columnas de la tabla | `created_at`, `user_name`, `event`, `auditable_type`, `description` | `fecha`, `usuario`, `accion`, `entidad`, `descripcion` |
-| Totales | `totales` | no se envía |
+**Columnas:** fecha y hora, usuario, acción, entidad e id, campo con antes → después, descripción e IP. «Ver» abre el registro completo.
 
-Esto tiene cuatro consecuencias:
+**Filtros:**
+- **Entidad:** una lista con las entidades que hay en la bitácora.
+- **Acción:** creado, actualizado o eliminado.
+- **Usuario:** una lista con quienes aparecen en la bitácora, no todos los usuarios del sistema.
+- **Fechas:** desde y hasta, en hora de Mérida.
+- **Búsqueda:** clave de contrato, folio, usuario, IP o cualquier texto de la fila.
 
-1. **Filtros:** de los filtros, **solo funciona el de acción**. La búsqueda, la entidad y la fecha se ignoran, y no hay filtro por usuario.
-2. **Tabla:** cada fila muestra la fecha «—», el usuario «Sistema», la acción «—», el módulo «—» y la descripción «—». **Solo se ve la IP.**
-3. **Totales:** las tarjetas de totales no aparecen.
-4. **Acciones:** el selector ofrece «Inicio de sesión» y «Cierre de sesión», que nunca se registran.
+**Búsqueda por clave.** Si el texto coincide con una clave de contrato o un número de contrato oficial, también trae las filas de los pagos, desembolsos y comprobaciones de ese crédito. Eso incluye los registros viejos que dicen «Crédito ID: N», sin reescribirlos.
 
-**Otros problemas de la pantalla:**
+**Hora de Mérida.** `created_at` se guarda en UTC (`'timezone' => 'UTC'`). La pantalla y los filtros lo convierten: un pago de las 18:30 en Mérida se ve a las 18:30, no a las 00:30 del día siguiente.
 
-- **Hora en UTC.** La aplicación usa `'timezone' => 'UTC'`, así que un pago de las 18:30 en Mérida aparece como 00:30 del día siguiente. El filtro por fechas también usa días UTC.
-- **Búsqueda por clave de contrato.** La búsqueda solo revisa la descripción y los valores. Los pagos dicen «Crédito ID: N», no la clave, así que buscar `CREA-2026-…` no encuentra los pagos de ese crédito.
-- **Acceso.** El menú solo muestra la bitácora a quien tiene el permiso `ver.usuarios`, pero la ruta no lo verifica: cualquier usuario operativo puede abrir `/auditoria` escribiendo la dirección.
+**Totales.** Las tarjetas cuentan el total, las creaciones, las modificaciones y las eliminaciones con los filtros aplicados.
+
+**Acceso.** Solo el Administrador puede entrar. Lo corrige la J.16 (PR #80) con `role:Administrador`; esta tarea no lo cambia.
 
 ---
 
 ## 5. «Desde dónde»: la IP
 
-`AuditoriaLog::registrar` guarda `request()->ip()`, y `bootstrap/app.php` confía en cualquier proxy (`trustProxies(at: '*')`). Si el servidor no está detrás de un proxy que reescriba el encabezado `X-Forwarded-For`, el usuario puede mandar ese encabezado y elegir la IP que queda registrada.
+`AuditoriaLog::registrar` guarda `request()->ip()`, y `bootstrap/app.php` confía en cualquier proxy (`trustProxies(at: '*')`). Si el servidor no está detrás de un proxy que reescriba `X-Forwarded-For`, quien hace la petición puede mandar ese encabezado y elegir la IP que queda registrada. En la prueba del diagnóstico, un pago enviado con `X-Forwarded-For: 203.0.113.99` quedó con esa IP.
 
-En la prueba, un pago enviado con `X-Forwarded-For: 203.0.113.99` quedó con esa IP.
-
-No se cambia en esta tarea, porque afecta a toda la aplicación y depende de cómo está montado el servidor. Diego tendría que confirmar si Hostinger pone un proxy delante y, si es así, limitar `trustProxies` a ese proxy.
+**No se cambia en esta tarea:** afecta a toda la aplicación y depende de cómo está montado el servidor. Diego tiene que confirmar si Hostinger pone un proxy delante y, si es así, limitar `trustProxies` a ese proxy.
 
 ---
 
-## 6. Observaciones fuera de alcance
+## 6. Qué no cubre
 
-- **Descargas registradas como cambios.** Las descargas del contrato y de la constancia se registran como `updated` (`CreditoController.php:162` y `:217`), aunque son lecturas. Se dejan como están.
-- **La condonación formal parcial no toca el saldo.** Solo crea el registro; no aplica los montos a las cuotas, así que el saldo no cambia.
-- **La reestructuración no actualiza el crédito.** No cambia `plazo_meses` ni `tasa_interes_ordinario`; la nueva tasa solo queda en `reestructuraciones` y en las cuotas nuevas.
-- **Una cuota que vence hoy cuenta como vencida.** Al recalcular el estatus después de un pago o una cancelación, se compara `fecha_vencimiento < now()`. Por eso, una cuota que vence hoy hace que el crédito pase a Moroso.
+- **Lecturas.** Están fuera de alcance. Las descargas del contrato y de la constancia se registran como `updated` (`CreditoController.php:178` y `:233`) desde antes y se dejan así.
+- **Cada cuota del plan por separado.** Ver 2.2.
+- **Cambios hechos fuera de Eloquent.** Ver 2.3 y 3.
+- **La IP cuando el encabezado es falso.** Ver sección 5.
+- **Registros viejos.** No se reescriben: los anteriores a este cambio conservan su formato (por ejemplo, «Pago REC-… — Crédito ID: 1», sin desglose ni valor nuevo).
+- **Borrar un acreditado con créditos.** Se registra, pero no se bloquea. Bloquearlo cambia cómo funciona el sistema y lo decide Diego.
+
+**Observaciones fuera de alcance** (no se cambian):
+- **Condonación formal parcial.** En `develop` solo crea el registro y no toca el saldo. El PR #75 la aplica al plan.
+- **Reestructuración.** No actualiza `plazo_meses` ni `tasa_interes_ordinario` del crédito: la nueva tasa queda en `reestructuraciones` y en las cuotas nuevas.
+- **Cuota que vence hoy.** Cuenta como vencida al recalcular el estatus después de un pago (`fecha_vencimiento < now()`).
 
 ---
 
-## 7. Propuesta de corrección (pendiente de aprobación)
+## 7. Del diagnóstico a la corrección
 
-Todo con el patrón que ya existe (`AuditoriaLog::registrar` y los observers), sin crear otro sistema y sin cambiar cálculos de pagos ni de mora:
+| Hallazgo (13/10) | Cómo quedó |
+|---|---|
+| Aprobar o rechazar una comprobación daba error 500 (enum) | `updated` + `estatus`, en una transacción |
+| `/auditoria` solo mostraba la IP; solo funcionaba el filtro de acción | La página usa los nombres del controlador; todos los filtros funcionan |
+| La reestructuración no se podía ejecutar (faltaba `$table`) | Ya lo corrigió en `develop` la rama `docs/crea-reestructuracion-anatocismo` |
+| La reestructuración registraba Activo → Activo | Plan anterior → plan nuevo, con saldo, mora condonada y resolutivo |
+| Eliminar un acreditado no dejaba registro | Una fila por crédito y una por el acreditado, antes de borrar |
+| La condonación total no tenía fila propia | Fila `saldo_condonado` con causa, motivo y montos |
+| Reducir plazo o cuota no dejaba rastro del plan | Fila `plan_de_pagos` con el antes y el después |
+| El observer del crédito vigilaba 4 campos | Vigila 12 |
+| Los pagos decían «Crédito ID: N» | Dicen la clave, el desglose y la forma de pago; la búsqueda por clave encuentra también los viejos |
+| La hora se veía en UTC | Hora de Mérida en la pantalla y en los filtros |
+| Nada impedía editar o borrar la bitácora desde el código | El modelo lo rechaza (con los límites de la sección 3) |
 
-1. **Comprobaciones.**
-   - Registrar `updated` con campo `estatus` (por ejemplo, En_Revision → Aprobada) y el monto comprobado, en lugar de `aprobada` o `rechazada`.
-   - Guardar la comprobación y su registro en una sola transacción.
-   - No hace falta migración.
-2. **Pagos.**
-   - El observer agrega la clave del crédito, el desglose, la forma de pago y el monto como valor nuevo.
-   - Cuando el pago reduce plazo o cuota, se agrega una fila con el plan antes y después. Se calcula con el *snapshot* que el pago ya guarda, sin tocar `PagoController`.
-3. **Crédito.** El observer vigila también los campos de la tabla 2.2 y dice en la descripción qué cambió y de cuánto a cuánto.
-4. **Condonaciones.**
-   - Una fila propia para la condonación total, con la causa, el motivo y los montos condonados.
-   - Clave, desglose y motivo en la condonación formal.
-5. **Reestructuración.**
-   - Valor anterior correcto.
-   - Clave, saldo, mora condonada, nuevo plazo y nueva tasa.
-   - La línea `$table` del modelo, igual a la de la otra rama, para que al fusionar ambas no haya conflicto.
-6. **Eliminar acreditado.** Antes de borrar, una fila `deleted` por cada crédito, con clave, monto y pagos. Queda a decisión de Diego si además conviene impedir borrar acreditados con créditos.
-7. **Pantalla `/auditoria`.**
-   - Que la página y el controlador usen los mismos nombres.
-   - Filtros por entidad, acción, usuario y rango de fechas en hora de Mérida.
-   - Búsqueda por clave que también encuentre los pagos y desembolsos de ese crédito, incluidos los registros viejos, sin reescribirlos.
-   - Mostrar campo, antes → después, usuario, IP y descripción.
-8. **Protección.**
-   - `AuditoriaLog` rechaza cualquier `update` o `delete` desde el código.
-   - La ruta `/auditoria` pide el mismo permiso que el menú.
-9. **Pruebas (Pest).** Una por operación de la tabla 1: después de ejecutarla, existe la fila con usuario, campo, valor anterior y valor nuevo correctos.
+---
 
-Fuera de esta tarea: la configuración de `trustProxies` (sección 5) y las observaciones de la sección 6.
+## 8. Pruebas
+
+```bash
+php artisan test tests/Feature/AuditoriaBitacoraTest.php
+```
+
+**Una prueba por operación de la sección 1.** Cada una la ejecuta como lo haría un operativo, por la ruta del sistema, y comprueba que existe la fila con:
+- usuario, nombre e IP;
+- campo, valor anterior y valor nuevo;
+- clave y montos en la descripción.
+
+**Además:**
+- la bitácora no se puede editar ni borrar desde el modelo, y rechaza acciones fuera del enum;
+- `/auditoria` filtra por entidad, acción, usuario y fechas en hora de Mérida;
+- la búsqueda por clave encuentra los pagos y desembolsos de ese crédito aunque su descripción no tenga la clave.
+
+En SQLite, el estado de la cuota es un `CHECK` sin «Reestructurada»; en MySQL lo agrega una migración. Por eso la prueba de reestructuración amplía la columna antes de empezar.

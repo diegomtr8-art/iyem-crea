@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Acreditado;
+use App\Models\AuditoriaLog;
 use App\Models\Credito;
 use App\Models\DocumentoSolicitud;
 use App\Models\ModalidadCrea;
@@ -324,7 +325,42 @@ class AcreditadoController extends Controller
 
     public function destroy(Acreditado $acreditado)
     {
-        $acreditado->delete();
+        // La base borra en cascada créditos, cuotas y pagos sin pasar por los observers:
+        // se deja en la bitácora qué se va a perder antes de borrar
+        DB::transaction(function () use ($acreditado) {
+            $creditos = $acreditado->creditos()
+                ->withCount(['pagos' => fn ($q) => $q->where('cancelado', false)])
+                ->withSum(['pagos' => fn ($q) => $q->where('cancelado', false)], 'monto_recibido')
+                ->get();
+
+            foreach ($creditos as $credito) {
+                AuditoriaLog::registrar(
+                    'Credito',
+                    $credito->id,
+                    'deleted',
+                    'monto_otorgado',
+                    $credito->monto_otorgado,
+                    null,
+                    "Crédito {$credito->clave_contrato} borrado junto con el acreditado {$acreditado->nombre_completo}. "
+                    . 'Monto otorgado: ' . AuditoriaLog::dinero($credito->monto_otorgado) . ", estatus: {$credito->estatus}, "
+                    . "{$credito->pagos_count} pago(s) activos por " . AuditoriaLog::dinero($credito->pagos_sum_monto_recibido) . '.'
+                );
+            }
+
+            AuditoriaLog::registrar(
+                'Acreditado',
+                $acreditado->id,
+                'deleted',
+                'nombre_completo',
+                $acreditado->nombre_completo,
+                null,
+                "Acreditado {$acreditado->nombre_completo} borrado con {$creditos->count()} crédito(s): "
+                . ($creditos->pluck('clave_contrato')->implode(', ') ?: 'ninguno') . '.'
+            );
+
+            $acreditado->delete();
+        });
+
         return redirect()->route('acreditados.index')
             ->with('success', 'Acreditado eliminado.');
     }

@@ -90,8 +90,12 @@ class CondonacionFormalController extends Controller
                 'condonacion_formal',
                 null,
                 $data['tipo'],
-                "Condonación formal registrada. Tipo: {$data['tipo']}. " .
-                "Monto total: \${$montoTotal}. Acuerdo: " . ($data['numero_acuerdo'] ?? 'N/A')
+                "Condonación formal {$data['tipo']} del crédito {$credito->clave_contrato}. "
+                . 'Capital ' . AuditoriaLog::dinero($data['monto_condonado_capital'] ?? 0)
+                . ', intereses ' . AuditoriaLog::dinero($data['monto_condonado_intereses'] ?? 0)
+                . ', mora ' . AuditoriaLog::dinero($data['monto_condonado_mora'] ?? 0)
+                . ' (total ' . AuditoriaLog::dinero($montoTotal) . "). Motivo: {$data['motivo']}. "
+                . 'Acuerdo: ' . ($data['numero_acuerdo'] ?? 'N/A') . '.'
             );
 
             return redirect()->route('acreditados.show', $credito->acreditado_id)

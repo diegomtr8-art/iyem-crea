@@ -54,7 +54,7 @@ class CreditoController extends Controller
             }
 
             // Registrar pago ficticio de $0 para auditoría
-            Pago::create([
+            $pagoCondonacion = Pago::create([
                 'credito_id'         => $credito->id,
                 'acreditado_id'      => $credito->acreditado_id,
                 'folio'              => Pago::generarFolio(),
@@ -73,6 +73,22 @@ class CreditoController extends Controller
             ]);
 
             $credito->update(['estatus' => EstadoCredito::LIQUIDADO]);
+
+            // Fila propia: el pago de $0 y el cambio de estatus no dicen cuánto se condonó ni por qué
+            $totalCondonado = round($capitalCondonado + $interesCondonado + $moratorioCondonado, 2);
+            AuditoriaLog::registrar(
+                'Credito',
+                $credito->id,
+                'updated',
+                'saldo_condonado',
+                number_format($totalCondonado, 2, '.', ''),
+                '0.00',
+                "Condonación total del crédito {$credito->clave_contrato} por {$validated['tipo_causa']}: {$validated['motivo']}. "
+                . 'Se condonó capital ' . AuditoriaLog::dinero($capitalCondonado)
+                . ', interés ' . AuditoriaLog::dinero($interesCondonado)
+                . ', mora ' . AuditoriaLog::dinero($moratorioCondonado)
+                . ' (total ' . AuditoriaLog::dinero($totalCondonado) . "). Pago {$pagoCondonacion->folio} de $0.00."
+            );
         });
 
         return redirect()->route('acreditados.show', $credito->acreditado_id)

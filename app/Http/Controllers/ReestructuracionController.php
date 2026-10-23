@@ -90,6 +90,12 @@ class ReestructuracionController extends Controller
                 'observaciones'            => $data['observaciones'] ?? null,
             ]);
 
+            // El plan de antes, para la bitácora: se lee antes de marcar las cuotas
+            $cuotasAntes = $credito->amortizaciones()
+                ->whereNotIn('estado', ['Pagado', 'Condonado', 'Reestructurada', 'Gracia'])
+                ->count();
+            $planAnterior = "{$cuotasAntes} cuotas pendientes al {$credito->tasa_interes_ordinario} % ({$credito->estatus})";
+
             // Marcar cuotas pendientes como Reestructurada (preserva auditoría)
             $credito->amortizaciones()
                 ->whereNotIn('estado', ['Pagado', 'Condonado', 'Reestructurada', 'Gracia'])
@@ -135,10 +141,13 @@ class ReestructuracionController extends Controller
                 $credito->id,
                 'updated',
                 'reestructuracion',
-                $credito->estatus,
-                'Activo',
-                "Crédito reestructurado. Nuevo plazo: {$plazo} meses. Resolutivo: " .
-                ($data['numero_resolutivo'] ?? 'N/A')
+                $planAnterior,
+                "{$plazo} cuotas de " . AuditoriaLog::dinero($cuotaFija) . " al {$data['nueva_tasa_interes']} %",
+                "Crédito {$credito->clave_contrato} reestructurado ({$data['motivo']}). "
+                . 'Saldo reestructurado: ' . AuditoriaLog::dinero($baseReestructuracion)
+                . ', mora condonada: ' . AuditoriaLog::dinero($moraCondonada)
+                . ", nuevo plazo: {$plazo} meses, nueva tasa: {$data['nueva_tasa_interes']} %. Resolutivo: "
+                . ($data['numero_resolutivo'] ?? 'N/A') . '.'
             );
 
             return redirect()->route('acreditados.show', $credito->acreditado_id)

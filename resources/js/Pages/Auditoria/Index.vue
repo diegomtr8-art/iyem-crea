@@ -4,53 +4,60 @@ import { Head, router } from '@inertiajs/vue3';
 import { ref, watch, computed } from 'vue';
 import {
     Search, Filter, Shield, User, Clock, Eye, RefreshCw,
-    AlertTriangle, FileText, Database, ChevronLeft, ChevronRight,
-    Edit, Trash2, Plus, LogIn, LogOut, Settings, ToggleLeft
+    Database, Edit, Trash2, Plus, Settings, ArrowRight
 } from 'lucide-vue-next';
 import debounce from 'lodash/debounce';
 
+// Los nombres son los de AuditoriaController (filtros y columnas)
 const props = defineProps({
     logs: Object, // paginado
     filters: Object,
     totales: Object,
+    entidades: Array,
+    usuarios: Array,
 });
 
-const search    = ref(props.filters?.search    ?? '');
-const accion    = ref(props.filters?.accion    ?? '');
-const modelo    = ref(props.filters?.modelo    ?? '');
-const fecha     = ref(props.filters?.fecha     ?? '');
+const buscar     = ref(props.filters?.buscar      ?? '');
+const accion     = ref(props.filters?.accion      ?? '');
+const entidad    = ref(props.filters?.entidad     ?? '');
+const usuarioId  = ref(props.filters?.usuario_id  ?? '');
+const fechaDesde = ref(props.filters?.fecha_desde ?? '');
+const fechaHasta = ref(props.filters?.fecha_hasta ?? '');
 
+// Los únicos valores que acepta la columna `accion`
 const acciones = [
     { value: '', label: 'Todas las acciones' },
     { value: 'created',  label: 'Creado' },
     { value: 'updated',  label: 'Actualizado' },
     { value: 'deleted',  label: 'Eliminado' },
-    { value: 'login',    label: 'Inicio de sesión' },
-    { value: 'logout',   label: 'Cierre de sesión' },
 ];
 
 const applyFilters = () => {
     router.get(route('auditoria.index'), {
-        search:  search.value  || undefined,
-        accion:  accion.value  || undefined,
-        modelo:  modelo.value  || undefined,
-        fecha:   fecha.value   || undefined,
+        buscar:      buscar.value     || undefined,
+        accion:      accion.value     || undefined,
+        entidad:     entidad.value    || undefined,
+        usuario_id:  usuarioId.value  || undefined,
+        fecha_desde: fechaDesde.value || undefined,
+        fecha_hasta: fechaHasta.value || undefined,
     }, { preserveState: true, replace: true });
 };
 
-watch([accion, modelo, fecha], () => applyFilters());
-watch(search, debounce(() => applyFilters(), 350));
+watch([accion, entidad, usuarioId, fechaDesde, fechaHasta], () => applyFilters());
+watch(buscar, debounce(() => applyFilters(), 350));
 
 const limpiarFiltros = () => {
-    search.value = '';
-    accion.value = '';
-    modelo.value = '';
-    fecha.value  = '';
+    buscar.value     = '';
+    accion.value     = '';
+    entidad.value    = '';
+    usuarioId.value  = '';
+    fechaDesde.value = '';
+    fechaHasta.value = '';
     applyFilters();
 };
 
 const hayFiltros = computed(() =>
-    search.value || accion.value || modelo.value || fecha.value
+    buscar.value || accion.value || entidad.value || usuarioId.value || fechaDesde.value || fechaHasta.value
 );
 
 // Colores y configuración por tipo de acción
@@ -73,69 +80,21 @@ const accionConfig = {
         icon: Trash2,
         label: 'Eliminado',
     },
-    login: {
-        bg:   'bg-purple-100 dark:bg-purple-900/30',
-        text: 'text-purple-700 dark:text-purple-400',
-        icon: LogIn,
-        label: 'Login',
-    },
-    logout: {
-        bg:   'bg-slate-100 dark:bg-slate-800',
-        text: 'text-slate-600 dark:text-slate-400',
-        icon: LogOut,
-        label: 'Logout',
-    },
-    restored: {
-        bg:   'bg-amber-100 dark:bg-amber-900/30',
-        text: 'text-amber-700 dark:text-amber-400',
-        icon: ToggleLeft,
-        label: 'Restaurado',
-    },
 };
 
-const getConfig = (event) => accionConfig[event] ?? {
+const getConfig = (valor) => accionConfig[valor] ?? {
     bg:   'bg-slate-100 dark:bg-slate-800',
     text: 'text-slate-600 dark:text-slate-400',
     icon: Settings,
-    label: event ?? '—',
+    label: valor || '—',
 };
 
-const formatFecha = (str) => {
-    if (!str) return '—';
-    const d = new Date(str);
-    return d.toLocaleString('es-MX', {
-        day: '2-digit', month: 'short', year: 'numeric',
-        hour: '2-digit', minute: '2-digit',
-    });
-};
+const hayCambio = (log) => log.campo_modificado || log.valor_anterior !== null || log.valor_nuevo !== null;
 
-const modeloLabel = (str) => {
-    if (!str) return '—';
-    // App\Models\Acreditado → Acreditado
-    return str.split('\\').pop();
-};
-
-// Modal para ver cambios detallados
+// Modal para ver el registro completo
 const modalLog   = ref(null);
 const verDetalle = (log) => { modalLog.value = log; };
 const cerrarModal = () => { modalLog.value = null; };
-
-const cambiosJson = computed(() => {
-    if (!modalLog.value) return null;
-    try {
-        const nuevo = modalLog.value.new_values
-            ? (typeof modalLog.value.new_values === 'string'
-                ? JSON.parse(modalLog.value.new_values) : modalLog.value.new_values)
-            : null;
-        const viejo = modalLog.value.old_values
-            ? (typeof modalLog.value.old_values === 'string'
-                ? JSON.parse(modalLog.value.old_values) : modalLog.value.old_values)
-            : null;
-        return { nuevo, viejo };
-    } catch {
-        return { nuevo: null, viejo: null };
-    }
-});
 </script>
 
 <template>
@@ -155,7 +114,7 @@ const cambiosJson = computed(() => {
                             Bitácora de Auditoría
                         </h1>
                         <p class="text-slate-500 dark:text-slate-400 text-sm font-medium">
-                            Registro de todas las acciones realizadas en el sistema.
+                            Quién hizo cada operación, cuándo (hora de Mérida) y desde qué IP. Los registros no se pueden editar ni borrar.
                         </p>
                     </div>
                 </div>
@@ -165,7 +124,7 @@ const cambiosJson = computed(() => {
                 </button>
             </div>
 
-            <!-- KPIs -->
+            <!-- KPIs (con los filtros aplicados) -->
             <div v-if="totales" class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
                 <div class="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 p-5 shadow-sm">
                     <Database :size="18" class="text-slate-500 mb-2" />
@@ -194,7 +153,7 @@ const cambiosJson = computed(() => {
                 <!-- Buscar -->
                 <div class="relative flex-1 min-w-[200px] max-w-sm">
                     <Search :size="15" class="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
-                    <input v-model="search" type="text" placeholder="Usuario, IP, descripción..."
+                    <input v-model="buscar" type="text" placeholder="Clave de contrato, folio, usuario, IP..."
                         class="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 dark:bg-slate-800 dark:text-white text-sm focus:ring-2 focus:ring-slate-400 focus:border-slate-400 transition-all" />
                 </div>
 
@@ -207,18 +166,34 @@ const cambiosJson = computed(() => {
                     </select>
                 </div>
 
-                <!-- Modelo -->
+                <!-- Entidad -->
                 <div class="relative">
                     <Database :size="14" class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
-                    <input v-model="modelo" type="text" placeholder="Modelo (ej. Credito)"
-                        class="pl-9 pr-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 dark:bg-slate-800 dark:text-white text-sm w-40 focus:ring-2 focus:ring-slate-400 transition-all" />
+                    <select v-model="entidad"
+                        class="pl-9 pr-8 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 dark:bg-slate-800 dark:text-white text-sm focus:ring-2 focus:ring-slate-400 transition-all appearance-none">
+                        <option value="">Todas las entidades</option>
+                        <option v-for="e in entidades" :key="e" :value="e">{{ e }}</option>
+                    </select>
                 </div>
 
-                <!-- Fecha -->
+                <!-- Usuario -->
                 <div class="relative">
+                    <User :size="14" class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                    <select v-model="usuarioId"
+                        class="pl-9 pr-8 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 dark:bg-slate-800 dark:text-white text-sm focus:ring-2 focus:ring-slate-400 transition-all appearance-none">
+                        <option value="">Todos los usuarios</option>
+                        <option v-for="u in usuarios" :key="u.id" :value="String(u.id)">{{ u.name }}</option>
+                    </select>
+                </div>
+
+                <!-- Fechas -->
+                <div class="relative flex items-center gap-2">
                     <Clock :size="14" class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
-                    <input v-model="fecha" type="date"
+                    <input v-model="fechaDesde" type="date" title="Desde"
                         class="pl-9 pr-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 dark:bg-slate-800 dark:text-white text-sm focus:ring-2 focus:ring-slate-400 transition-all" />
+                    <span class="text-xs text-slate-400">a</span>
+                    <input v-model="fechaHasta" type="date" title="Hasta"
+                        class="px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 dark:bg-slate-800 dark:text-white text-sm focus:ring-2 focus:ring-slate-400 transition-all" />
                 </div>
 
                 <!-- Limpiar -->
@@ -231,13 +206,14 @@ const cambiosJson = computed(() => {
             <!-- Tabla -->
             <div class="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 overflow-hidden shadow-sm">
                 <div class="overflow-x-auto">
-                    <table class="w-full min-w-[700px] text-sm text-left">
+                    <table class="w-full min-w-[900px] text-sm text-left">
                         <thead>
                             <tr class="bg-slate-50 dark:bg-slate-800/60 text-slate-400 dark:text-slate-500 text-[10px] uppercase tracking-widest font-black border-b border-slate-100 dark:border-slate-800">
                                 <th class="px-5 py-4">Fecha / Hora</th>
                                 <th class="px-5 py-4">Usuario</th>
                                 <th class="px-5 py-4">Acción</th>
-                                <th class="px-5 py-4">Modelo</th>
+                                <th class="px-5 py-4">Entidad</th>
+                                <th class="px-5 py-4">Cambio</th>
                                 <th class="px-5 py-4">Descripción</th>
                                 <th class="px-5 py-4">IP</th>
                                 <th class="px-5 py-4 text-center">Detalle</th>
@@ -245,7 +221,7 @@ const cambiosJson = computed(() => {
                         </thead>
                         <tbody class="divide-y divide-slate-50 dark:divide-slate-800">
                             <tr v-if="!logs?.data?.length">
-                                <td colspan="7" class="px-5 py-16 text-center text-slate-400 dark:text-slate-600">
+                                <td colspan="8" class="px-5 py-16 text-center text-slate-400 dark:text-slate-600">
                                     <Shield :size="32" class="mx-auto mb-3 opacity-30" />
                                     <p class="font-semibold">No hay registros de auditoría.</p>
                                 </td>
@@ -256,7 +232,7 @@ const cambiosJson = computed(() => {
                                 <!-- Fecha -->
                                 <td class="px-5 py-4 whitespace-nowrap">
                                     <span class="text-xs font-semibold text-slate-600 dark:text-slate-400">
-                                        {{ formatFecha(log.created_at) }}
+                                        {{ log.fecha }}
                                     </span>
                                 </td>
 
@@ -266,10 +242,7 @@ const cambiosJson = computed(() => {
                                         <div class="w-7 h-7 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center">
                                             <User :size="13" class="text-slate-500" />
                                         </div>
-                                        <div>
-                                            <p class="font-bold text-slate-800 dark:text-white text-xs">{{ log.user_name ?? 'Sistema' }}</p>
-                                            <p class="text-[10px] text-slate-400">{{ log.user_email ?? '' }}</p>
-                                        </div>
+                                        <p class="font-bold text-slate-800 dark:text-white text-xs">{{ log.usuario ?? 'Sistema' }}</p>
                                     </div>
                                 </td>
 
@@ -277,27 +250,40 @@ const cambiosJson = computed(() => {
                                 <td class="px-5 py-4">
                                     <div :class="[
                                         'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-black uppercase',
-                                        getConfig(log.event).bg,
-                                        getConfig(log.event).text
+                                        getConfig(log.accion).bg,
+                                        getConfig(log.accion).text
                                     ]">
-                                        <component :is="getConfig(log.event).icon" :size="11" />
-                                        {{ getConfig(log.event).label }}
+                                        <component :is="getConfig(log.accion).icon" :size="11" />
+                                        {{ getConfig(log.accion).label }}
                                     </div>
                                 </td>
 
-                                <!-- Modelo -->
+                                <!-- Entidad -->
                                 <td class="px-5 py-4">
                                     <span class="inline-flex items-center gap-1 text-[11px] font-bold text-slate-600 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-lg">
                                         <Database :size="10" />
-                                        {{ modeloLabel(log.auditable_type) }}
-                                        <span v-if="log.auditable_id" class="font-mono text-slate-400">#{{ log.auditable_id }}</span>
+                                        {{ log.entidad }}
+                                        <span class="font-mono text-slate-400">#{{ log.entidad_id }}</span>
                                     </span>
                                 </td>
 
+                                <!-- Cambio: campo, antes → después -->
+                                <td class="px-5 py-4 max-w-[260px]">
+                                    <template v-if="hayCambio(log)">
+                                        <p class="text-[11px] font-bold text-slate-500 dark:text-slate-400">{{ log.campo_modificado ?? '—' }}</p>
+                                        <p class="flex items-center gap-1 text-xs font-mono">
+                                            <span class="text-red-600 dark:text-red-400 truncate">{{ log.valor_anterior ?? '∅' }}</span>
+                                            <ArrowRight :size="11" class="text-slate-400 shrink-0" />
+                                            <span class="text-emerald-700 dark:text-emerald-400 truncate">{{ log.valor_nuevo ?? '∅' }}</span>
+                                        </p>
+                                    </template>
+                                    <span v-else class="text-xs text-slate-400">—</span>
+                                </td>
+
                                 <!-- Descripción -->
-                                <td class="px-5 py-4 max-w-[240px]">
-                                    <p class="text-xs text-slate-600 dark:text-slate-400 truncate">
-                                        {{ log.description ?? log.url ?? '—' }}
+                                <td class="px-5 py-4 max-w-[320px]">
+                                    <p class="text-xs text-slate-600 dark:text-slate-400 line-clamp-2">
+                                        {{ log.descripcion ?? '—' }}
                                     </p>
                                 </td>
 
@@ -361,14 +347,14 @@ const cambiosJson = computed(() => {
                     <!-- Header modal -->
                     <div class="flex items-center justify-between mb-5">
                         <div class="flex items-center gap-3">
-                            <div :class="['w-10 h-10 rounded-xl flex items-center justify-center', getConfig(modalLog.event).bg]">
-                                <component :is="getConfig(modalLog.event).icon" :size="18" :class="getConfig(modalLog.event).text" />
+                            <div :class="['w-10 h-10 rounded-xl flex items-center justify-center', getConfig(modalLog.accion).bg]">
+                                <component :is="getConfig(modalLog.accion).icon" :size="18" :class="getConfig(modalLog.accion).text" />
                             </div>
                             <div>
                                 <h3 class="font-black text-slate-900 dark:text-white text-lg">
                                     Detalle del Registro
                                 </h3>
-                                <p class="text-xs text-slate-400">{{ formatFecha(modalLog.created_at) }}</p>
+                                <p class="text-xs text-slate-400">{{ modalLog.fecha }} (hora de Mérida)</p>
                             </div>
                         </div>
                         <button @click="cerrarModal"
@@ -378,62 +364,45 @@ const cambiosJson = computed(() => {
                     </div>
 
                     <!-- Datos generales -->
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-5">
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-5">
                         <div class="bg-slate-50 dark:bg-slate-800 rounded-2xl p-4">
                             <p class="text-[10px] font-black text-slate-400 uppercase mb-1">Usuario</p>
-                            <p class="font-bold text-slate-800 dark:text-white text-sm">{{ modalLog.user_name ?? 'Sistema' }}</p>
-                            <p class="text-xs text-slate-400">{{ modalLog.user_email ?? '' }}</p>
+                            <p class="font-bold text-slate-800 dark:text-white text-sm">{{ modalLog.usuario ?? 'Sistema' }}</p>
                         </div>
                         <div class="bg-slate-50 dark:bg-slate-800 rounded-2xl p-4">
-                            <p class="text-[10px] font-black text-slate-400 uppercase mb-1">Modelo Afectado</p>
-                            <p class="font-bold text-slate-800 dark:text-white text-sm">{{ modeloLabel(modalLog.auditable_type) }}</p>
-                            <p class="text-xs font-mono text-slate-400">#{{ modalLog.auditable_id }}</p>
+                            <p class="text-[10px] font-black text-slate-400 uppercase mb-1">Entidad</p>
+                            <p class="font-bold text-slate-800 dark:text-white text-sm">{{ modalLog.entidad }}</p>
+                            <p class="text-xs font-mono text-slate-400">#{{ modalLog.entidad_id }}</p>
                         </div>
                         <div class="bg-slate-50 dark:bg-slate-800 rounded-2xl p-4">
                             <p class="text-[10px] font-black text-slate-400 uppercase mb-1">IP</p>
                             <p class="font-mono text-slate-700 dark:text-slate-300 text-sm">{{ modalLog.ip_address ?? '—' }}</p>
                         </div>
-                        <div class="bg-slate-50 dark:bg-slate-800 rounded-2xl p-4">
-                            <p class="text-[10px] font-black text-slate-400 uppercase mb-1">Navegador</p>
-                            <p class="text-slate-600 dark:text-slate-400 text-xs truncate">{{ modalLog.user_agent ?? '—' }}</p>
-                        </div>
                     </div>
 
-                    <!-- Descripción / URL -->
-                    <div v-if="modalLog.description || modalLog.url" class="bg-slate-50 dark:bg-slate-800 rounded-2xl p-4 mb-5">
-                        <p class="text-[10px] font-black text-slate-400 uppercase mb-1">Descripción / URL</p>
-                        <p class="text-sm text-slate-700 dark:text-slate-300">{{ modalLog.description ?? modalLog.url }}</p>
+                    <!-- Descripción -->
+                    <div v-if="modalLog.descripcion" class="bg-slate-50 dark:bg-slate-800 rounded-2xl p-4 mb-5">
+                        <p class="text-[10px] font-black text-slate-400 uppercase mb-1">Descripción</p>
+                        <p class="text-sm text-slate-700 dark:text-slate-300 whitespace-pre-line">{{ modalLog.descripcion }}</p>
                     </div>
 
-                    <!-- Cambios -->
-                    <div v-if="cambiosJson" class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <!-- Valores anteriores -->
-                        <div v-if="cambiosJson.viejo" class="bg-red-50 dark:bg-red-900/20 rounded-2xl p-4">
-                            <p class="text-[10px] font-black text-red-500 uppercase mb-3">Valores Anteriores</p>
-                            <div class="space-y-1.5">
-                                <div v-for="(val, key) in cambiosJson.viejo" :key="key"
-                                    class="flex justify-between gap-2 text-xs">
-                                    <span class="font-bold text-slate-600 dark:text-slate-400 capitalize">{{ key }}</span>
-                                    <span class="text-red-600 dark:text-red-400 font-mono truncate max-w-[120px]">{{ val ?? 'null' }}</span>
-                                </div>
+                    <!-- Cambio -->
+                    <div v-if="hayCambio(modalLog)">
+                        <p class="text-[10px] font-black text-slate-400 uppercase mb-2">Campo: {{ modalLog.campo_modificado ?? '—' }}</p>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div class="bg-red-50 dark:bg-red-900/20 rounded-2xl p-4">
+                                <p class="text-[10px] font-black text-red-500 uppercase mb-2">Valor anterior</p>
+                                <p class="text-sm font-mono text-red-600 dark:text-red-400 break-words">{{ modalLog.valor_anterior ?? '∅' }}</p>
                             </div>
-                        </div>
-
-                        <!-- Valores nuevos -->
-                        <div v-if="cambiosJson.nuevo" class="bg-emerald-50 dark:bg-emerald-900/20 rounded-2xl p-4">
-                            <p class="text-[10px] font-black text-emerald-600 uppercase mb-3">Valores Nuevos</p>
-                            <div class="space-y-1.5">
-                                <div v-for="(val, key) in cambiosJson.nuevo" :key="key"
-                                    class="flex justify-between gap-2 text-xs">
-                                    <span class="font-bold text-slate-600 dark:text-slate-400 capitalize">{{ key }}</span>
-                                    <span class="text-emerald-700 dark:text-emerald-400 font-mono truncate max-w-[120px]">{{ val ?? 'null' }}</span>
-                                </div>
+                            <div class="bg-emerald-50 dark:bg-emerald-900/20 rounded-2xl p-4">
+                                <p class="text-[10px] font-black text-emerald-600 uppercase mb-2">Valor nuevo</p>
+                                <p class="text-sm font-mono text-emerald-700 dark:text-emerald-400 break-words">{{ modalLog.valor_nuevo ?? '∅' }}</p>
                             </div>
                         </div>
                     </div>
 
-                    <div v-if="!cambiosJson?.viejo && !cambiosJson?.nuevo" class="text-center py-4 text-slate-400 text-sm">
-                        Sin cambios detallados disponibles para este registro.
+                    <div v-else class="text-center py-4 text-slate-400 text-sm">
+                        Este registro no guarda un valor anterior ni uno nuevo.
                     </div>
 
                 </div>
