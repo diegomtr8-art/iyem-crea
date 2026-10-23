@@ -135,7 +135,7 @@ echo "=== [5/5] Migraciones, cachés y build assets ==="
 # Solo en la PRIMERA instalación, a mano en el servidor:
 #   php artisan db:seed --class=ActualizarModalidadesSeeder --force
 #   php artisan db:seed --class=RoleAndPermissionSeeder --force
-ssh "${SSH_OPTS[@]}" $SSH_HOST \
+ssh "${SSH_OPTS[@]}" "$SSH_HOST" \
     "cd \"$REMOTE_DIR\" && \
     php artisan migrate --force && \
     php artisan config:cache && \
@@ -152,7 +152,7 @@ echo "=== Deploy completado exitosamente ==="
 echo ""
 echo "=== POST-DEPLOY: Pasos manuales requeridos ==="
 echo "1. Subir .env.production al servidor como .env:"
-echo "   scp -i \"${SSH_KEY}\" -P 65002 .env.production $SSH_HOST:$REMOTE_DIR/.env"
+echo "   scp -i \"${SSH_KEY}\" -P "${SSH_PORT}" .env.production $SSH_HOST:$REMOTE_DIR/.env"
 echo "   (Editar PASSWORD_CORREO_AQUI antes de subir)"
 echo ""
 echo "2. Configurar DocumentRoot del virtualhost crea.iyemyucatan.com"
