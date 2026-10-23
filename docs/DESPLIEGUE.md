@@ -136,6 +136,10 @@ Los seeders no se ejecutan automáticamente durante cada despliegue, para evitar
 
 **Advertencia:** si se rechazan las migraciones o estas fallan, el servidor puede quedar con código actualizado y una base de datos que todavía no corresponde a esa versión. El script no revierte automáticamente los cambios; el responsable del servidor deberá evaluar la recuperación antes de reanudar las operaciones.
 
+Si una migración falla durante su ejecución, se debe detener el procedimiento y notificar al responsable del servidor. Antes de intentar nuevamente el despliegue, es necesario revisar el mensaje de error, consultar el estado de las migraciones y verificar si se aplicaron cambios parciales en la base de datos.
+
+No se debe ejecutar nuevamente la migración ni restaurar automáticamente el respaldo sin evaluar el estado de la información. El responsable del servidor determinará si corresponde corregir el problema, completar manualmente alguna operación o utilizar el respaldo previo siguiendo el procedimiento de recuperación descrito en esta guía y en `RESPALDO.md`.
+
 ## 4. Verificación posterior al despliegue
 
 Una vez completado el despliegue, se deben realizar las siguientes comprobaciones funcionales:
