@@ -18,7 +18,7 @@ class ContactoController extends Controller
             'mensaje' => ['required', 'string', 'max:2000'],
         ]);
 
-        Mail::to('crea@iyemyucatan.com')
+        Mail::to(config('contacto.correo'))
             ->send(new ContactoMensaje($data));
 
         return back()->with('success', 'Tu mensaje fue enviado correctamente. Te responderemos pronto a ' . $data['email'] . '.');

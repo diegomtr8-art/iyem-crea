@@ -7,6 +7,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Reestructuracion extends Model
 {
+    protected $table = 'reestructuraciones';
+
     protected $fillable = [
         'credito_id',
         'fecha_reestructura',

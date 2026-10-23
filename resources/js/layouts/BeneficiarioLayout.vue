@@ -4,9 +4,9 @@ import { Link, router, usePage } from '@inertiajs/vue3';
 import { Toaster, toast } from 'vue-sonner';
 import axios from 'axios';
 import {
-    Home, FolderOpen, FileText, BadgeCheck,
+    Home, FolderOpen, FileText, BadgeCheck, History,
     Bell, LogOut, ChevronDown, Menu, X, Sun, Moon, User,
-    MessageSquare, CheckCircle2, Info, AlertTriangle, XCircle, Check
+    MessageSquare, CheckCircle2, Info, AlertTriangle, XCircle, Check, HelpCircle
 } from 'lucide-vue-next';
 
 const page = usePage<any>();
@@ -39,6 +39,8 @@ const navItems = computed(() => [
     { label: 'Solicitar Crédito', href: route('portal.solicitud.index'), icon: FileText,   always: true },
     { label: 'Mi Crédito',        href: route('portal.credito'),         icon: BadgeCheck, always: false, show: tieneCredito.value },
     { label: 'Contacto',          href: route('portal.contacto'),        icon: MessageSquare, always: true },
+    { label: 'Ayuda',             href: route('portal.ayuda'),           icon: HelpCircle, always: true },
+    { label: 'Mis Accesos',       href: route('portal.accesos'),         icon: History,    always: true },
 ]);
 
 const isActive = (href: string) => page.url.startsWith(new URL(href).pathname);
@@ -321,7 +323,7 @@ onMounted(notify);
                         <div class="space-y-1 text-sm text-slate-500 dark:text-zinc-400">
                             <p>Av. Industrias No Contaminantes Tablaje 13613</p>
                             <p>Col. Sodzil Norte, Mérida, Yucatán</p>
-                            <p class="font-medium text-slate-700 dark:text-zinc-300">999 941 2170</p>
+                            <p v-if="page.props.contacto?.telefono" class="font-medium text-slate-700 dark:text-zinc-300">{{ page.props.contacto.telefono }}</p>
                         </div>
                     </div>
                 </div>

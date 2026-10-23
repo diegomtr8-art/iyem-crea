@@ -573,20 +573,9 @@ const sIcon= 'w-9 h-9 rounded-xl flex items-center justify-center shrink-0 bg-[#
         </p>
         <p class="text-slate-500 dark:text-zinc-400 leading-relaxed max-w-md mx-auto">
             El equipo de CREA está revisando tu información y documentos. Te notificaremos cuando haya una actualización.
+            Los formatos estarán disponibles para su descarga una vez que tu solicitud sea aprobada.
             Puedes consultar el estado de tu solicitud en cualquier momento desde este portal.
         </p>
-
-        <button v-if="props.solicitud?.formatos_zip_ruta" @click="descargarFormatos"
-            class="inline-flex items-center gap-3 px-8 py-4 bg-gradient-to-r from-[#6B1938] to-[#4A0E22] hover:from-[#4A0E22] hover:to-[#2E0816] text-white font-bold rounded-2xl shadow-lg transition-all text-base">
-            <Download size="20" /> Descargar mis formatos PDF (ZIP)
-        </button>
-
-        <div class="rounded-xl bg-slate-50 dark:bg-zinc-800 p-4 text-left text-sm text-slate-600 dark:text-zinc-400 space-y-1 max-w-md mx-auto">
-            <p class="font-bold text-slate-800 dark:text-white">Imprime y lleva estos formatos firmados a las oficinas IYEM:</p>
-            <p class="flex items-start gap-2"><MapPin size="14" class="shrink-0 mt-0.5" /> Av. Principal Industrias No Contaminantes, Tablaje 13613, Sodzil Norte, CP 97110, Mérida</p>
-            <p class="flex items-center gap-2"><Mail size="14" class="shrink-0" /> crea@iyemyucatan.com</p>
-            <p class="flex items-center gap-2"><Phone size="14" class="shrink-0" /> WhatsApp 999 234 2693 · (999) 469.53.06 Ext. 29263/29264</p>
-        </div>
 
         <Link :href="route('portal.dashboard')"
             class="inline-flex items-center gap-2 px-6 py-3 bg-slate-100 dark:bg-zinc-800 text-slate-700 dark:text-zinc-300 font-bold rounded-xl hover:bg-slate-200 dark:hover:bg-zinc-700 transition-all text-sm">

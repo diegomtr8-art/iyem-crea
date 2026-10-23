@@ -4,9 +4,10 @@ import NavMain from '@/components/NavMain.vue';
 import NavUser from '@/components/NavUser.vue';
 import { Sidebar, SidebarContent, SidebarFooter, SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem } from '@/components/ui/sidebar';
 import { Link, usePage } from '@inertiajs/vue3';
-import { LayoutGrid, ShieldCheck, Users, ClipboardList, BarChart2, FileText, Calculator, Inbox, TrendingDown, TrendingUp, ScrollText, ClipboardCheck, Clock, Mail } from 'lucide-vue-next';
+import { LayoutGrid, ShieldCheck, Users, ClipboardList, BarChart2, FileText, Calculator, Inbox, TrendingDown, ScrollText, ClipboardCheck, Clock, Mail, MessageSquare, Upload, TrendingUp } from 'lucide-vue-next';
 import AppLogo from './AppLogo.vue';
 import { computed, watch, onMounted, ref } from 'vue';
+import { MailWarning } from 'lucide-vue-next';
 
 // --- NOTIFICACIONES ---
 import { Toaster, toast } from 'vue-sonner';
@@ -127,12 +128,6 @@ if (can('ver.reportes')) {
 
     // Sección: Sistema (Solo Admin)
     if (can('ver.usuarios')) {
-        items.push({
-            title: 'Bitácora Auditoría',
-            url: route('auditoria.index'),
-            icon: ScrollText,
-            group: 'Sistema',
-        });
         items.push({ title: 'Usuarios', url: '/users', icon: Users, group: 'Sistema' });
     }
     if (can('ver.roles')) {
@@ -140,8 +135,19 @@ if (can('ver.reportes')) {
     }
 
     if (page.props.auth?.user?.roles?.includes('Administrador')) {
+        // La ruta exige role:Administrador; con otro rol el enlace daría 403
+        items.push({ title: 'Bitácora Auditoría', url: route('auditoria.index'), icon: ScrollText, group: 'Sistema' });
         items.push({ title: 'Tareas programadas', url: route('bitacora-tareas.index'), icon: Clock, group: 'Sistema' });
+        items.push({ title: 'Correos fallidos', url: route('correos-fallidos.index'), icon: MailWarning, group: 'Sistema' });
         items.push({ title: 'Recordatorios de pago', url: route('recordatorios.index'), icon: Mail, group: 'Sistema' });
+        items.push({
+            title: 'Mensajes de ciudadanos',
+            url: route('mensajes-ciudadanos.index'),
+            icon: MessageSquare,
+            group: 'Sistema',
+            badge: page.props.mensajes_pendientes as number | undefined,
+        });
+        items.push({ title: 'Importar acreditados', url: route('importar-acreditados.index'), icon: Upload, group: 'Sistema' });
     }
     
 

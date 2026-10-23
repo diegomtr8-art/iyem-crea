@@ -2,7 +2,6 @@
 
 namespace App\Services;
 
-use App\Models\Amortizacion;
 use App\Models\Credito;
 use Carbon\Carbon;
 
@@ -28,7 +27,7 @@ class CreditService
         for ($g = 1; $g <= $mesesGracia; $g++) {
             $credito->amortizaciones()->create([
                 'numero_cuota'               => $g - $mesesGracia - 1,
-                'fecha_vencimiento'          => $fechaInicial->copy()->addMonths($g)->format('Y-m-d'),
+                'fecha_vencimiento'          => $fechaInicial->copy()->addMonthsNoOverflow($g)->format('Y-m-d'),
                 'saldo_insoluto'             => round($monto, 2),
                 'capital_esperado'           => 0,
                 'interes_ordinario_esperado' => 0,
@@ -55,7 +54,7 @@ class CreditService
 
             $credito->amortizaciones()->create([
                 'numero_cuota'               => $i,
-                'fecha_vencimiento'          => $fechaInicial->copy()->addMonths($i + $mesesGracia)->format('Y-m-d'),
+                'fecha_vencimiento'          => $fechaInicial->copy()->addMonthsNoOverflow($i + $mesesGracia)->format('Y-m-d'),
                 'saldo_insoluto'             => round($saldo, 2),
                 'capital_esperado'           => $capital,
                 'interes_ordinario_esperado' => $interes,
@@ -70,36 +69,5 @@ class CreditService
 
             $saldo -= $capital;
         }
-    }
-
-    public function actualizarMoraDeCuota(Amortizacion $fila)
-    {
-        if ($fila->estado === 'Pagado') return $fila->interes_moratorio_pagado;
-
-        $hoy = Carbon::now('America/Merida');
-        $vencimiento = Carbon::parse($fila->fecha_vencimiento);
-        $tasaMoratoriaAnual = $fila->credito->tasa_interes_moratorio;
-
-        if ($hoy->gt($vencimiento)) {
-            // Fix Carbon 3 signed diff: vencimiento como receptor da valor positivo para cuotas vencidas (referencia UpdateMoratorio:29).
-            $diasAtraso = (int) $vencimiento->diffInDays($hoy);
-
-            // Regla de los 5 días de gracia
-            if ($diasAtraso > config('credito.dias_gracia_mora')) {
-                // Año comercial 360
-                $tasaDiaria = ($tasaMoratoriaAnual / 100) / config('credito.dias_anio_comercial');
-                
-                // Calculamos la mora sobre lo que falta pagar (pago_restante)
-                $nuevaMora = round($fila->pago_restante * $tasaDiaria * $diasAtraso, 2);
-                
-                // Actualizamos en la base de datos para que sea "real"
-                // Nota: Usamos una columna para mora acumulada si quieres persistirla
-                $fila->update(['interes_moratorio_generado' => $nuevaMora]);
-                
-                return $nuevaMora;
-            }
-        }
-
-        return 0;
     }
 }

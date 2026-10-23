@@ -44,8 +44,10 @@
     <div class="seccion-titulo-gold">Opción 2 — Pago en caja, oficinas IYEM</div>
     <div class="campo"><div class="campo-label">Dirección</div><div class="campo-valor">Av. Principal Industrias No Contaminantes, Tablaje 13613, Sodzil Norte, CP 97110, Mérida, Yucatán</div></div>
     <div class="grid-2" style="margin-top:4px">
-        <div class="col"><div class="campo"><div class="campo-label">Horario de caja</div><div class="campo-valor">Lunes a viernes, 9:00 a 14:00 hrs.</div></div></div>
-        <div class="col"><div class="campo"><div class="campo-label">Contacto</div><div class="campo-valor">crea@iyemyucatan.com — WhatsApp 999 234 2693</div></div></div>
+        @if (config('contacto.horario'))
+        <div class="col"><div class="campo"><div class="campo-label">Horario de caja</div><div class="campo-valor">{{ config('contacto.horario') }}</div></div></div>
+        @endif
+        <div class="col"><div class="campo"><div class="campo-label">Contacto</div><div class="campo-valor">{{ config('contacto.correo') }} — WhatsApp 999 234 2693</div></div></div>
     </div>
 </div>
 

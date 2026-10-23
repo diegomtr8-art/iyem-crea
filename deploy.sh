@@ -12,6 +12,14 @@ REMOTE_DIR='~/domains/crea.iyemyucatan.com/public_html'
 # Array para manejar correctamente rutas con espacios
 SSH_OPTS=(-i "${SSH_KEY}" -p 65002)
 
+# El paso 5 corre `php artisan migrate --force` sobre la base real. Se pregunta
+# antes de subir nada para no dejar el servidor con código nuevo sin migrar.
+read -r -p "¿Hiciste respaldo de la base de datos? (escribe SI para continuar) " RESPALDO_OK
+if [ "$RESPALDO_OK" != "SI" ]; then
+    echo "Deploy cancelado: primero respalda la base de datos de producción."
+    exit 1
+fi
+
 echo "=== [1/5] Build del frontend ==="
 npm run build
 
@@ -38,10 +46,13 @@ echo "=== [4/5] Instalando dependencias en servidor ==="
 ssh "${SSH_OPTS[@]}" $SSH_HOST "cd $REMOTE_DIR && composer install --optimize-autoloader --no-dev --no-interaction"
 
 echo "=== [5/5] Migraciones, cachés y build assets ==="
+# Los seeders ya NO corren en cada deploy: reescribían las tasas/plazos de las
+# modalidades y los roles/permisos editados desde la pantalla.
+# Solo en la PRIMERA instalación, a mano en el servidor:
+#   php artisan db:seed --class=ActualizarModalidadesSeeder --force
+#   php artisan db:seed --class=RoleAndPermissionSeeder --force
 ssh "${SSH_OPTS[@]}" $SSH_HOST "cd $REMOTE_DIR && \
     php artisan migrate --force && \
-    php artisan db:seed --class=ActualizarModalidadesSeeder --force && \
-    php artisan db:seed --class=RoleAndPermissionSeeder --force && \
     php artisan config:cache && \
     php artisan route:cache && \
     php artisan view:cache && \

@@ -1,9 +1,10 @@
 <script setup>
 import AppLayout from '@/layouts/app/AppSidebarLayout.vue';
-import { Head } from '@inertiajs/vue3';
+import { Head, Link } from '@inertiajs/vue3';
 import { computed } from 'vue';
+import EstadoRespaldo from '@/components/EstadoRespaldo.vue';
 
-const props = defineProps({ tareas: Array, horas_alerta: Number });
+const props = defineProps({ tareas: Array, horas_alerta: Number, correos_fallidos: Number });
 
 const conAlerta = computed(() => props.tareas.filter(t => t.sin_correr || t.ultimo_estado === 'error' || t.errores_7_dias > 0));
 </script>
@@ -14,6 +15,8 @@ const conAlerta = computed(() => props.tareas.filter(t => t.sin_correr || t.ulti
         <div class="max-w-5xl mx-auto py-8 px-4 space-y-6">
             <h1 class="text-2xl font-black uppercase tracking-tight text-slate-900 dark:text-white">Tareas programadas</h1>
 
+            <EstadoRespaldo :respaldo="$page.props.respaldo" />
+
             <div :class="conAlerta.length
                 ? 'bg-red-50 border-red-200 text-red-700'
                 : 'bg-emerald-50 border-emerald-200 text-emerald-700'"
@@ -22,6 +25,16 @@ const conAlerta = computed(() => props.tareas.filter(t => t.sin_correr || t.ulti
                     ? `${conAlerta.length} tarea(s) requieren atención`
                     : 'Todas las tareas corrieron a tiempo y sin errores' }}
             </div>
+
+            <!-- Solo el contador: los correos se revisan y reintentan en su propia pantalla -->
+            <Link :href="route('correos-fallidos.index')"
+                  :class="correos_fallidos
+                      ? 'bg-amber-50 border-amber-200 text-amber-800'
+                      : 'bg-white border-slate-200 text-slate-600 dark:bg-slate-900 dark:border-slate-800 dark:text-slate-300'"
+                  class="flex items-center justify-between border rounded-2xl p-4 text-sm font-bold">
+                <span>Correos fallidos pendientes: {{ correos_fallidos }}</span>
+                <span class="text-xs underline">Revisar</span>
+            </Link>
 
             <div class="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 overflow-x-auto">
                 <table class="w-full text-sm">
