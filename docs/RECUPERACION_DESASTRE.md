@@ -211,6 +211,7 @@ Estas son las variables que necesita CREA. Aquí van solo los nombres: **nunca e
 | Google | `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GOOGLE_REDIRECT_URI` | Nada, si el dominio es el mismo |
 | Crédito | `CREA_DIAS_ANIO`, `CREA_DIAS_GRACIA` | Nada |
 | Respaldo (J.9) | `RESPALDO_DIRECTORIO`, `RESPALDO_MYSQLDUMP` | La ruta, si cambió el usuario de la cuenta |
+| Limpieza de bitácoras (J.13) | `LIMPIEZA_BITACORA_TAREAS_DIAS`, `LIMPIEZA_CORREOS_FALLIDOS_DIAS` | Nada. Son opcionales: si no están, se conservan 90 y 30 días |
 | Portal (PR #58) | `PORTAL_ABIERTO` | Nada |
 
 **Sobre `APP_KEY`:** CREA no guarda en la base datos cifrados con esa llave, así que perderla no pierde información. Si no la tienes, o si el servidor fue comprometido, genera una nueva. El único efecto es que todos tienen que volver a iniciar sesión, y dejan de servir los enlaces para recuperar la contraseña o verificar el correo que ya se habían mandado. Para generarla en tu computadora:

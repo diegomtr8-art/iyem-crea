@@ -17,7 +17,7 @@ class RespaldoBase extends Command
     public const DIAS_RETENCION = 30;
 
     // crea-respaldo-2026-10-05_030000.sql.gz (fecha y hora de Mérida)
-    private const PATRON_NOMBRE = '/^crea-respaldo-(\d{4}-\d{2}-\d{2})_\d{6}\.sql\.gz$/';
+    public const PATRON_NOMBRE ='/^crea-respaldo-(\d{4}-\d{2}-\d{2})_\d{6}\.sql\.gz$/';
 
     protected $signature   = 'crea:respaldo-base {--conexion= : Conexión de config/database.php; si no se indica, la principal}';
     protected $description = 'Genera un volcado comprimido de la base de datos y borra los de más de 30 días';
